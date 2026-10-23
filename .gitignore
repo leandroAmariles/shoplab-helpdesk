@@ -1,0 +1,28 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Java
+target/
+build/
+.gradle/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Entorno
+.env
+*.local
+
+# Datos descargados (Olist, etc.)
+data/raw/
