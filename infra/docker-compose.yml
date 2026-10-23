@@ -1,0 +1,65 @@
+# Infraestructura local de ShopLab Helpdesk.
+#
+# Uso: docker compose -f infra/docker-compose.yml up -d --wait
+#
+# Perfiles:
+#   core           postgres + ollama. Siempre activo (sin clave `profiles:`); `--profile core` es no-op.
+#   llmops         reservado, sin servicios todavia (llega en una fase posterior).
+#   observability  reservado, sin servicios todavia (F6).
+#   kafka          reservado, sin servicios todavia (F4).
+# Activar un perfil reservado no produce error: `--profile <nombre>`.
+# GPU NVIDIA opcional: anadir `-f infra/docker-compose.gpu.yml`.
+
+name: shoplab
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.7-pg16}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shoplab}
+      POSTGRES_USER: ${POSTGRES_USER:-shoplab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} &&
+          psql -U $${POSTGRES_USER} -d $${POSTGRES_DB} -tAc
+          "select 1 from pg_extension where extname='vector'" | grep -q 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.8}
+    entrypoint: ["sh", "/entrypoint.sh"]
+    environment:
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-bge-m3}
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+      - ./ollama/entrypoint.sh:/entrypoint.sh:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          ollama list | grep -qF "$${OLLAMA_CHAT_MODEL}" &&
+          ollama list | grep -qF "$${OLLAMA_EMBED_MODEL}"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  ollama_models:
