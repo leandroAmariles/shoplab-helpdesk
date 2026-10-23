@@ -26,3 +26,9 @@ __pycache__/
 
 # Datos descargados (Olist, etc.)
 data/raw/
+
+# Claude Code local settings (machine-specific; may hold enabled MCP servers/tokens)
+.claude/settings.local.json
+
+# Per-spec AI agent token usage (local telemetry written by ~/.claude or ~/.copilot/statusline.py; not source)
+specs/*/.token-usage.json

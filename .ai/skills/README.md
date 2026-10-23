@@ -1,0 +1,60 @@
+# skills/
+
+This directory stores the **callable skills** — structured flows that the agent or the
+user can activate explicitly with a command like `/skill-name`.
+
+## Difference with context-skills
+
+| Type | Location | Activation | Purpose |
+|---|---|---|---|
+| **Context-skills** | `<AI_ROOT>/context/skills/` | Automatic (always read) | Technical patterns/context |
+| **Callable skills** | `<AI_ROOT>/skills/` | Explicit (`/skill-name`) | Structured workflows |
+
+## Structure of each skill
+
+```
+skills/
+└── skill-name/
+    └── SKILL.md    ← self-contained flow instructions
+```
+
+Each `SKILL.md` defines:
+- **When to use it**: situations that trigger the invocation
+- **Steps**: sequence of actions the agent follows
+- **Input/Output**: what it needs and what it produces
+- **Guardrails**: limits and pause conditions
+
+## Available skills
+
+| Skill | When to use |
+|---|---|
+| `openspec-propose` | Design a new change (proposal + spec + design + tasks) |
+| `openspec-apply-change` | Implement the tasks of a planned change |
+| `openspec-update-change` | Review and update planning artifacts |
+| `openspec-explore` | Explore ideas or problems before proposing |
+| `openspec-sync-specs` | Sync delta specs to the main spec |
+| `openspec-archive-change` | Archive a completely implemented change |
+| `neo4j-architecture-graph` | Discover classes, implementations, dependencies, and cross-service relationships via the local Neo4j graph — only useful if `graph-rag/` (optional Step 2, `install-ai-package.sh --graph`) is installed |
+| `commit-and-push` | Stage, commit (Conventional Commits), push, and open a PR filled from `.github/pull_request_template.md`; also refreshes the Neo4j architecture graph's Phase 1 scan if `graph-rag/` is installed |
+| `us-context-builder` | Given an Azure DevOps work item URL, fetch title/description/acceptance criteria/comments/images via the REST API (needs `AZURE_DEVOPS_PAT`, Work Items: Read) and write `.ai/us-context/US<id>/context.md`, including the suggested `<type>/US<id>-<slug>` branch, to feed `/speckit-specify` or `/opsx-propose` |
+| `loop-spec` | Revise a spec-kit feature's spec.md scoped to just the requirement/scenario that broke or changed, cascade that delta into plan.md/tasks.md, and hand off to `/speckit-implement` — the spec-kit equivalent of `openspec-update-change`; only useful if you chose the spec-kit workflow (`install-ai-package.sh --workflow speckit`) |
+| `new-properties` | After an implementation, print the config properties it added (from the diff) with values as a YAML block to paste into the environment's config yml; prints nothing if none were added |
+| `migracion` | Single entry point for a Spring Boot 4 migration: asks for the missing inputs, checks/installs the tooling, then runs `code-context-builder` → `spring-boot-4-migration` with a gate between them |
+| `code-context-builder` | Generate schema-v2 XML context (Maven model, AST summaries, findings, hashes) for a Java Maven repo with `migration-tools/code-context-builder` — requires `install-ai-package.sh --migration` |
+| `spring-boot-4-migration` | Migrate a Maven reactor to the BAC parent, Spring Boot 4, Spring 7 and Jackson 3 from that context — requires `--migration` and the parent POM at `.ai/migration-context/pom.xml` |
+
+The `openspec-*` skills are one of two **alternative** spec-driven workflows this kit supports —
+see the root `README.md`'s "Choosing a spec-driven workflow" section. They ship here as a static,
+frozen snapshot; run `install-ai-package.sh --openspec <agents> <repo>` to run the real `openspec`
+CLI, which creates `openspec/config.yaml` + `changes/` (missing otherwise) and overwrites this
+snapshot with your installed CLI's current version. If you pick **spec-kit** instead
+(`install-ai-package.sh --workflow speckit`), these files are removed before distribution and
+spec-kit's own official `specify` CLI generates its own skill/command files directly (they won't
+appear in this folder — `specify` writes them straight into each agent's native location).
+
+## Adding your own skills
+
+This slot is where your organization should add its own proprietary/internal skills — for example,
+a private internal-library catalog, or a guide for integrating with an internal system. Follow the
+same `skill-name/SKILL.md` structure so `install-ai-package.sh` picks it up automatically for every
+agent.
