@@ -32,7 +32,7 @@ No hagas push directo a `main`.
 
 | Área | Stack | Notas |
 | --- | --- | --- |
-| `backend/` | Java 21, Spring Boot 3, Spring AI, Maven | Paquetes por módulo de negocio, no por capa |
+| `backend/` | Java 21+, Spring Boot 4, Spring AI 2.0, Maven | Paquetes por módulo de negocio, no por capa |
 | `frontend/` | Angular (standalone components, signals) | Streaming del chat por SSE |
 | `ingest/`, `eval/` | Python 3.12, FastAPI, `uv` | RAGAS o DeepEval para evaluación |
 | `infra/` | docker compose | PostgreSQL 16 + pgvector |
