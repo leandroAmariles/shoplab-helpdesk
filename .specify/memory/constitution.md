@@ -1,6 +1,8 @@
 <!--
 Sync Impact Report (temporary - remove before committing)
-- Version change: (template, unversioned) -> 1.0.0
+- Version change: 1.0.0 -> 1.0.1 (PATCH, LAB-11): backend stack corrected from Spring Boot 3
+  to Spring Boot 4.x + Spring AI 2.0; no principle redefined.
+- Earlier: (template, unversioned) -> 1.0.0
 - Modified principles: none (initial ratification; all placeholders replaced)
 - Added sections: Core Principles I-VII, Technology & Architecture Constraints,
   Development Workflow & Quality Gates, Governance
@@ -67,7 +69,7 @@ in `docs/adr/` using the template. PostgreSQL 16 + pgvector is the single data s
 
 ## Technology & Architecture Constraints
 
-- **Backend**: Java 21, Spring Boot 3, Spring AI, Spring Modulith (`backend/`).
+- **Backend**: Java 21, Spring Boot 4.x, Spring AI 2.0, Spring Modulith (`backend/`; ADR-0004).
 - **Frontend**: Angular with streaming chat, agent console and admin (`frontend/`).
 - **Ingestion & evaluation**: Python / FastAPI (`ingest/`), golden dataset and metrics (`eval/`),
   experiments in `notebooks/` (never imported by production code).
@@ -110,4 +112,4 @@ Runtime guidance lives in `.ai/rules/development-guidelines.md`, `.ai/context/sk
   pull request review MUST verify compliance. Deviations MUST be justified in writing and, if
   lasting, recorded as an ADR.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23
+**Version**: 1.0.1 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23

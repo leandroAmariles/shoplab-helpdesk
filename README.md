@@ -3,7 +3,7 @@
 Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa de ayuda para una tienda online ficticia.
 
 - **Frontend**: Angular (chat con streaming, consola de agentes, admin).
-- **Backend**: Java 21 + Spring Boot 3 + Spring AI (monolito modular que evoluciona a microservicios con Kafka y CQRS).
+- **Backend**: Java 21 + Spring Boot 4 + Spring AI 2.0 + Spring Modulith (monolito modular que evoluciona a microservicios con Kafka y CQRS).
 - **Python**: ingesta, chunking, embeddings y evaluación (RAGAS / DeepEval).
 - **Datos**: PostgreSQL 16 + pgvector; dataset público de Olist.
 
@@ -12,7 +12,7 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | Carpeta | Contenido |
 | --- | --- |
 | `frontend/` | App Angular |
-| `backend/` | Spring Boot + Spring AI |
+| `backend/` | Spring Boot 4 + Spring Modulith + Spring AI 2.0 |
 | `ingest/` | Servicio FastAPI de ingesta |
 | `eval/` | Dataset golden y evaluación |
 | `notebooks/` | Experimentos |
@@ -43,7 +43,7 @@ El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se regi
 
 ## Arrancar
 
-Prerrequisitos: git, Docker con Compose v2+, JDK 21, Node.js y Python 3.
+Prerrequisitos: git, Docker con Compose v2+, JDK 21 o superior (Maven no hace falta: el backend incluye el wrapper `mvnw`), Node.js y Python 3.
 
 1. Clona el repositorio y entra en la carpeta raíz.
 2. (Opcional) Copia `infra/.env.example` a `infra/.env` para cambiar puertos, credenciales o modelos. `infra/.env` no se versiona.
@@ -51,7 +51,20 @@ Prerrequisitos: git, Docker con Compose v2+, JDK 21, Node.js y Python 3.
 
 La primera vez descarga las imágenes y los modelos (unos 13 GB en total), así que puede tardar varios minutos. El comando termina cuando PostgreSQL y Ollama están saludables; los siguientes arranques tardan segundos.
 
-Los pasos de arranque de cada componente (`backend/`, `frontend/`, `ingest/`) se documentan cuando cada uno tenga código.
+### Backend
+
+El backend no necesita la infraestructura levantada para construirse ni arrancar.
+
+```bash
+cd backend
+./mvnw verify            # compila, ejecuta tests, Checkstyle, PMD y cobertura (en Windows: mvnw.cmd verify)
+./mvnw spring-boot:run   # arranca en http://localhost:8080
+curl http://localhost:8080/actuator/health
+```
+
+Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos (`chat`, `retrieval`, `tools`, `tickets`) y sus fronteras se verifican en `ModularityTests`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`.
+
+Los pasos de arranque de `frontend/` e `ingest/` se documentan cuando cada uno tenga código.
 
 ## Infraestructura local
 
