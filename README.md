@@ -33,8 +33,24 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | F6 | Plataforma: gateway, resiliencia, observabilidad, seguridad |
 | F7 | Mejora continua y despliegue en Kubernetes |
 
-El backlog vive en Jira (proyecto `LAB`). Ramas `feature/LAB-123-descripcion` y commits que empiecen por `LAB-123`.
+El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se registran como ADR en `docs/adr/`.
+
+## Convenciones
+
+- Ramas: `<type>/LAB-<n>-<slug>`, donde `type` es `feature`, `fix`, `hotfix`, `chore`, `refactor` o `docs` (por ejemplo `feature/LAB-123-descripcion`).
+- Commits: `LAB-<n> type(scope): description` (Conventional Commits con la clave de la historia al inicio).
+- Archivos con UTF-8, fin de línea LF y sangría con espacios (ver `.editorconfig`).
 
 ## Arrancar
 
-Se completa en F0 (`LAB` F0-02): `docker compose -f infra/docker-compose.yml up`.
+Prerrequisitos: git, Docker, JDK 21, Node.js y Python 3.
+
+1. Clona el repositorio y entra en la carpeta raíz.
+2. Levanta el entorno local con `docker compose -f infra/docker-compose.yml up`.
+   **Pendiente:** este archivo se entrega en F0-02 (`LAB`); hasta entonces el comando no funciona.
+
+Los pasos de arranque de cada componente (`backend/`, `frontend/`, `ingest/`) se documentan cuando cada uno tenga código.
+
+## Licencia
+
+MIT, ver [LICENSE](LICENSE).
