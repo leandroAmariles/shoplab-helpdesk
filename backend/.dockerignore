@@ -1,0 +1,8 @@
+target/
+.git
+.idea/
+*.iml
+.env
+*.local
+qodana.sarif.json
+qodana.yaml
