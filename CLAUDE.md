@@ -222,6 +222,24 @@ type(scope): description in english
 | `docs` | Documentation only |
 | `test` | Tests only |
 
+### 5.1 Branch commits vs. PR title
+
+- `type(scope): description` applies to branch commits; they are not validated because the PR is squashed.
+- The **PR title** becomes the squash commit on `main` and is the only message release-please reads. Use `type(scope): [LAB-<n>] description` (for example `feat(chat): [LAB-12] streaming response`); the `pr-title` check enforces it.
+
+### 5.2 Versioning (release-please)
+
+Every push to `main` updates a release PR (`chore: [LAB-100] release <version>`) with the next version and `CHANGELOG.md`. Merging it creates the `vX.Y.Z` tag and the GitHub Release.
+
+| PR title type | Version bump |
+|---|---|
+| `feat` | minor |
+| `fix`, `perf` | patch |
+| `!` after the type (`feat(api)!:`) or `BREAKING CHANGE:` | major (minor while the version is `0.x`) |
+| `docs`, `chore`, `test`, `ci`, `build`, `refactor` | no release |
+
+Never edit `CHANGELOG.md`, `.release-please-manifest.json` or the project version by hand.
+
 ---
 
 ## 6. Exception Handling
