@@ -200,22 +200,29 @@ menú solo ofrece "Squash and merge" (quickstart paso 5).
 
 - [X] T015 Revisión previa al commit: `git status --short` y `git diff --staged` solo con los
   archivos de este plan (sin `.orig`, logs ni temporales); JSON válido; `actionlint` limpio.
-- [ ] T016 Abrir el PR de LAB-77 con el título
+- [X] T016 Abrir el PR de LAB-77 con el título
   `chore(ci): [LAB-77] protege main con checks requeridos` usando la plantilla; comprobar que
   `pr-title` y `ci-gate` quedan en verde (quickstart paso 0). Como aún no hay protección activa,
   verificar a mano que el título cumple el formato antes de fusionar con squash (el commit en
   `main` debe usar el título del PR).
-- [ ] T017 Tras fusionar (y con LAB-75 y LAB-76 ya en `main`), activar: aplicar el ruleset y los
+  (Hecho: PR #27 con `pr-title` y `ci-gate` en verde; entró con *Merge pull request* porque la
+  protección aún no estaba activa.)
+- [X] T017 Tras fusionar (y con LAB-75 y LAB-76 ya en `main`), activar: aplicar el ruleset y los
   ajustes del repositorio con los comandos de quickstart.md paso 1 (o `PUT` si ya existe) y guardar el
   id del ruleset.
+  (Hecho: `PUT` sobre el ruleset existente `main-protect`, id 25783802, y `PATCH` del repositorio.)
 - [ ] T018 Ejecutar el quickstart contra el repositorio real, anotando el resultado de cada paso:
   paso 2 (push directo y force push rechazados, también para el propietario), paso 3 (checks
   requeridos: fallo bloquea, pendiente bloquea, PR solo de README fusionable), paso 4 (títulos
   inválidos rojos, edición sin commit nuevo en < 2 min, PR de Dependabot verde), paso 5 (rama al día y
   solo squash; `git log --oneline main -3` sin merge commits).
-- [ ] T019 Auditar con el `diff` del quickstart paso 6 que el ruleset activo y
+  (Pendiente de ejecución en vivo: verificado solo por API que las reglas efectivas sobre `main` son
+  las cinco esperadas y que no hay bypass; el paso 5 se observa en el PR de sincronización.)
+- [X] T019 Auditar con el `diff` del quickstart paso 6 que el ruleset activo y
   `.github/rulesets/main-protection.json` no difieren (SC-008) y marcar las tareas completadas y el
   estado de la spec.
+  (Hecho: tras añadir al JSON los defaults que GitHub agrega al guardar —`required_reviewers` y
+  `require_extra_approval_for_unattributed_changes`—, el ruleset activo y el versionado coinciden.)
 
 ---
 
