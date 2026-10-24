@@ -1,5 +1,7 @@
 # ShopLab Helpdesk
 
+[![CI](https://github.com/leandroAmariles/shoplab-helpdesk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/leandroAmariles/shoplab-helpdesk/actions/workflows/ci.yml)
+
 Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa de ayuda para una tienda online ficticia.
 
 - **Frontend**: Angular (chat con streaming, consola de agentes, admin).
@@ -117,6 +119,15 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 - **Cambiar de modelo:** define `OLLAMA_CHAT_MODEL` u `OLLAMA_EMBED_MODEL` en `infra/.env` y vuelve a ejecutar `up -d --wait`. El modelo anterior sigue en el disco; se elimina con `down -v`.
 - **Puerto ocupado:** cambia `POSTGRES_PORT` u `OLLAMA_PORT` en `infra/.env`.
 - **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y Ollama en `http://localhost:11434`; las credenciales de ejemplo están en `infra/.env.example`.
+
+## Integración continua
+
+El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`).
+
+- **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración y gate de cobertura de líneas ≥ 80 %). El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
+- **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
+- **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
+- **Protección de rama:** en *Settings > Branches* exige únicamente el check `ci-gate`; agrega el resultado de todos los jobs y no queda pendiente cuando un componente se omite.
 
 ## Licencia
 
