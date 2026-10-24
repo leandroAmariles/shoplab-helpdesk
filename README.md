@@ -33,7 +33,7 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | F6 | Plataforma: gateway, resiliencia, observabilidad, seguridad |
 | F7 | Mejora continua y despliegue en Kubernetes |
 
-El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se registran como ADR en `docs/adr/`.
+El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se registran como ADR en `docs/adr/` (índice y guía en [`docs/adr/README.md`](docs/adr/README.md); se parte de [`docs/adr/0000-plantilla.md`](docs/adr/0000-plantilla.md)).
 
 ## Convenciones
 
