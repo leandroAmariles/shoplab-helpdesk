@@ -1,0 +1,10 @@
+# Excepciones del escaneo de Trivy (LAB-76). Un id por línea: CVE-XXXX-XXXXX, GHSA-xxxx-xxxx-xxxx,
+# id de misconfig (p. ej. AVD-DS-0002) o regla de secreto.
+#
+# Cada excepción DEBE ir precedida de comentarios con el motivo y el responsable:
+#
+#   # Motivo: falso positivo, la clase afectada no se usa (solo test scope)
+#   # Responsable: @equipo-backend | Revisar antes de: 2027-01-31
+#   CVE-0000-00000
+#
+# No se aceptan excepciones sin justificación. Retira la entrada cuando la vulnerabilidad se corrija.
