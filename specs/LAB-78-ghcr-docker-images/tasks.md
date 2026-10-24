@@ -151,11 +151,11 @@ ningún caso se escribe en GHCR (quickstart §2, §3 y §6).
 - [X] T015 [US3] Añadir al workflow un job `publish` vacío de comprobación, `needs: build-scan`,
   `if: github.event_name != 'pull_request'`, con un único paso `echo` (marcador que T018 sustituye), solo
   para verificar que las tres instancias de la matriz condicionan su arranque (FR-009)
-- [ ] T016 [US3] Validar con `actionlint .github/workflows/images.yml` y ensayar el escaneo local
+- [X] T016 [US3] Validar con `actionlint .github/workflows/images.yml` y ensayar el escaneo local
   `trivy image --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore --exit-code 1 shoplab/backend:local`
   (quickstart §2); abrir un PR de prueba que toque `backend/**` y comprobar que corren los tres
   `build-scan` y que `publish` no corre
-- [ ] T017 [US3] En el mismo PR de prueba (no se fusiona), cambiar temporalmente la imagen base del
+- [X] T017 [US3] En el mismo PR de prueba (no se fusiona), cambiar temporalmente la imagen base del
   `backend/Dockerfile` por una con un CVE HIGH/CRITICAL corregible conocido y comprobar que
   `build-scan (backend)` falla con la tabla de hallazgos; añadir su id a `.trivyignore` con motivo y
   responsable y comprobar que pasa; revertir ambos cambios (quickstart §6, escenarios 2 y 5 de la historia 3)
@@ -194,7 +194,7 @@ tag de release existen con `vX.Y.Z` y `latest` no cambia (quickstart §4 y §5).
   `cache-to` (solo lectura de la caché escaneada). `sbom` y `provenance` se añaden en T024 (US4)
 - [X] T022 [US2] Añadir a `publish` un paso final que escriba en `$GITHUB_STEP_SUMMARY` una tabla
   servicio / tags / digest (`steps.build.outputs.digest`, `steps.meta.outputs.tags`) para cumplir FR-017
-- [ ] T023 [US2] Validar con `actionlint`; fusionar el PR de la funcionalidad a `main` y comprobar con
+- [X] T023 [US2] Validar con `actionlint`; fusionar el PR de la funcionalidad a `main` y comprobar con
   `docker buildx imagetools inspect ghcr.io/leandroamariles/<servicio>:latest` y `:<sha-completo>` que
   las tres imágenes existen con el mismo digest y que el job summary lista tags y digests (quickstart §4);
   verificar en GitHub → Packages que los tres paquetes están enlazados al repositorio (etiqueta
@@ -216,7 +216,7 @@ en la fase final.
 
 - [X] T024 [US4] En `.github/workflows/images.yml`, añadir al paso `docker/build-push-action@v6` de
   `publish` las opciones `sbom: true` y `provenance: mode=max`
-- [ ] T025 [US4] Tras el siguiente merge a `main`, comprobar con `docker buildx imagetools inspect`
+- [X] T025 [US4] Tras el siguiente merge a `main`, comprobar con `docker buildx imagetools inspect`
   (`.SBOM` y `.Provenance`) que cada una de las tres imágenes tiene SBOM con paquetes del SO y de la
   aplicación y provenance que identifica repositorio, commit y ejecución, y que ambos corresponden al
   digest publicado (escenarios 1-3 de la historia 4)
@@ -242,7 +242,7 @@ correcto para las tres imágenes (quickstart §4, paso 4).
   `--certificate-identity-regexp '^https://github.com/${{ github.repository }}/\.github/workflows/images\.yml@.*'`
   y `--certificate-oidc-issuer https://token.actions.githubusercontent.com`; un fallo de firma o de
   verificación debe hacer fallar el job (FR-014); extender la tabla de T022 con la columna "firma"
-- [ ] T028 [US5] Tras el siguiente merge a `main`, ejecutar localmente el `cosign verify` de
+- [X] T028 [US5] Tras el siguiente merge a `main`, ejecutar localmente el `cosign verify` de
   `contracts/image-pipeline.md` para `backend`, `frontend` e `ingest`; comprobar que verificar con otra
   identidad falla y que el repositorio no tiene secretos de firma (Settings → Secrets) (escenarios 1 y 2
   de la historia 5)

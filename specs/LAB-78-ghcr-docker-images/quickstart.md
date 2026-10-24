@@ -84,3 +84,16 @@ cosign verify ghcr.io/leandroamariles/backend:latest \
 - `images.yml` no referencia secretos distintos de `GITHUB_TOKEN`; `packages: write` e `id-token: write`
   solo en `publish`.
 - El repositorio no tiene claves de firma (Settings → Secrets) para este flujo.
+
+## Resultados de validación (2026-10-24)
+
+- **PR #36** (build + scan): los tres `build-scan` en verde, `publish` omitido, GHCR sin cambios.
+- **Merge a `main` (`489754e`)**: ejecución de `Images` en verde; las tres imágenes con `latest` y el SHA
+  completo apuntando al mismo digest; SBOM (SPDX) y provenance (SLSA) presentes; `cosign verify` correcto
+  con la identidad de `images.yml` y el emisor de GitHub Actions, y fallido con otra identidad. Los
+  paquetes son legibles sin autenticación.
+- **Prueba negativa (PR #43, cerrado sin fusionar)**: con `python:3.8-slim` como base de `ingest`,
+  `build-scan (ingest)` falló con 62 hallazgos corregibles (55 HIGH, 7 CRITICAL), los otros dos servicios
+  pasaron y `publish` no corrió. La rama de excepciones no se ejercitó: con 62 hallazgos una entrada en
+  `.trivyignore` no basta para pasar; el mecanismo de excepciones es el de LAB-76.
+- **Pendiente**: flujo de tag `vX.Y.Z` (quickstart §5) con el próximo PR de release de release-please.
