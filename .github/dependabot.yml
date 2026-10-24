@@ -41,6 +41,12 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # LAB-78 fixes docker/login-action@v3 and docker/build-push-action@v6; majors need a story update.
+    ignore:
+      - dependency-name: "docker/login-action"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "docker/build-push-action"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /backend
