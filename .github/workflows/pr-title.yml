@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Validate PR title
-        if: github.actor != 'dependabot[bot]'
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,9 +39,10 @@ jobs:
             The PR title "{title}" must follow `type(scope): [LAB-<n>] description`,
             for example `feat(chat): [LAB-12] streaming response`. The subject must
             start with the story key in square brackets.
-      # Dependabot cannot know a LAB key: only the Conventional Commits type is checked.
+      # Dependabot cannot know a LAB key: only the Conventional Commits type is checked. The PR author
+      # (not github.actor) is used so the exemption survives someone else updating the branch.
       - name: Validate Dependabot PR title
-        if: github.actor == 'dependabot[bot]'
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
