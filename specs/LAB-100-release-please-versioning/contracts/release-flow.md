@@ -6,7 +6,7 @@
    es el mensaje del commit.
 2. `release-please.yml` se ejecuta con ese push.
 3. Si hay commits que suben versión desde el último release, crea o actualiza el PR de release
-   `chore: [LAB-100] release <versión>` en la rama `release-please--branches--main`.
+   `chore(main): [LAB-100] release <versión>` en la rama `release-please--branches--main`.
 4. `ci-gate` y `pr-title` corren sobre ese PR (posible porque se crea con `RELEASE_PLEASE_TOKEN`).
 5. Al fusionarlo (squash), `release-please.yml` crea el tag `vX.Y.Z` y el GitHub Release.
 6. El tag/Release dispara el workflow de imagen versionada de LAB-78.

@@ -26,7 +26,7 @@ GitHub.
 | Atributo | Valor |
 |---|---|
 | Rama | `release-please--branches--main` |
-| Título | `chore: [LAB-100] release <versión>` |
+| Título | `chore(main): [LAB-100] release <versión>` |
 | Etiquetas | `autorelease: pending` → `autorelease: tagged` (las gestiona release-please) |
 | Contenido | `CHANGELOG.md`, manifiesto y archivos de `extra-files` |
 | Estados | abierto/actualizado → fusionado (publica) → etiquetado. Como máximo uno abierto |

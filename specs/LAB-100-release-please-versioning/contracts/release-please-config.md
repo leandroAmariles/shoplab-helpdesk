@@ -11,7 +11,6 @@ se fijan en la implementación):
   "include-component-in-tag": false,
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": false,
-  "release-as": "0.1.0",
   "pull-request-title-pattern": "chore${scope}: [LAB-100] release ${version}",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
@@ -59,7 +58,7 @@ Entradas que se añaden a `extra-files` cuando el proyecto exista (o ya, según 
 | Invariante | Motivo |
 |---|---|
 | El XPath apunta al `<version>` hijo directo de `<project>`, nunca al del `<parent>` | No tocar la versión de Spring Boot |
-| `release-as` se retira tras publicar `v0.1.0` | Si no, impone la versión para siempre |
+| `release-as: "0.1.0"` se usó solo para el primer release y ya está retirado | Si no, impone la versión para siempre |
 | El título del PR de release cumple `type(scope): [LAB-<n>] descripción` | Debe pasar `pr-title` |
 | `CHANGELOG.md` no se edita a mano | Lo regenera release-please |
 

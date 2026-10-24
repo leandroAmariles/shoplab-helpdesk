@@ -84,7 +84,7 @@ se pueden comprobar **después de fusionar** esta rama en `main` (release-please
 **Goal**: Cada push a `main` abre o actualiza como máximo un PR de release con versión y changelog,
 sin pasos manuales y con permisos mínimos.
 
-**Independent Test**: Tras fusionar un cambio `feat`, aparece un único PR `chore: [LAB-100] release
+**Independent Test**: Tras fusionar un cambio `feat`, aparece un único PR `chore(main): [LAB-100] release
 0.1.0` con `CHANGELOG.md` actualizado y con `ci-gate` y `pr-title` en verde (quickstart §1).
 
 ### Implementation for User Story 1
@@ -159,7 +159,7 @@ el mismo ejemplo (quickstart §4).
   CHANGE` → major, y minor mientras sea `0.x`; `docs`, `chore`, `test`, `ci`, `build`, `refactor`
   no generan release); la aclaración de que **solo el título del PR** (commit de squash) determina la
   versión; el ejemplo `feat(chat): [LAB-12] respuesta en streaming`; el flujo del PR de release
-  `chore: [LAB-100] release <versión>`, el tag `vX.Y.Z` y el GitHub Release; y el procedimiento de
+  `chore(main): [LAB-100] release <versión>`, el tag `vX.Y.Z` y el GitHub Release; y el procedimiento de
   rotación del `RELEASE_PLEASE_TOKEN` con su fecha de caducidad. Reconciliar con la línea existente
   de "Título del PR" sin contradecirla.
 - [X] T015 [P] [US4] En `.ai/rules/development-guidelines.md` §5 (Commits), añadir la misma tabla
@@ -182,7 +182,7 @@ el mismo ejemplo (quickstart §4).
 - [X] T018 Revisar `git status --short` y `git diff` (solo cambios intencionales: workflow, dos JSON,
   documentación y `specs/LAB-100-release-please-versioning/`); no commitear `CHANGELOG.md` ni
   modificar `backend/pom.xml` a mano.
-- [ ] T019 Abrir el PR con título `chore(ci): [LAB-100] automatiza versiones con release-please` y
+- [X] T019 Abrir el PR con título `chore(ci): [LAB-100] automatiza versiones con release-please` y
   comprobar `ci-gate` y `pr-title` en verde. Fusionar por squash.
 
 ---
@@ -197,23 +197,23 @@ repetir la ejecución del workflow no crea otros (quickstart §3).
 
 ### Verification for User Story 2 (post-merge)
 
-- [ ] T020 [US2] Con el PR de LAB-100 ya fusionado, comprobar en < 5 min que el workflow corrió:
+- [X] T020 [US2] Con el PR de LAB-100 ya fusionado, comprobar en < 5 min que el workflow corrió:
   `gh run list --workflow release-please.yml --limit 1` en verde. Si falla por permisos o token,
   corregir `RELEASE_PLEASE_TOKEN` (T003) y relanzar con `gh run rerun`.
-- [ ] T021 [US1] Verificar que existe un único PR de release con título `chore: [LAB-100] release
+- [X] T021 [US1] Verificar que existe un único PR de release con título `chore(main): [LAB-100] release
   0.1.0`, etiqueta `autorelease: pending` y diff en `CHANGELOG.md`, `.release-please-manifest.json`
   (`0.1.0`) y `backend/pom.xml` (versión `0.1.0`, `<parent>` intacto):
   `gh pr list --head release-please--branches--main --json number,title,labels` (quickstart §1).
-- [ ] T022 [US1] Comprobar que `ci-gate` y `pr-title` se ejecutan y pasan sobre el PR de release
+- [X] T022 [US1] Comprobar que `ci-gate` y `pr-title` se ejecutan y pasan sobre el PR de release
   (`gh pr checks <n>`), lo que confirma que el token dispara workflows. Si no se ejecutan,
   revisar el token (research §2).
-- [ ] T023 [US2] Fusionar el PR de release (squash) y comprobar: `git fetch --tags && git tag --list
+- [X] T023 [US2] Fusionar el PR de release (squash) y comprobar: `git fetch --tags && git tag --list
   'v*'` muestra `v0.1.0`; `gh release view v0.1.0 --json tagName,isDraft,body` devuelve un Release no
   borrador cuyas notas coinciden con la entrada de `CHANGELOG.md`; el tag se creó sobre el commit de
   la fusión (`git rev-parse v0.1.0` frente a `git log -1 --format=%H`).
-- [ ] T024 [US2] Probar idempotencia: `gh run rerun` del workflow de release sobre el último push y
+- [X] T024 [US2] Probar idempotencia: `gh run rerun` del workflow de release sobre el último push y
   comprobar que no aparece ningún tag, Release ni PR de release adicional.
-- [ ] T025 [US2] Si el workflow de imagen de LAB-78 ya existe, comprobar que arrancó con el tag
+- [ ] T025 [US2] (pendiente de LAB-78: el workflow de imagen aún no existe) Si el workflow de imagen de LAB-78 ya existe, comprobar que arrancó con el tag
   `v0.1.0`; si no, dejar anotado en `specs/LAB-100-release-please-versioning/quickstart.md` que esa
   comprobación queda pendiente de LAB-78.
 
@@ -230,10 +230,10 @@ extremo.
 
 ### Implementation for User Story 5
 
-- [ ] T026 [US5] Abrir un PR `chore(ci): [LAB-100] retira release-as` que elimine `release-as` de
+- [X] T026 [US5] Abrir un PR `chore(ci): [LAB-100] retira release-as` que elimine `release-as` de
   `release-please-config.json`; comprobar `ci-gate` y `pr-title` en verde y fusionar por squash.
   Debe hacerse después de T023 (si no, la versión seguiría forzada a `0.1.0`).
-- [ ] T027 [US5] Revisar `CHANGELOG.md` en `main`: contiene la entrada de `v0.1.0` agrupada por tipo
+- [X] T027 [US5] Revisar `CHANGELOG.md` en `main`: contiene la entrada de `v0.1.0` agrupada por tipo
   y con enlaces a los commits (SC-006).
 - [ ] T028 [US5] Fusionar un cambio mínimo `fix: [LAB-100] ...` (p. ej. una errata de documentación
   con tipo `fix`) y comprobar que el siguiente PR de release propone `0.1.1`; después un `docs` o
