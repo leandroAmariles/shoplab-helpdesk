@@ -1,0 +1,60 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+concurrency:
+  group: pr-title-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate PR title
+        if: github.actor != 'dependabot[bot]'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^\[LAB-\d+\] .+$
+          subjectPatternError: |
+            The PR title "{title}" must follow `type(scope): [LAB-<n>] description`,
+            for example `feat(chat): [LAB-12] streaming response`. The subject must
+            start with the story key in square brackets.
+      # Dependabot cannot know a LAB key: only the Conventional Commits type is checked.
+      - name: Validate Dependabot PR title
+        if: github.actor == 'dependabot[bot]'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false

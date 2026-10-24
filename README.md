@@ -40,8 +40,26 @@ El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se regi
 ## Convenciones
 
 - Ramas: `<type>/LAB-<n>-<slug>`, donde `type` es `feature`, `fix`, `hotfix`, `chore`, `refactor` o `docs` (por ejemplo `feature/LAB-123-descripcion`).
-- Commits: `LAB-<n> type(scope): description` (Conventional Commits con la clave de la historia al inicio).
+- Commits de rama: `LAB-<n> type(scope): description` (Conventional Commits con la clave de la historia al inicio). No se validan: se aplastan al fusionar.
+- Título del PR: `type(scope): [LAB-<n>] descripción`, por ejemplo `feat(chat): [LAB-12] respuesta en streaming`. Es el mensaje del commit de squash en `main` y lo valida el check `pr-title`. Tipos permitidos: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert` (un hotfix usa `fix`).
 - Archivos con UTF-8, fin de línea LF y sangría con espacios (ver `.editorconfig`).
+
+### Versionado y releases
+
+Las versiones y el `CHANGELOG.md` salen solos de los títulos de PR (el commit de squash en `main`) con [release-please](https://github.com/googleapis/release-please). Solo el **título del PR** cuenta; los commits de rama no se leen.
+
+| Tipo del título | Efecto en la versión |
+| --- | --- |
+| `feat` | sube la minor |
+| `fix`, `perf` | sube la patch |
+| `!` tras el tipo (`feat(api)!: [LAB-9] ...`) o `BREAKING CHANGE:` | sube la major (la minor mientras la versión sea `0.x`) |
+| `docs`, `chore`, `test`, `ci`, `build`, `refactor` | no generan release |
+
+- **Flujo:** cada push a `main` abre o actualiza un único PR de release, `chore(main): [LAB-100] release <versión>`, con la versión nueva (`backend/pom.xml`) y el `CHANGELOG.md`. Pasa por los mismos checks (`ci-gate`, `pr-title`) y se fusiona con squash.
+- **Al fusionarlo** se crean el tag `vX.Y.Z` y el GitHub Release con las notas del changelog; el tag dispara la imagen versionada (LAB-78).
+- **No edites a mano** `CHANGELOG.md`, `.release-please-manifest.json` ni la versión del proyecto.
+- **Configuración:** `release-please-config.json`, `.release-please-manifest.json` y `.github/workflows/release-please.yml`. Se usa una sola versión del repositorio; `frontend` e `ingest` se añaden a `extra-files` cuando tengan `package.json` / `pyproject.toml`.
+- **Token:** el workflow usa el secreto `RELEASE_PLEASE_TOKEN` (token de grano fino, solo este repositorio, `Contents` y `Pull requests` en lectura/escritura) porque los PRs y tags creados con `GITHUB_TOKEN` no disparan otros workflows. Anota aquí su caducidad y rótalo antes: **caduca el AAAA-MM-DD** (pendiente de completar al crearlo).
 
 ## Arrancar
 
@@ -134,7 +152,36 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
   - *Excepción:* añade el id al `.trivyignore` precedido de `Motivo:` y `Responsable: ... | Revisar antes de: AAAA-MM-DD`; nunca sin justificación.
 - **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
 - **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
-- **Protección de rama:** en *Settings > Branches* exige únicamente el check `ci-gate`; agrega el resultado de todos los jobs y no queda pendiente cuando un componente se omite.
+
+### Protección de main
+
+Nada llega a `main` sin pasar por un pull request y por todos los checks. El ruleset `main-protect` (definición versionada en [`.github/rulesets/main-protection.json`](.github/rulesets/main-protection.json)) aplica a todos, propietario incluido (sin bypass):
+
+- **Flujo:** rama `<type>/LAB-<n>-<slug>` → pull request → checks en verde → *Squash and merge*.
+- **Sin push directo, force push ni borrado** de `main`; historial lineal; único método de fusión: squash, con el título del PR como mensaje del commit.
+- **Rama al día:** si `main` avanzó, actualiza la rama (*Update branch*) y espera de nuevo los checks.
+- **Checks requeridos:**
+  - `ci-gate`: agrega `backend` (build, tests y gate de cobertura), `qodana`, `trivy`, `frontend` y `python`; un componente omitido por el filtro de rutas no bloquea.
+  - `pr-title`: valida el título del PR (`type(scope): [LAB-<n>] descripción`). Si falla, edita el título: se reevalúa en segundos, sin nuevo commit.
+- **Dependabot:** sus PRs (`chore(deps): ...`) solo validan el tipo, porque no pueden llevar clave LAB.
+- **Renombrar un check:** cambiar `ci-gate` o `pr-title` exige actualizar el ruleset en el mismo PR; si no, los PRs quedan esperando un check que nunca llega.
+
+*Aplicar o restaurar* (requiere ser administrador; el ruleset se activa después de fusionar la historia que introduce `pr-title`):
+
+```bash
+REPO=leandroAmariles/shoplab-helpdesk
+ID=$(gh api repos/$REPO/rulesets --jq '.[] | select(.name=="main-protect") | .id')
+gh api -X PUT repos/$REPO/rulesets/$ID --input .github/rulesets/main-protection.json   # si no existe: -X POST repos/$REPO/rulesets
+gh api -X PATCH repos/$REPO -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false \
+  -F delete_branch_on_merge=true -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=BLANK
+```
+
+*Auditar* (sin salida si coincide):
+
+```bash
+F='{name,target,enforcement,bypass_actors,conditions,rules}'
+gh api repos/$REPO/rulesets/$ID | jq -S "$F" | diff - <(jq -S "$F" .github/rulesets/main-protection.json)
+```
 
 ## Licencia
 
