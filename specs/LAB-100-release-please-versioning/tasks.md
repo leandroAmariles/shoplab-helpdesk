@@ -116,7 +116,7 @@ tocar el `<parent>`, y `ci-gate` pasa (quickstart §1).
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] Verificar el comportamiento de `extra-files` con archivos inexistentes (research.md
+- [ ] T009 [US3] (pendiente: requiere rama de prueba empujada; no bloquea, ver research §1.1) Verificar el comportamiento de `extra-files` con archivos inexistentes (research.md
   §1.1) en una rama de prueba desechable: añadir las entradas de `frontend/package.json` y
   `ingest/pyproject.toml` sin crear los archivos, ejecutar release-please en local
   (`npx release-please release-pr --dry-run` con `--token` de lectura) o en un fork, y anotar el
@@ -235,7 +235,7 @@ extremo.
   Debe hacerse después de T023 (si no, la versión seguiría forzada a `0.1.0`).
 - [X] T027 [US5] Revisar `CHANGELOG.md` en `main`: contiene la entrada de `v0.1.0` agrupada por tipo
   y con enlaces a los commits (SC-006).
-- [ ] T028 [US5] Fusionar un cambio mínimo `fix: [LAB-100] ...` (p. ej. una errata de documentación
+- [X] T028 [US5] Fusionar un cambio mínimo `fix: [LAB-100] ...` (p. ej. una errata de documentación
   con tipo `fix`) y comprobar que el siguiente PR de release propone `0.1.1`; después un `docs` o
   `chore` solo no debe abrir otro (quickstart §2). Cerrar o fusionar el PR de release de prueba
   según convenga.
@@ -249,12 +249,12 @@ inspección de la configuración (`bump-minor-pre-major`).
 
 **Purpose**: Cierre de la historia.
 
-- [ ] T029 [P] Anotar en `specs/LAB-100-release-please-versioning/quickstart.md` los resultados
+- [X] T029 [P] Anotar en `specs/LAB-100-release-please-versioning/quickstart.md` los resultados
   reales (PR, run, tag, release) y la fecha de caducidad del `RELEASE_PLEASE_TOKEN`; actualizar
   `research.md` §1.1 con el resultado de T009.
-- [ ] T030 Ejecutar el checklist del quickstart completo (§0 a §5) y marcar en
+- [ ] T030 (parcial: §0 sin `actionlint` y §5/T009 sin verificar) Ejecutar el checklist del quickstart completo (§0 a §5) y marcar en
   `checklists/requirements.md` cualquier ítem que haya cambiado.
-- [ ] T031 Informar en el resumen final: el estado de cada criterio de aceptación de LAB-100, la
+- [X] T031 Informar en el resumen final: el estado de cada criterio de aceptación de LAB-100, la
   desviación del paquete raíz frente a "un paquete por componente" (research §1) y el resultado de
   T009.
 
