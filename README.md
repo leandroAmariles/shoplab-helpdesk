@@ -55,7 +55,7 @@ Las versiones y el `CHANGELOG.md` salen solos de los títulos de PR (el commit d
 | `!` tras el tipo (`feat(api)!: [LAB-9] ...`) o `BREAKING CHANGE:` | sube la major (la minor mientras la versión sea `0.x`) |
 | `docs`, `chore`, `test`, `ci`, `build`, `refactor` | no generan release |
 
-- **Flujo:** cada push a `main` abre o actualiza un único PR de release, `chore: [LAB-100] release <versión>`, con la versión nueva (`backend/pom.xml`) y el `CHANGELOG.md`. Pasa por los mismos checks (`ci-gate`, `pr-title`) y se fusiona con squash.
+- **Flujo:** cada push a `main` abre o actualiza un único PR de release, `chore(main): [LAB-100] release <versión>`, con la versión nueva (`backend/pom.xml`) y el `CHANGELOG.md`. Pasa por los mismos checks (`ci-gate`, `pr-title`) y se fusiona con squash.
 - **Al fusionarlo** se crean el tag `vX.Y.Z` y el GitHub Release con las notas del changelog; el tag dispara la imagen versionada (LAB-78).
 - **No edites a mano** `CHANGELOG.md`, `.release-please-manifest.json` ni la versión del proyecto.
 - **Configuración:** `release-please-config.json`, `.release-please-manifest.json` y `.github/workflows/release-please.yml`. Se usa una sola versión del repositorio; `frontend` e `ingest` se añaden a `extra-files` cuando tengan `package.json` / `pyproject.toml`.
