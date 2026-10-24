@@ -76,7 +76,7 @@ ediciones a `pom.xml` (solo vía el PR de release), `README.md`, `CLAUDE.md` y
 | V. RAG evaluado | No | No toca prompts, chunking ni retrieval. |
 | VI. Observabilidad y manejo seguro | Sí | El token es un secreto de GitHub, nunca en el repositorio; permisos mínimos; ninguna acción de terceros sin fijar por SHA. |
 | VII. Simplicidad y decisiones documentadas | Sí | Se elige el diseño más simple que garantiza un único tag `vX.Y.Z` (paquete raíz + `extra-files`); la desviación respecto a "un paquete por componente" se justifica en research.md §1. Decisión relevante de proceso, sin ADR (reversible, sin impacto arquitectónico). |
-| Flujo y commits | Sí | Título de PR `type(scope): [LAB-<n>] descripción` (LAB-77); el PR de release usa `chore: [LAB-100] release <versión>` para pasar `pr-title`. Se revisa que README y `CLAUDE.md` no contradigan la constitución (formato de commits de rama vs título del PR). |
+| Flujo y commits | Sí | Título de PR `type(scope): [LAB-<n>] descripción` (LAB-77); el PR de release usa `chore(main): [LAB-100] release <versión>` para pasar `pr-title`. Se revisa que README y `CLAUDE.md` no contradigan la constitución (formato de commits de rama vs título del PR). |
 | Stack | Sí | Backend Maven, frontend npm (Angular), ingest Python: mismos componentes que la constitución. |
 
 **Resultado**: pasa, sin violaciones; no hace falta Complexity Tracking. Re-evaluado tras el diseño

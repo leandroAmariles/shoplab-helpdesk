@@ -28,7 +28,7 @@ gh run list --workflow release-please.yml --limit 1
 gh pr list --head release-please--branches--main --json number,title,labels
 ```
 
-- Existe un único PR `chore: [LAB-100] release 0.1.0` con etiqueta `autorelease: pending`.
+- Existe un único PR `chore(main): [LAB-100] release 0.1.0` con etiqueta `autorelease: pending`.
 - Su diff cambia `CHANGELOG.md`, `.release-please-manifest.json` (`0.1.0`) y `backend/pom.xml`
   (versión `0.1.0`, `<parent>` intacto).
 - `ci-gate` y `pr-title` corren sobre él y quedan en verde.
