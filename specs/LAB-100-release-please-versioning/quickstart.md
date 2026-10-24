@@ -73,3 +73,17 @@ configuración, y comprobar que un `fix` posterior propone `0.1.1`.
 En una rama de prueba, añadir `frontend/package.json` y `ingest/pyproject.toml` a `extra-files`
 sin crear los archivos y observar si release-please falla. Anotar el resultado en
 [research.md](research.md) y ajustar la configuración.
+
+## Resultados de la ejecución (2026-10-24)
+
+| Paso | Resultado |
+|---|---|
+| §1 PR de release | PR #30 `chore(main): [LAB-100] release 0.1.0` (el `${scope}` se expande a `(main)`); `ci-gate` y `pr-title` corrieron y pasaron |
+| §3 `v0.1.0` | Tag sobre `2edeb47`, GitHub Release no borrador con las notas del changelog; repetir el workflow no creó nada nuevo |
+| §2 `fix` → patch | El `fix(ci)` del PR #32 produjo el PR #33 `release 0.1.1`; se fusionó y creó `v0.1.1` sobre `03289bb` |
+| §2 sin release | Los `chore(deps)` fusionados (#18 a #26, #34) no abrieron PR de release adicional |
+| §3 `release-as` | Retirado en el PR #31 antes de `v0.1.1` |
+| §0 `actionlint` | No ejecutado (no instalado); el workflow se validó con sus ejecuciones reales |
+| §5 `extra-files` ausentes | Sin verificar; ver research §1.1 |
+| LAB-78 | Sin comprobar: el workflow de imagen aún no existe |
+| Token | `RELEASE_PLEASE_TOKEN` creado; anotar su fecha de caducidad en el README al rotarlo |
