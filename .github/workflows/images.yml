@@ -1,0 +1,166 @@
+name: Images
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'ingest/**'
+      - '.trivyignore'
+      - '.github/workflows/images.yml'
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+# Publishing runs are never cancelled mid-flight (a half-published set would leave the three services
+# on different SHAs) and are serialized per ref, so `latest` cannot move backwards. Tags get their own
+# group so a pending release is not replaced by a newer push to main.
+concurrency:
+  group: images-${{ github.ref_type == 'tag' && github.ref || github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_NAMESPACE: ghcr.io/leandroamariles
+
+jobs:
+  # Builds every image without publishing it and fails on fixable HIGH/CRITICAL vulnerabilities.
+  build-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend, ingest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.service }}
+          push: false
+          sbom: false
+          provenance: false
+          outputs: type=docker,dest=${{ runner.temp }}/${{ matrix.service }}.tar
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+      # Report pass: never fails, so a tool/DB error here is distinguishable from the gate below.
+      - name: Trivy report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          input: ${{ runner.temp }}/${{ matrix.service }}.tar
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          limit-severities-for-sarif: true
+          exit-code: '0'
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-image-${{ matrix.service }}
+          path: trivy-${{ matrix.service }}.sarif
+          if-no-files-found: warn
+          retention-days: 14
+      # Gate pass: prints package, installed and fixed versions in the log and fails on findings.
+      - name: Trivy gate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          input: ${{ runner.temp }}/${{ matrix.service }}.tar
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          format: table
+          exit-code: '1'
+
+  # Runs only when all three services passed the scan, so main and release tags never end up with a
+  # partial set of images.
+  publish:
+    needs: build-scan
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend, ingest]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      IMAGE: ghcr.io/leandroamariles/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # A released version must always point to the same image: never overwrite it.
+      - name: Refuse to overwrite an existing version tag
+        if: github.ref_type == 'tag'
+        env:
+          VERSION_TAG: ${{ github.ref_name }}
+        run: |
+          if docker buildx imagetools inspect "${IMAGE}:${VERSION_TAG}" >/dev/null 2>&1; then
+            echo "::error::${IMAGE}:${VERSION_TAG} already exists; version tags are immutable"
+            exit 1
+          fi
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=,format=long,enable=${{ github.ref_type == 'branch' }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+      # Layers come from the cache written (and scanned) by build-scan; this job never writes to it.
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.service }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      # Sign the digest, not the tags, so the signature covers every tag that points to it.
+      - name: Sign image (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+      - name: Verify signature
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IDENTITY: ^https://github.com/${{ github.repository }}/\.github/workflows/images\.yml@.*
+        run: |
+          cosign verify "${IMAGE}@${DIGEST}" \
+            --certificate-identity-regexp "${IDENTITY}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Summary
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "### ${IMAGE}"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Signature: verified"
+            echo "- Tags:"
+            while read -r tag; do echo "  - \`${tag}\`"; done <<< "${TAGS}"
+          } >> "$GITHUB_STEP_SUMMARY"

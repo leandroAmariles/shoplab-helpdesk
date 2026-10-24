@@ -153,6 +153,24 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
 - **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
 - **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
 
+### Imágenes Docker
+
+El workflow `.github/workflows/images.yml` construye una imagen por servicio (`backend`, `frontend`, `ingest`; Dockerfile multi-stage y usuario no root en cada carpeta) y las publica en `ghcr.io/leandroamariles/<servicio>`. En pull requests que tocan esos directorios solo construye y escanea; no publica. `frontend` e `ingest` usan una página de relevo hasta que exista su código.
+
+- **Tags:** `<sha completo>` y `latest` en cada merge a `main`; `vX.Y.Z` cuando release-please crea el tag (nunca mueve `latest`). Un tag de versión ya publicado no se sobrescribe.
+- **Escaneo previo (Trivy):** cada imagen se escanea antes de publicar (HIGH y CRITICAL con corrección disponible, mismo `.trivyignore` que el escaneo del repo). Si falla alguna de las tres, no se publica ninguna. El reporte SARIF queda en el artefacto `trivy-image-<servicio>`.
+- **SBOM y provenance:** adjuntos a cada imagen como atestaciones de BuildKit.
+- **Firma:** cosign *keyless* sobre el digest, sin claves en el repo. Verificar:
+
+```bash
+cosign verify ghcr.io/leandroamariles/backend:latest \
+  --certificate-identity-regexp '^https://github.com/leandroAmariles/shoplab-helpdesk/\.github/workflows/images\.yml@.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+- **Un CVE de la imagen base bloquea el pipeline:** actualiza la base (Dependabot abre PRs semanales con el digest nuevo) o, si es un falso positivo, añade el id al `.trivyignore` con motivo y responsable.
+- *Reproducir el escaneo en local:* `docker build -t shoplab/backend:local backend && trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore --exit-code 1 shoplab/backend:local`.
+
 ### Protección de main
 
 Nada llega a `main` sin pasar por un pull request y por todos los checks. El ruleset `main-protect` (definición versionada en [`.github/rulesets/main-protection.json`](.github/rulesets/main-protection.json)) aplica a todos, propietario incluido (sin bypass):
