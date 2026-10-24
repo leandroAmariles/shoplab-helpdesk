@@ -44,6 +44,23 @@ El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se regi
 - Título del PR: `type(scope): [LAB-<n>] descripción`, por ejemplo `feat(chat): [LAB-12] respuesta en streaming`. Es el mensaje del commit de squash en `main` y lo valida el check `pr-title`. Tipos permitidos: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert` (un hotfix usa `fix`).
 - Archivos con UTF-8, fin de línea LF y sangría con espacios (ver `.editorconfig`).
 
+### Versionado y releases
+
+Las versiones y el `CHANGELOG.md` salen solos de los títulos de PR (el commit de squash en `main`) con [release-please](https://github.com/googleapis/release-please). Solo el **título del PR** cuenta; los commits de rama no se leen.
+
+| Tipo del título | Efecto en la versión |
+| --- | --- |
+| `feat` | sube la minor |
+| `fix`, `perf` | sube la patch |
+| `!` tras el tipo (`feat(api)!: [LAB-9] ...`) o `BREAKING CHANGE:` | sube la major (la minor mientras la versión sea `0.x`) |
+| `docs`, `chore`, `test`, `ci`, `build`, `refactor` | no generan release |
+
+- **Flujo:** cada push a `main` abre o actualiza un único PR de release, `chore: [LAB-100] release <versión>`, con la versión nueva (`backend/pom.xml`) y el `CHANGELOG.md`. Pasa por los mismos checks (`ci-gate`, `pr-title`) y se fusiona con squash.
+- **Al fusionarlo** se crean el tag `vX.Y.Z` y el GitHub Release con las notas del changelog; el tag dispara la imagen versionada (LAB-78).
+- **No edites a mano** `CHANGELOG.md`, `.release-please-manifest.json` ni la versión del proyecto.
+- **Configuración:** `release-please-config.json`, `.release-please-manifest.json` y `.github/workflows/release-please.yml`. Se usa una sola versión del repositorio; `frontend` e `ingest` se añaden a `extra-files` cuando tengan `package.json` / `pyproject.toml`.
+- **Token:** el workflow usa el secreto `RELEASE_PLEASE_TOKEN` (token de grano fino, solo este repositorio, `Contents` y `Pull requests` en lectura/escritura) porque los PRs y tags creados con `GITHUB_TOKEN` no disparan otros workflows. Anota aquí su caducidad y rótalo antes: **caduca el AAAA-MM-DD** (pendiente de completar al crearlo).
+
 ## Arrancar
 
 Prerrequisitos: git, Docker con Compose v2+, JDK 21 o superior (Maven no hace falta: el backend incluye el wrapper `mvnw`), Node.js y Python 3.
