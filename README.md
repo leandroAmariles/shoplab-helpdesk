@@ -132,3 +132,5 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
 ## Licencia
 
 MIT, ver [LICENSE](LICENSE).
+
+<!-- ci probe -->
