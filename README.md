@@ -125,6 +125,10 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`).
 
 - **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración y gate de cobertura de líneas ≥ 80 %). El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
+- **Qodana (backend):** el job `qodana` analiza `backend/` con el linter JVM Community (`backend/qodana.yaml`) y falla si aparecen problemas **nuevos** de severidad alta o crítica respecto al baseline `backend/qodana.sarif.json`. Los hallazgos se ven en *Security > Code scanning*, en el comentario del PR y en el artefacto `qodana-report`; en PRs desde forks solo queda el artefacto. No requiere `QODANA_TOKEN`.
+  - *Reproducir en local:* `docker run --rm -v "$PWD/backend:/data/project" -v "$TMPDIR/qodana:/data/results" jetbrains/qodana-jvm-community:2026.2 --baseline qodana.sarif.json --save-report=false`.
+  - *Regenerar el baseline:* ejecuta el análisis en `main` sin `--baseline`, reduce `qodana.sarif.json` a los resultados y confírmalo en un PR propio.
+  - *Falso positivo:* suprímelo con `exclude` en `backend/qodana.yaml` o con la anotación en el código, revisado en el PR; nunca desactives el gate.
 - **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
 - **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
 - **Protección de rama:** en *Settings > Branches* exige únicamente el check `ci-gate`; agrega el resultado de todos los jobs y no queda pendiente cuando un componente se omite.
