@@ -84,7 +84,7 @@ violación de Checkstyle lo pone en rojo (quickstart escenarios 1 y 2).
   y `jacoco:check`, todos enlazados a `verify` en `backend/pom.xml`) (FR-006, FR-007)
 - [X] T007 [US1] Validar localmente: `actionlint .github/workflows/ci.yml` sin errores y
   `cd backend && ./mvnw -B -ntp clean verify` con `BUILD SUCCESS` (JDK 21 y Docker disponibles)
-- [ ] T008 [US1] Validar en GitHub (quickstart escenarios 1, 2 y 9): PR de prueba con un cambio en
+- [X] T008 [US1] Validar en GitHub (quickstart escenarios 1, 2 y 9): PR de prueba con un cambio en
   `backend/` corre `backend` en verde; añadir una violación de Checkstyle en una rama descartable lo
   pone en rojo; tras fusionar, el push a `main` ejecuta el mismo job. Verificar en un segundo run que
   los pasos de Maven reportan *cache hit* (US1.4)
@@ -211,7 +211,7 @@ Python corren ruff y pytest (quickstart escenario 6, análogo para Python).
 - [X] T022 [US6] Añadir a `README.md`, justo debajo del título `# ShopLab Helpdesk`, el badge
   `[![CI](https://github.com/leandroAmariles/shoplab-helpdesk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/leandroAmariles/shoplab-helpdesk/actions/workflows/ci.yml)`
   (FR-015)
-- [ ] T023 [US6] Validar tras fusionar a `main`: el badge se renderiza con el estado de la última
+- [X] T023 [US6] Validar tras fusionar a `main`: el badge se renderiza con el estado de la última
   ejecución en `main` y el clic abre `actions/workflows/ci.yml` (quickstart sección 3)
 
 **Checkpoint**: Las seis historias completas.
@@ -310,8 +310,8 @@ Notas:
 - Con el código actual JaCoCo analiza 0 clases, por lo que el gate de 80 % no verifica nada
   hasta que exista lógica de negocio fuera de los paquetes excluidos.
 
-### Pendientes (requieren fusionar a `main`)
+### Verificación sobre `main`
 
-- T008 (parte): el push a `main` ejecuta el job `backend`.
-- T023: el badge muestra el estado de `main` y enlaza a las ejecuciones.
-- Configurar en *Settings > Branches* el check `ci-gate` como requerido.
+- T008 (push a `main`): el run `40100004103` tras fusionar el PR #12 ejecutó `backend` en verde.
+- T023: el badge del README muestra "CI - passing" y enlaza a `actions/workflows/ci.yml`.
+- Pendiente fuera del repositorio: exigir el check `ci-gate` en *Settings > Branches*.
