@@ -106,11 +106,11 @@ artefacto igualmente existe (quickstart escenario 3).
   `actions/upload-artifact@v4` con `if: always()`, `name: jacoco-report`,
   `path: backend/target/site/jacoco/`, `if-no-files-found: warn` y `retention-days: 14`
   (FR-008, FR-009). No añadir una invocación aparte de `jacoco:check`: ya corre dentro de `verify`
-- [ ] T010 [US2] Validar el gate en una rama descartable (no se commitea): subir
+- [X] T010 [US2] Validar el gate en una rama descartable (no se commitea): subir
   `jacoco.minimum.coverage` en `backend/pom.xml` por encima de la cobertura real y comprobar que
   `backend` falla por `jacoco:check` **y** que el artefacto `jacoco-report` está descargable;
   revertir el cambio
-- [ ] T011 [US2] Validar el límite: con el umbral igual a la cobertura real (frontera del 80 %,
+- [X] T011 [US2] Validar el límite: con el umbral igual a la cobertura real (frontera del 80 %,
   US2.4) el job pasa, y con el valor `0.80` original del `pom.xml` el job vuelve a estar en verde
 
 **Checkpoint**: US1 y US2 completas; el backend queda protegido por el gate de la constitución.
@@ -130,11 +130,11 @@ todos (quickstart escenarios 4 y 5).
   `needs: [changes, backend]` (se amplía en T016 y T019) y un paso que falle si
   `contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')` y pase si los
   resultados son `success` o `skipped` (FR-013, FR-017)
-- [ ] T013 [US3] Validar en GitHub (quickstart escenario 4): PR que solo edita `README.md` o `docs/`
+- [X] T013 [US3] Validar en GitHub (quickstart escenario 4): PR que solo edita `README.md` o `docs/`
   deja `backend` omitido y `ci-gate` en verde, con cero builds de componentes (SC-003)
-- [ ] T014 [US3] Validar en GitHub (quickstart escenario 5): PR que edita
+- [X] T014 [US3] Validar en GitHub (quickstart escenario 5): PR que edita
   `.github/workflows/ci.yml` ejecuta todos los jobs de componente existentes (US3.5)
-- [ ] T015 [US3] Validar la cancelación (quickstart escenario 8): empujar un segundo commit a un PR
+- [X] T015 [US3] Validar la cancelación (quickstart escenario 8): empujar un segundo commit a un PR
   en curso y comprobar que la ejecución anterior se cancela y que en `main` no se cancelan runs
 
 **Checkpoint**: Filtros por ruta y `ci-gate` operativos; el check requerido nunca queda pendiente.
@@ -162,7 +162,7 @@ corre lint, test y build en orden (quickstart escenario 6).
   `cache: npm` y `cache-dependency-path: frontend/package-lock.json`, y luego `npm ci`,
   `npm run lint`, `npm test -- --watch=false --browsers=ChromeHeadless` y `npm run build`, en ese orden
   (FR-010)
-- [ ] T018 [US4] Validar con `frontend/` vacío (estado actual): PR de prueba que toque `frontend/`
+- [X] T018 [US4] Validar con `frontend/` vacío (estado actual): PR de prueba que toque `frontend/`
   deja `frontend` en verde con el aviso y `ci-gate` en verde. Anotar que la validación completa con
   proyecto Angular queda pendiente hasta la historia que cree `frontend/`
 
@@ -191,7 +191,7 @@ Python corren ruff y pytest (quickstart escenario 6, análogo para Python).
   `cache-dependency-glob: ${{ matrix.component }}/uv.lock`, y luego `uv sync --frozen`,
   `uv run ruff check .` y `uv run pytest`. Un `pytest` sin tests (código 5) debe fallar el job
   (FR-011)
-- [ ] T021 [US5] Validar con las carpetas vacías (estado actual): PR de prueba que toque `ingest/` o
+- [X] T021 [US5] Validar con las carpetas vacías (estado actual): PR de prueba que toque `ingest/` o
   `eval/` deja solo la entrada de matriz correspondiente en verde con aviso, y la otra omitida.
   Anotar que la validación completa con proyecto Python queda pendiente hasta la historia que cree
   esos servicios
@@ -223,13 +223,13 @@ Python corren ruff y pytest (quickstart escenario 6, análogo para Python).
 - [X] T024 [P] Documentar en `README.md` (sección breve "CI") el comando local equivalente
   `cd backend && ./mvnw -B -ntp clean verify` y que en *Settings > Branches* debe exigirse
   únicamente el check `ci-gate` (contrato en [contracts/ci-checks.md](contracts/ci-checks.md))
-- [ ] T025 Ejecutar `actionlint .github/workflows/ci.yml` final y recorrer la tabla completa de
+- [X] T025 Ejecutar `actionlint .github/workflows/ci.yml` final y recorrer la tabla completa de
   [quickstart.md](quickstart.md); marcar en este archivo las validaciones que quedaron diferidas
   (T018 y T021) y por qué
-- [ ] T026 Revisión previa al commit según `CLAUDE.md` 8.4 y 8.5: `git status --short` sin archivos
+- [X] T026 Revisión previa al commit según `CLAUDE.md` 8.4 y 8.5: `git status --short` sin archivos
   sueltos, `git diff --staged` con solo cambios intencionales (workflow, `.gitattributes`, modo de
   `mvnw`, README, specs)
-- [ ] T027 Commits atómicos con el formato de la constitución `LAB-15 type(scope): description` (por
+- [X] T027 Commits atómicos con el formato de la constitución `LAB-15 type(scope): description` (por
   ejemplo `LAB-15 chore(ci): add github actions pipeline`); abrir el PR con la plantilla de
   `.github/pull_request_template.md`
 
@@ -283,3 +283,35 @@ T002 .gitattributes (mvnw eol=lf)   |   T003 esqueleto de ci.yml   |   T022 badg
 - Las tareas de validación en GitHub requieren push de ramas de prueba; no ejecutarlas sin acordar
   con la persona dueña del repositorio, ya que consumen minutos de CI y publican ramas.
 - Total: 27 tareas.
+
+## Resultados de validación (2026-10-24)
+
+PR de LAB-15: https://github.com/leandroAmariles/shoplab-helpdesk/pull/6 (base `docs/LAB-16-adr-registry`).
+Los escenarios se ejecutaron con PRs de prueba descartables (#7 a #11, ya cerrados y sin fusionar).
+
+| Tarea | Escenario | Resultado |
+|---|---|---|
+| T007 | `actionlint` 1.7.7 y `./mvnw clean verify` con JDK 21 | OK |
+| T008 | PR con cambio en backend: `backend` verde y violación de Checkstyle (`UnusedImports`) en rojo con `ci-gate` rojo | OK. Falta el push a `main` (ver pendientes) |
+| T009/T010 | Cobertura 0 % de líneas con `GateProbe` sin test | `backend` rojo por `jacoco:check` ("lines covered ratio is 0.00, but expected minimum is 0.80") y artefacto `jacoco-report` presente |
+| T011 | Cobertura exacta 4/5 = 0.80 con el umbral `0.80` original | `backend` verde |
+| T013 | PR solo de `README.md` | Solo `changes` y `ci-gate`; el resto omitido |
+| T014 | PR que edita `ci.yml` (#6) | Corren `backend`, `frontend` y `python` (ingest, eval) |
+| T015 | Segundo push al PR #7 durante la ejecución | Primera ejecución `cancelled` |
+| T018 | PR que toca `frontend/` sin proyecto | `frontend` verde con aviso. Validación con proyecto Angular diferida |
+| T021 | PR que toca `ingest/` sin proyecto | Solo `python (ingest)` verde con aviso; `eval` omitido. Validación con proyecto Python diferida |
+| US1.4 | Re-ejecución del PR #6 | `Cache hit` de Maven |
+
+Notas:
+- T010 se validó quitando el test de una clase con cobertura 0 en una rama descartable, sin
+  modificar el umbral del `pom.xml`.
+- La cancelación solo se probó en `pull_request`. Que `main` no cancele depende de
+  `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` y no se ha ejercitado.
+- Con el código actual JaCoCo analiza 0 clases, por lo que el gate de 80 % no verifica nada
+  hasta que exista lógica de negocio fuera de los paquetes excluidos.
+
+### Pendientes (requieren fusionar a `main`)
+
+- T008 (parte): el push a `main` ejecuta el job `backend`.
+- T023: el badge muestra el estado de `main` y enlaza a las ejecuciones.
+- Configurar en *Settings > Branches* el check `ci-gate` como requerido.
