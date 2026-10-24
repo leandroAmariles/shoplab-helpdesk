@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      ingest: ${{ steps.filter.outputs.ingest }}
+      eval: ${{ steps.filter.outputs.eval }}
+      ci: ${{ steps.filter.outputs.ci }}
+      python_matrix: ${{ steps.python.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            ingest:
+              - 'ingest/**'
+            eval:
+              - 'eval/**'
+            ci:
+              - '.github/workflows/ci.yml'
+      # The matrix context is not available in a job-level `if`, so the Python
+      # components to run are selected here and consumed with fromJSON.
+      - name: Select Python components
+        id: python
+        env:
+          INGEST: ${{ steps.filter.outputs.ingest }}
+          EVAL: ${{ steps.filter.outputs.eval }}
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+        run: |
+          items=()
+          if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
+          if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
+          echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Verify (Checkstyle, PMD, Modulith, tests, JaCoCo gate)
+        run: ./mvnw -B -ntp clean verify
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Angular project
+        id: detect
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::frontend/package.json not found; skipping Angular checks"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm run lint
+      - name: Test
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+      - name: Build
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm run build
+
+  python:
+    needs: changes
+    if: needs.changes.outputs.python_matrix != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.changes.outputs.python_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Python project
+        id: detect
+        run: |
+          if [ -f "${{ matrix.component }}/pyproject.toml" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::${{ matrix.component }}/pyproject.toml not found; skipping Python checks"
+          fi
+      - uses: astral-sh/setup-uv@v6
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          enable-cache: true
+          cache-dependency-glob: ${{ matrix.component }}/uv.lock
+      - name: Install
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: ${{ matrix.component }}
+        run: uv sync --frozen
+      - name: Lint
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: ${{ matrix.component }}
+        run: uv run ruff check .
+      - name: Test
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: ${{ matrix.component }}
+        run: uv run pytest
+
+  ci-gate:
+    needs: [changes, backend, frontend, python]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any component failed or was cancelled
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "One or more required jobs did not succeed" >&2
+            exit 1
+          fi
