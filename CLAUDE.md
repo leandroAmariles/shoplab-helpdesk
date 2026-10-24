@@ -229,7 +229,7 @@ type(scope): description in english
 
 ### 5.2 Versioning (release-please)
 
-Every push to `main` updates a release PR (`chore: [LAB-100] release <version>`) with the next version and `CHANGELOG.md`. Merging it creates the `vX.Y.Z` tag and the GitHub Release.
+Every push to `main` updates a release PR (`chore(main): [LAB-100] release <version>`) with the next version and `CHANGELOG.md`. Merging it creates the `vX.Y.Z` tag and the GitHub Release.
 
 | PR title type | Version bump |
 |---|---|

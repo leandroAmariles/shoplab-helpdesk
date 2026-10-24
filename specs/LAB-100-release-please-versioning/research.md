@@ -54,7 +54,7 @@ proyectos. Resultado a anotar en este documento tras la prueba.
   configuración.
 - **Rationale**: El PR de release es un PR más y debe pasar `pr-title` (`type(scope): [LAB-<n>]
   descripción`, LAB-77). El título por defecto (`chore(main): release 0.1.0`) falla por falta de
-  clave LAB. Con squash merge, ese título pasa a ser el commit en `main` (`chore: [LAB-100] release
+  clave LAB. Con squash merge, ese título pasa a ser el commit en `main` (`chore(main): [LAB-100] release
   0.1.0`) y es el que release-please reconoce para marcar el release como publicado. El tipo
   `chore` no genera versión, así que el commit del release no dispara otro PR de release.
 - **Alternatives considered**: Excluir al bot de `pr-title` (como Dependabot): obliga a modificar
@@ -141,3 +141,19 @@ proyectos. Resultado a anotar en este documento tras la prueba.
   approve pull requests" (tarea T003).
 - Última versión de la acción: `v4.4.1`, commit `5c625bfb5d1ff62eadeeb3772007f7f66fdcf071`.
 - `actionlint` no está instalado en esta máquina; la validación del workflow se apoya en el PR.
+
+## 11. Resultados de la ejecución real (2026-10-24)
+
+- El primer push a `main` falló con `Input required and not supplied: token` hasta crear
+  `RELEASE_PLEASE_TOKEN`; con el secreto, la repetición del run abrió el PR de release #30.
+- Con el token propio, `ci-gate` y `pr-title` se ejecutaron sobre el PR de release (confirma §2). No
+  hizo falta habilitar "Allow GitHub Actions to create and approve pull requests".
+- `${scope}` del patrón del título se expande a `(main)`: el PR se llamó
+  `chore(main): [LAB-100] release 0.1.0` y pasó `pr-title` (§3).
+- Fusionar el PR creó el tag `v0.1.0` sobre el commit de la fusión y el GitHub Release no borrador;
+  repetir el workflow no creó tag, release ni PR adicionales (FR-009).
+- El actualizador XML de `extra-files` colapsó a una línea la cabecera `<project ...>` de
+  `backend/pom.xml`; no cambia el contenido. Alternativa si molesta: marcador
+  `x-release-please-version` en el `pom.xml` con un `extra-file` de tipo `generic`.
+- §1.1 (archivos de `extra-files` inexistentes) sigue sin verificar: `frontend/package.json` e
+  `ingest/pyproject.toml` no se declararon; se añaden cuando existan los proyectos.
