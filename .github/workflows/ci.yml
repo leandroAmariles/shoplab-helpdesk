@@ -181,7 +181,7 @@ jobs:
           else
             echo "::notice::frontend/package.json not found; skipping Angular checks"
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.detect.outputs.exists == 'true'
         with:
           node-version: 22
