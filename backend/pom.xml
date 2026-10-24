@@ -19,10 +19,10 @@
         <java.version>21</java.version>
         <spring-ai.version>2.0.2</spring-ai.version>
         <spring-modulith.version>2.1.2</spring-modulith.version>
-        <jacoco.version>0.8.13</jacoco.version>
+        <jacoco.version>0.8.15</jacoco.version>
         <jacoco.minimum.coverage>0.80</jacoco.minimum.coverage>
         <checkstyle.version>10.26.1</checkstyle.version>
-        <pmd.version>3.27.0</pmd.version>
+        <pmd.version>3.28.0</pmd.version>
     </properties>
 
     <dependencyManagement>
