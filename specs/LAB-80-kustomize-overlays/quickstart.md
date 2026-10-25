@@ -27,9 +27,9 @@ Esperado: pasa. Comprobaciones de rechazo (una por vez, revertir tras cada una):
 
 | Mutación | Esperado |
 |---|---|
-| Cambiar un `newTag` por `latest` en un overlay | falla `image-latest` con archivo e imagen |
-| Quitar el tag de una imagen | falla `image-no-tag` |
-| Añadir un `kind: Secret` con datos en un overlay | falla `no-plain-secret` |
+| Cambiar un `digest` o `newTag` por `latest` en un overlay | falla `IMAGE_LATEST` con archivo e imagen |
+| Quitar el tag de una imagen | falla `IMAGE_NO_TAG` |
+| Añadir un `kind: Secret` con datos en un overlay | falla `PLAIN_SECRET` |
 | Borrar `k8s/overlays/prod/kustomization.yaml` | falla indicando el overlay |
 
 ## 3. Comparación entre ambientes
