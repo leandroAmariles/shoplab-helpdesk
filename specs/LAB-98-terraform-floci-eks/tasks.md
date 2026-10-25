@@ -158,7 +158,7 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 - [X] T043 [P] Escribir `docs/terraform-local.md` en `shoplab-infra`: requisitos y recursos mínimos, `make up`/`down`, valores de secretos, liberación de bloqueo huérfano (`force-unlock`), recuperación tras reinicio del emulador, puerto ocupado, modo kind (FR-014, edge cases)
 - [X] T044 Ejecutar `quickstart.md` completo desde una máquina limpia siguiendo solo `docs/` (SC-010) y actualizar `plan.md`/`research.md` con desviaciones
-- [ ] T045 Revisar `git status`/`git diff --staged` en ambos repositorios (sin archivos sueltos ni secretos) y abrir el PR con título `feat(infra): [LAB-98] terraform sobre floci con eks local`
+- [X] T045 Revisar `git status`/`git diff --staged` en ambos repositorios (sin archivos sueltos ni secretos) y abrir el PR con título `feat(infra): [LAB-98] terraform sobre floci con eks local`
 
 ---
 
