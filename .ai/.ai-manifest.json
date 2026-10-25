@@ -1,6 +1,6 @@
 {
   "STARTUP.md": "eccb6c027ca3b4db465fa49f4eaf32ca5744d6074a949d051a3edc942365c54c",
-  "VERSION": "80821deafae40caf653ac638fb6eecb9c5879eea9e0724448ec77dd5685434af",
+  "VERSION": "53c905b7eb0035c96d3b8cd4667a1f1e7a52cc6d4fd01c94badb86d46a254118",
   "context/README.md": "9543e7e49a3bd1f2874c445962f9f4749f023b78c0770dddf24878e43a70dc8b",
   "context/project-context.md": "2599dfd8d2beee5e645b0f9c171594eda206aa37340c10945390b024c7809e21",
   "context/skills/README.md": "67e3bc522ab838df1419e06c0ff23ef0fd852070468860930b36fe09fa188fbf",
@@ -22,11 +22,11 @@
   "rules/development-guidelines.md": "d27e7c1867d583ea1b10fccbe0479a4a99fbc3a917ddf0c15b54ab9906754f80",
   "rules/http-test-requests.md": "117af5647e375712fa405a911ff8fabe0c61df1a3e55852b520f6be6e45990ac",
   "rules/session-identity-canary.md": "6e7e9160ed9259af31cb65136e5000749fb59eaa1c7754d52376042ee52d7b36",
-  "rules/skill-transparency.md": "a46a048b2478d8f8ff39a7e9ccc8320d329bc769edddc9c74d92df4b6b7890a7",
+  "rules/skill-transparency.md": "19f4af5556e4407ff0eefefc867374727fdb1a76c5599648e3b446891eb50e06",
   "rules/spec-branch-naming.md": "194917128041b91f9ce6ddb60a234c33d9891c5f8da056baa16972631891d907",
   "skills/README.md": "cda67c0bd34363545f7f7a165eba3beec75077624e7025a9efc6abe958c337e5",
   "skills/code-context-builder/SKILL.md": "3efbbcbf9a45cc8fdfbf6247c88ccd3243c855b1ca6d356377c576c5cba10eff",
-  "skills/commit-and-push/SKILL.md": "c9aea55c986039e0c818e33299d652da66089f2b4ba5f20c68b758faeeae8626",
+  "skills/commit-and-push/SKILL.md": "564bf71c9b45c05800f1c353af3fb798485fd14d825c523ba718e4ef3386206b",
   "skills/loop-spec/SKILL.md": "be087f199698603b24f5443371b7754452de653a7dbce5046dd2d8eeb37d598a",
   "skills/migracion/SKILL.md": "85bfe8967a2628014a7e769b8bbcb9e41ac2daa19c394108df04a76c8e96320f",
   "skills/neo4j-architecture-graph/SKILL.md": "bfb1b19650de4ef08479b8c631f1f000b91b3440334b173bfa2013edc9879f39",
@@ -40,8 +40,10 @@
   "skills/spring-boot-4-migration/SKILL.md": "2d0ddf65a12022be5ec4e6def8cc9abd1e197517b3e38e0aee627ac8811ff877",
   "skills/us-context-builder/SKILL.md": "2086a346c0878bd439a539f35641eca543738aa4c49810d0cb7fcc81f142ab11",
   "skills/us-context-builder/us_context.py": "548666fbcebd050c4826b69d1d0f1763e23491f1337d594a8dd33793474cbdee",
+  "templates/__pycache__/statusline-claude.cpython-314.pyc": "2f34226d1b3e6cba7fdcf7e468b1ee14bfc8f4e81df22f73606b98e1cc0c10d6",
+  "templates/__pycache__/statusline-copilot.cpython-314.pyc": "b02d6498ebbde260042d1cdb416f6aee15909b5bcac220d3d6ad4bdb365a871f",
   "templates/pull_request_template.md": "c70f99a63a76422cd1df5152645932b19120e2aa5eaa2d6a8a82e2239f42917a",
   "templates/spring-boot-4-migration-story.md": "cf4ada7661028013808762913320df0bd259a47ee65aba7e1a9f66fbf8cdbc5d",
-  "templates/statusline-claude.py": "c298e172cc0c8a3b3b05b672c1573c919f3d37e440245a57e3e2c517c1d1c947",
-  "templates/statusline-copilot.py": "f6b08533b654e3d30b8e9d3974937fa6e19048efd92efb4f5fb8ee370a16cd6f"
+  "templates/statusline-claude.py": "b58b03296c6e9b11eeb75a2233746d374e5726e8e91da7f7456aeccf00351b1b",
+  "templates/statusline-copilot.py": "449cadd93d641d125df262da883312aedce65a9a15c2fb7cc271aa1f088f487a"
 }
