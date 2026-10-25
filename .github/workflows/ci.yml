@@ -223,7 +223,7 @@ jobs:
           else
             echo "::notice::${{ matrix.component }}/pyproject.toml not found; skipping Python checks"
           fi
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         if: steps.detect.outputs.exists == 'true'
         with:
           enable-cache: true
