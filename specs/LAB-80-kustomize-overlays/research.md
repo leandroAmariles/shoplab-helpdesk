@@ -22,8 +22,8 @@
 ## R3. Fijado de imágenes
 
 - **Decisión**: la base referencia imágenes sin tag efectivo y los overlays las fijan con `images:` (nombre y
-  `newTag` o `digest`). Backend/frontend/ingest: `ghcr.io/leandroamariles/<servicio>` con el tag `vX.Y.Z` (los tags
-  de versión son inmutables según LAB-78); `staging`/`prod` pueden usar digest. Postgres y Ollama: las versiones de
+  `newTag` o `digest`). Backend/frontend/ingest: `ghcr.io/leandroamariles/<servicio>` por **digest** (los tags `vX.Y.Z`, inmutables según LAB-78, aún no están publicados; al estarlo se promueve con `newTag`). Los tags
+  por SHA de commit existen: el digest sale de `…/manifests/<sha-completo>`. Postgres y Ollama: las versiones de
   `infra/docker-compose.yml`.
 - **Justificación**: un solo lugar por ambiente para promover una versión; la política de LAB-99 (sin `:latest` ni sin tag)
   se evalúa sobre la salida construida. La base nunca debe construirse sola para desplegar (no es un overlay).

@@ -124,7 +124,7 @@ LAB-98/LAB-99; el código se implementa en `shoplab-infra`. La ruta `k8s/` susti
   humo de LAB-99 despliega ese overlay). Hay que confirmar el nombre del `ClusterSecretStore` y que el módulo
   `secrets` acepta crear las claves de `dev` (T001); si no, se añade un `environment = "dev"` en `envs/local`.
 - **Tag de imagen de la aplicación**: no hay mecanismo automático que actualice el tag en `shoplab-infra` tras
-  un release de la app. Se fija a mano al último release (`v0.1.1`); la automatización queda fuera de alcance.
+  un release de la app. Los tags `v0.1.x` no existen en GHCR (solo `latest` y los tags por SHA), así que se fijan por digest de la imagen construida desde `main`; cuando haya tags de versión se promueve con `newTag`. La automatización queda fuera de alcance.
 - **Sondas de Actuator**: hoy solo se expone `health`. Los grupos `liveness`/`readiness` se activan en Kubernetes
   por detección del entorno y se fuerzan por variable de entorno; se verifica con el backend real en el
   quickstart. Si `health` expuesto no incluye los grupos, se abre una tarea en `backend/` (fuera de este repo).
