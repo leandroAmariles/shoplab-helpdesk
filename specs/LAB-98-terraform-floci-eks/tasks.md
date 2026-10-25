@@ -59,7 +59,7 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 - [X] T009 [P] [US1] `terraform/modules/eks/tests/eks.tftest.hcl` (plan + mocks): outputs `kubeconfig`, `host`, `cluster_ca_certificate`; `cluster_mode` rechaza valores distintos de `floci`/`kind`
 - [X] T010 [P] [US1] `terraform/modules/platform/tests/platform.tftest.hcl` (plan + mocks): 4 `helm_release` con `chart_versions` exactas; `validation` rechaza `latest` o vacío
-- [ ] T011 [P] [US1] `terraform/envs/local/tests/apply.tftest.hcl` (`command = apply` contra Floci): clúster activo y componentes instalados
+- [X] T011 [P] [US1] `terraform/envs/local/tests/apply.tftest.hcl` (`command = apply` contra Floci): clúster activo y componentes instalados
 
 ### Implementation for User Story 1
 
@@ -71,7 +71,7 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 - [X] T017 [US1] `terraform/modules/platform/argocd.tf`: `helm_release` de argo-cd (último, con `depends_on` de los otros tres) y `Application` inicial `argocd_initial_app`; outputs `argocd_url` e `installed_components`; depende de T014, T015, T016
 - [X] T018 [US1] Definir `terraform/modules/platform/{variables,outputs,versions}.tf` y componer `platform` en `terraform/envs/local/main.tf` con `chart_versions` fijadas en `terraform/envs/local/variables.tf`; depende de T017
 - [X] T019 [US1] Implementar el objetivo `up` del `Makefile`: `docker compose up -d`, espera de salud de Floci (mensaje claro si no responde o si el puerto 4566 está ocupado), `bootstrap`, `terraform init -backend-config`, `terraform apply`; debe poder reanudarse tras una interrupción
-- [ ] T020 [US1] Validar US1: aplicar desde cero 3 veces (SC-002), re-aplicar sin cambios con `plan -detailed-exitcode` (SC-004), interrumpir y reanudar, y repetir con la salida a `*.amazonaws.com` bloqueada (SC-005); anotar resultados en `quickstart.md`
+- [X] T020 [US1] Validar US1: aplicar desde cero 3 veces (SC-002), re-aplicar sin cambios con `plan -detailed-exitcode` (SC-004), interrumpir y reanudar, y repetir con la salida a `*.amazonaws.com` bloqueada (SC-005); anotar resultados en `quickstart.md`
 
 **Checkpoint**: US1 funcional y verificable por sí sola (MVP)
 
@@ -83,10 +83,10 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 **Independent Test**: `make down`, comprobar que no quedan contenedores ni recursos, `make up` de nuevo (quickstart §7)
 
-- [ ] T021 [P] [US2] Crear `scripts/verify-clean.sh` que falla si quedan contenedores de Floci/k3s/kind, los creados por Floci fuera de compose (`floci-aws-*`) o sus redes (`floci-aws-vpc-*`); `down` también debe eliminarlos
-- [ ] T022 [US2] Implementar el objetivo `down` del `Makefile`: `terraform destroy` del entorno → destroy de `bootstrap` → `docker compose down -v`; ejecutar `scripts/verify-clean.sh` al final
-- [ ] T023 [US2] Ajustar `terraform/modules/platform/*.tf` para borrado fiable (`timeout`, `cleanup_on_fail`, `depends_on` inverso, destruir la `Application` de Argo CD antes del chart) y que un fallo indique el recurso afectado y sea reintentable
-- [ ] T024 [US2] Validar US2: `make up` → `make down` → `make up` (estado equivalente, SC-003), y destruir con Argo CD sincronizando; anotar resultados en `quickstart.md`
+- [X] T021 [P] [US2] Crear `scripts/verify-clean.sh` que falla si quedan contenedores de Floci/k3s/kind, los creados por Floci fuera de compose (`floci-aws-*`) o sus redes (`floci-aws-vpc-*`); `down` también debe eliminarlos
+- [X] T022 [US2] Implementar el objetivo `down` del `Makefile`: `terraform destroy` del entorno → destroy de `bootstrap` → `docker compose down -v`; ejecutar `scripts/verify-clean.sh` al final
+- [X] T023 [US2] Ajustar `terraform/modules/platform/*.tf` para borrado fiable (`timeout`, `cleanup_on_fail`, `depends_on` inverso, destruir la `Application` de Argo CD antes del chart) y que un fallo indique el recurso afectado y sea reintentable
+- [X] T024 [US2] Validar US2: `make up` → `make down` → `make up` (estado equivalente, SC-003), y destruir con Argo CD sincronizando; anotar resultados en `quickstart.md`
 
 **Checkpoint**: US1 y US2 funcionan de forma independiente
 
@@ -98,10 +98,10 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 **Independent Test**: dos `apply` concurrentes (el segundo es rechazado) y revisión de estructura (quickstart §4)
 
-- [ ] T025 [P] [US3] Crear `scripts/check-layout.sh` que falla si falta alguno de `state`, `eks`, `secrets`, `platform` o si un ambiente no tiene su raíz en `terraform/envs/`
-- [ ] T026 [US3] Crear `terraform/envs/local/backend.tf` con backend `s3`, `use_lockfile = true`, endpoints de Floci y `key` parametrizada por ambiente (`-backend-config` desde el `Makefile` con la variable `ENV`)
-- [ ] T027 [US3] Verificar el bloqueo: lanzar dos `apply` simultáneos y confirmar que el segundo falla sin corromper el estado (SC-009); si Floci no soporta escrituras condicionales, aplicar el plan B de T004 y registrarlo en el ADR
-- [ ] T028 [US3] Verificar aislamiento por ambiente: inicializar con dos valores de `ENV` y comprobar claves de estado distintas en el bucket (US3-3)
+- [X] T025 [P] [US3] Crear `scripts/check-layout.sh` que falla si falta alguno de `state`, `eks`, `secrets`, `platform` o si un ambiente no tiene su raíz en `terraform/envs/`
+- [X] T026 [US3] Crear `terraform/envs/local/backend.tf` con backend `s3`, `use_lockfile = true`, endpoints de Floci y `key` parametrizada por ambiente (`-backend-config` desde el `Makefile` con la variable `ENV`)
+- [X] T027 [US3] Verificar el bloqueo: lanzar dos `apply` simultáneos y confirmar que el segundo falla sin corromper el estado (SC-009); si Floci no soporta escrituras condicionales, aplicar el plan B de T004 y registrarlo en el ADR
+- [X] T028 [US3] Verificar aislamiento por ambiente: inicializar con dos valores de `ENV` y comprobar claves de estado distintas en el bucket (US3-3)
 
 **Checkpoint**: US1–US3 completas (las tres historias P1)
 
@@ -113,11 +113,11 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 **Independent Test**: aplicar con valores externos, ver el secreto sincronizado y escanear el repositorio (quickstart §1, §5)
 
-- [ ] T029 [P] [US4] `terraform/modules/secrets/tests/secrets.tftest.hcl` (plan + mocks): `validation` falla con mensaje claro si falta un secreto requerido; outputs `secret_names` y `parameter_names`; `secrets` es sensible
-- [ ] T030 [US4] Implementar `terraform/modules/secrets/{main,variables,outputs,versions}.tf`: `aws_secretsmanager_secret(_version)` y `aws_ssm_parameter` con prefijo `/shoplab/<environment>/`; `secrets` como `map(string)` sensible sin valor por defecto
-- [ ] T031 [US4] Componer `secrets` en `terraform/envs/local/main.tf`, crear `terraform/envs/local/secrets.auto.tfvars.example` solo con marcadores y asegurar que `secrets.auto.tfvars` está en `.gitignore`
-- [ ] T032 [US4] Añadir un `ExternalSecret` de demostración (namespace `demo`) en `terraform/envs/local/main.tf` y comprobar que el secreto aparece en el clúster (US4-2)
-- [ ] T033 [US4] Implementar el objetivo `scan` del `Makefile` (gitleaks sobre el árbol y el historial) y verificar 0 credenciales reales (SC-006) y el mensaje al faltar valores (US4-3)
+- [X] T029 [P] [US4] `terraform/modules/secrets/tests/secrets.tftest.hcl` (plan + mocks): `validation` falla con mensaje claro si falta un secreto requerido; outputs `secret_names` y `parameter_names`; `secrets` es sensible
+- [X] T030 [US4] Implementar `terraform/modules/secrets/{main,variables,outputs,versions}.tf`: `aws_secretsmanager_secret(_version)` y `aws_ssm_parameter` con prefijo `/shoplab/<environment>/`; `secrets` como `map(string)` sensible sin valor por defecto
+- [X] T031 [US4] Componer `secrets` en `terraform/envs/local/main.tf`, crear `terraform/envs/local/secrets.auto.tfvars.example` solo con marcadores y asegurar que `secrets.auto.tfvars` está en `.gitignore`
+- [X] T032 [US4] Añadir un `ExternalSecret` de demostración (namespace `demo`) en `terraform/envs/local/main.tf` y comprobar que el secreto aparece en el clúster (US4-2)
+- [X] T033 [US4] Implementar el objetivo `scan` del `Makefile` (gitleaks sobre el árbol y el historial) y verificar 0 credenciales reales (SC-006) y el mensaje al faltar valores (US4-3)
 
 **Checkpoint**: US4 funcional y verificable
 
@@ -129,12 +129,12 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 **Independent Test**: `make test`, comprobar pines y leer el ADR (quickstart §6)
 
-- [ ] T034 [P] [US5] Crear `scripts/check-pins.sh` que falla ante `latest` o rangos abiertos en `*.tf`, `docker-compose.yml` y la imagen k3s (SC-007)
-- [ ] T035 [US5] Generar y versionar `.terraform.lock.hcl` en `terraform/envs/local/` y `terraform/envs/local/bootstrap/` con `terraform providers lock` para `windows_amd64`, `linux_amd64`, `darwin_arm64` y `darwin_amd64`
-- [ ] T036 [P] [US5] Implementar el objetivo `test` (`terraform fmt -check`, `validate`, `scripts/check-layout.sh`, `scripts/check-pins.sh`, `terraform test` con mocks) y `test-integration` (apply contra Floci) en el `Makefile`
-- [ ] T037 [US5] Comprobar que las pruebas detectan un contrato roto (p. ej. quitar un output o poner `latest`) y fallan indicando el comportamiento incumplido (US5-4)
-- [ ] T038 [P] [US5] Revisar la plantilla y numeración del registro en `docs/adr/` de `shoplab-helpdesk` (LAB-16) para el ADR de T039
-- [ ] T039 [US5] Redactar `docs/adr/<NNNN>-terraform-floci-frente-a-kind-localstack.md` en `shoplab-helpdesk` (en español, plantilla del registro) comparando Terraform + Floci con kind/k3d y LocalStack, incluyendo el respaldo con kind y los resultados del spike (T004, T027); enlazarlo desde `docs/` de `shoplab-infra`; actualizar el índice del registro
+- [X] T034 [P] [US5] Crear `scripts/check-pins.sh` que falla ante `latest` o rangos abiertos en `*.tf`, `docker-compose.yml` y la imagen k3s (SC-007)
+- [X] T035 [US5] Generar y versionar `.terraform.lock.hcl` en `terraform/envs/local/` y `terraform/envs/local/bootstrap/` con `terraform providers lock` para `windows_amd64`, `linux_amd64`, `darwin_arm64` y `darwin_amd64`
+- [X] T036 [P] [US5] Implementar el objetivo `test` (`terraform fmt -check`, `validate`, `scripts/check-layout.sh`, `scripts/check-pins.sh`, `terraform test` con mocks) y `test-integration` (apply contra Floci) en el `Makefile`
+- [X] T037 [US5] Comprobar que las pruebas detectan un contrato roto (p. ej. quitar un output o poner `latest`) y fallan indicando el comportamiento incumplido (US5-4)
+- [X] T038 [P] [US5] Revisar la plantilla y numeración del registro en `docs/adr/` de `shoplab-helpdesk` (LAB-16) para el ADR de T039
+- [X] T039 [US5] Redactar `docs/adr/<NNNN>-terraform-floci-frente-a-kind-localstack.md` en `shoplab-helpdesk` (en español, plantilla del registro) comparando Terraform + Floci con kind/k3d y LocalStack, incluyendo el respaldo con kind y los resultados del spike (T004, T027); enlazarlo desde `docs/` de `shoplab-infra`; actualizar el índice del registro
 
 **Checkpoint**: US5 verificable
 
@@ -146,9 +146,9 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 **Independent Test**: `make up CLUSTER_MODE=kind` instala los mismos componentes (quickstart §8)
 
-- [ ] T040 [P] [US6] Ampliar `terraform/modules/eks/tests/eks.tftest.hcl` con casos `cluster_mode = "kind"`: mismas salidas que en `floci`
-- [ ] T041 [US6] Añadir el modo `kind` a `terraform/modules/eks/main.tf` con `tehcyx/kind` (recursos condicionados por `cluster_mode`), con la versión del provider y de la imagen de nodo fijadas
-- [ ] T042 [US6] Pasar `CLUSTER_MODE` desde el `Makefile` a `TF_VAR_cluster_mode`, validar que `platform` instala los mismos componentes/versiones sobre kind y que en modo por defecto no se crea ningún clúster de kind (US6-3)
+- [X] T040 [P] [US6] Ampliar `terraform/modules/eks/tests/eks.tftest.hcl` con casos `cluster_mode = "kind"`: mismas salidas que en `floci`
+- [X] T041 [US6] Añadir el modo `kind` a `terraform/modules/eks/main.tf` con `tehcyx/kind` (recursos condicionados por `cluster_mode`), con la versión del provider y de la imagen de nodo fijadas
+- [X] T042 [US6] Pasar `CLUSTER_MODE` desde el `Makefile` a `TF_VAR_cluster_mode`, validar que `platform` instala los mismos componentes/versiones sobre kind y que en modo por defecto no se crea ningún clúster de kind (US6-3)
 
 **Checkpoint**: todas las historias completas
 
@@ -156,8 +156,8 @@ al repositorio `shoplab-infra` (`terraform/…`, `docs/…`). La excepción es e
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T043 [P] Escribir `docs/terraform-local.md` en `shoplab-infra`: requisitos y recursos mínimos, `make up`/`down`, valores de secretos, liberación de bloqueo huérfano (`force-unlock`), recuperación tras reinicio del emulador, puerto ocupado, modo kind (FR-014, edge cases)
-- [ ] T044 Ejecutar `quickstart.md` completo desde una máquina limpia siguiendo solo `docs/` (SC-010) y actualizar `plan.md`/`research.md` con desviaciones
+- [X] T043 [P] Escribir `docs/terraform-local.md` en `shoplab-infra`: requisitos y recursos mínimos, `make up`/`down`, valores de secretos, liberación de bloqueo huérfano (`force-unlock`), recuperación tras reinicio del emulador, puerto ocupado, modo kind (FR-014, edge cases)
+- [X] T044 Ejecutar `quickstart.md` completo desde una máquina limpia siguiendo solo `docs/` (SC-010) y actualizar `plan.md`/`research.md` con desviaciones
 - [ ] T045 Revisar `git status`/`git diff --staged` en ambos repositorios (sin archivos sueltos ni secretos) y abrir el PR con título `feat(infra): [LAB-98] terraform sobre floci con eks local`
 
 ---

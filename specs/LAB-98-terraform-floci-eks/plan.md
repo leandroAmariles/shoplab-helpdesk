@@ -121,3 +121,21 @@ desde `docs/` de `shoplab-infra`. Esta spec/plan/tasks permanecen en `shoplab-he
 | Raíz de bootstrap separada del entorno | El backend S3 no puede crear su propio bucket en el mismo apply | Un solo apply con backend local no cumple FR-004 (estado remoto) |
 | Modo de respaldo kind en `eks` | Riesgo conocido: el EKS de Floci puede fallar (FR-017, ADR) | Sin respaldo, un fallo del emulador bloquea toda la historia |
 | Envoltorio `Makefile` | "Un solo comando" requiere encadenar compose + bootstrap + apply | Pedir al desarrollador tres pasos manuales incumple SC-001 |
+
+## Desviaciones respecto al diseño inicial (registradas al implementar)
+
+- **Orquestación**: la lógica vive en `scripts/*.sh` y el `Makefile` solo las invoca, de modo que todo funciona sin
+  `make` (Windows con Git Bash).
+- **Kubeconfig**: se construye con el certificado de cliente de k3s (`docker exec` sobre `floci-aws-eks-<cluster>`),
+  porque el token de `aws_eks_cluster_auth` se rechaza (research R4).
+- **Endpoint de Secrets Manager para los pods**: los pods de k3s no resuelven `host.docker.internal` ni nombres de
+  contenedor; se usa la IP de Floci en la red de compose (`scripts/floci-ip.sh`). En kind sigue valiendo
+  `host.docker.internal`.
+- **ingress-nginx** como `NodePort`: en kind un `LoadBalancer` no recibe IP y Helm esperaba hasta el timeout.
+- **node-exporter** desactivado: falla con `CreateContainerError` en k3s dentro de Docker.
+- **CRDs**: `ClusterSecretStore`, `Application` de Argo CD y `ExternalSecret` se instalan con charts locales para
+  no depender de `kubernetes_manifest` durante el plan (R6).
+- **Un solo apply** de cero a Argo CD funcionó con `helm`/`kubernetes` configurados desde las salidas de `eks`; no
+  hizo falta dividir en dos raíces (riesgo R5 no materializado).
+- **Modo de clúster recordado**: `up.sh` guarda `.cluster-mode` (ignorado por git) y `down.sh` lo usa para destruir
+  con el mismo modo.
