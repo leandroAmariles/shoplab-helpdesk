@@ -43,7 +43,7 @@ El backlog vive en Jira (proyecto `LAB`). Las decisiones de arquitectura se regi
 - Commits de rama: `LAB-<n> type(scope): description` (Conventional Commits con la clave de la historia al inicio). No se validan: se aplastan al fusionar.
 - Título del PR: `type(scope): [LAB-<n>] descripción`, por ejemplo `feat(chat): [LAB-12] respuesta en streaming`. Es el mensaje del commit de squash en `main` y lo valida el check `pr-title`. Tipos permitidos: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert` (un hotfix usa `fix`).
 - Archivos con UTF-8, fin de línea LF y sangría con espacios (ver `.editorconfig`).
-- Definition of Done de servicios: desde F4, cada servicio nuevo incluye su base y sus overlays (`dev`, `staging`, `prod`) en `shoplab-infra/k8s/`, siguiendo `docs/kustomize.md` de ese repositorio.
+- Definition of Done de servicios: desde F4, cada servicio nuevo incluye su base y su entrada en el overlay `dev` (el único ambiente) en `shoplab-infra/k8s/`, siguiendo `docs/kustomize.md` de ese repositorio.
 
 ### Versionado y releases
 

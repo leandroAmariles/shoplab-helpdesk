@@ -1,6 +1,6 @@
 # ADR-0006: GitOps pull con repositorio de infraestructura separado
 
-- Estado: aceptado
+- Estado: aceptado (parcialmente sustituido por [ADR-0008](0008-un-solo-ambiente-dev.md) en lo relativo a los ambientes `staging` y `prod`)
 - Fecha: 2026-10-25
 
 ## Contexto
