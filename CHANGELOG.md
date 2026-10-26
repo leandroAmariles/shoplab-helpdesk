@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.3.0...v0.4.0) (2026-10-26)
+
+
+### Features
+
+* **chat:** [LAB-12] respuesta del chat en streaming (SSE) ([#64](https://github.com/leandroAmariles/shoplab-helpdesk/issues/64)) ([f5644f9](https://github.com/leandroAmariles/shoplab-helpdesk/commit/f5644f98bb2448cb10bd79d19ca06f612f3cd446))
+
 ## [0.3.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.2.0...v0.3.0) (2026-10-26)
 
 
