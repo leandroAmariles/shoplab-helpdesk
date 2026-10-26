@@ -88,13 +88,21 @@ repositorio y documentación de Argo CD. Lo que no se pudo comprobar se marca **
 
 ## R8. Prueba de humo con tres ambientes
 
-- **Hallazgo**: `smoke.sh` espera que *todas* las `Application` estén `Synced/Healthy` (hoy: una). Con la raíz serían
-  cuatro (`shoplab-root`, `dev`, `staging` y `prod`) y `staging`/`prod` (HPA, más réplicas, Ollama) no
-  caben en un runner de CI.
-- **Decisión**: el smoke espera `shoplab-root` y `shoplab-dev` `Synced/Healthy` y que `shoplab-staging` y
-  `shoplab-prod` **existan** (creadas por la raíz). La convergencia completa de los tres se prueba en local.
-- **A validar** (T-quickstart): memoria necesaria en local para los tres ambientes; si no alcanza se rebaja el
-  tamaño de `staging`/`prod` en LAB-80.
+- **Hallazgo**: `smoke.sh` esperaba que *todas* las `Application` estuvieran `Synced/Healthy` (hoy: una). Con la raíz
+  serían cuatro, y en un runner de CI ni `staging`/`prod` (más réplicas, HPA) ni `dev` pueden quedar Healthy: el k3s
+  de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama quedan `Pending` (ver `docs/kustomize.md`).
+- **Hallazgo 2 (CI de la PR #8)**: Argo CD sincroniza git y una PR no está en `main`, así que la raíz sincronizaba un
+  `k8s/argocd` sin los cambios y no creaba ninguna hija. Como `ci-gate` es obligatorio para fusionar, el smoke nunca
+  habría podido pasar antes de fusionar.
+- **Decisión**: el smoke (a) apunta `shoplab-root` a la revisión de la PR con `kubectl patch` solo durante la prueba
+  (`SMOKE_ROOT_REVISION`, que el workflow toma de `github.event.pull_request.head.sha`); `root.yaml` y las políticas
+  siguen exigiendo `targetRevision: main`, y las hijas siguen en `main`; y (b) exige `shoplab-root` `Synced/Healthy` y
+  que existan `shoplab-dev`, `shoplab-staging` y `shoplab-prod` (`ARGOCD_READY_APPS` y `ARGOCD_PRESENT_APPS` en
+  `versions.env`). La convergencia completa de los ambientes se prueba en local, con una `StorageClass`.
+- **Verificado**: el smoke reproducido en local con el commit de la PR pasa (la raíz queda `Synced/Healthy` aunque sus
+  hijas no estén Healthy: Argo CD no evalúa la salud de las `Application` hijas por defecto).
+- **Alternativas**: pasar solo en `push` a `main` (la PR que rompe la estructura se enteraría después de fusionar);
+  sobrescribir `targetRevision` en Terraform (obliga a relajar la validación de `main` del módulo).
 
 ## R9. Guía y ADR
 
@@ -107,3 +115,25 @@ repositorio y documentación de Argo CD. Lo que no se pudo comprobar se marca **
 - **Contenido del ADR**: push desde Actions exige dar al CI credenciales de escritura sobre el clúster y no detecta
   deriva; pull mantiene las credenciales dentro del clúster, audita con git, revierte la deriva (`selfHeal`) y permite
   `git revert` como rollback. Costo: componente extra que operar y un repo adicional.
+
+## R10. Solo `dev` en el clúster local
+
+- **Hallazgo (validación en vivo con `main` fusionado)**: con la raíz sincronizando `k8s/argocd` (tres ambientes) el
+  único nodo de k3s de Floci tiene 1930m de CPU asignables y los ambientes pedían 1900m (98 %): 17 pods `Pending`
+  (`Insufficient cpu`); la memoria no era el límite (39 %). Las `Application` estaban `Synced` pero `Degraded`.
+- **Decisión**: en local solo se despliega `dev`. `k8s/argocd-local/kustomization.yaml` parte de `../argocd` y retira
+  `shoplab-staging` y `shoplab-prod` con `$patch: delete`; `root.yaml` sincroniza `k8s/argocd-local`. `staging` y `prod`
+  siguen definidas en `k8s/argocd` y se construyen y validan en CI; una raíz de un clúster real apuntaría a `k8s/argocd`.
+  `app_environments` vuelve a `["dev"]` y la prueba de humo espera `shoplab-root` Healthy y `shoplab-dev` creada.
+- **Justificación**: rebajar las solicitudes de `staging`/`prod` desvirtuaría esos overlays (LAB-80) y pedir más CPU al
+  nodo depende de Floci; la selección por ambiente es declarativa, reversible y no toca los overlays.
+- **Alternativas**: bajar las solicitudes de CPU de los overlays (cambia LAB-80); `directory.include` en la raíz
+  (Argo CD ignora `directory` cuando hay `kustomization.yaml`); un archivo `k8s/argocd/local/` dentro del directorio
+  (kustomize detecta un ciclo: «candidate root contains visited root»), de ahí el directorio hermano `argocd-local`.
+- **Guardas de CI**: `kustomize-build.sh` construye `argocd` y `argocd-local`, y falla si la raíz aparece en cualquiera de
+  las dos salidas o si `root.yaml` sincroniza un directorio que el script no valida.
+- **Verificado en vivo** (raíz apuntada al commit de la rama): solo `shoplab-root` y `shoplab-dev`; CPU reservada 44 % con
+  backend, frontend e ingest `1/1 Running`. Con una `StorageClass` sin provisionador y PV `hostPath` (más
+  `chmod 777` de esos directorios en el nodo, porque Postgres no corre como root) `shoplab-dev` pasó a
+  `Synced/Healthy` con los 5 pods `Running`; el frontend responde 200 por el ingress y el backend `{"status":"UP"}` en
+  su readiness. Sin esa `StorageClass`, `dev` queda `Progressing` (PVC `Pending`).

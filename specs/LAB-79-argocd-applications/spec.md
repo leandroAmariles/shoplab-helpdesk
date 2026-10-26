@@ -240,11 +240,19 @@ contenido, compara ambas alternativas y figura en el índice.
   forma exacta se decide en el plan.
 - El repositorio `shoplab-infra` es público o Argo CD ya tiene acceso de lectura configurado por
   LAB-98; la gestión de credenciales de repositorios privados queda fuera de alcance.
-- `staging` y `prod` conviven en el mismo cluster local, aislados por namespace, porque no hay un
-  clúster por ambiente en Floci.
+- En el clúster local solo se despliega `dev` (decisión tras la validación en vivo): el único nodo de k3s de Floci tiene
+  unos 2 CPU y los tres ambientes juntos dejaban 17 pods `Pending` por falta de CPU. La raíz del clúster local
+  sincroniza `k8s/argocd-local`, que retira `staging` y `prod`; estas `Application` siguen definidas y se validan en CI
+  para un clúster real, cuya raíz sincronizaría `k8s/argocd` (los tres). Donde este documento dice que la raíz crea las
+  `Application` de ambiente, en local eso es solo `dev`; SC-001 se entiende por tanto sobre `dev` en local y sobre los
+  tres en un clúster real.
 - La dirección local de Argo CD usa un host de prueba que resuelve a la máquina local (patrón
   usado en LAB-80); el nombre concreto se fija en el plan.
 - La promoción automática entre ambientes, la aprobación manual para `prod` y los despliegues
   desde CI pertenecen a historias posteriores del sprint y quedan fuera de alcance.
 - Fuera de alcance: notificaciones de Argo CD, ApplicationSets, SSO, TLS gestionado y Argo CD
   Image Updater.
+- En la prueba de humo de CI solo se exige que la `Application` de `dev` exista, no que quede `Healthy`: el k3s de
+  Floci no trae `StorageClass` y los PVC de Postgres y Ollama no se enlazan. `dev` llega a `Healthy` en local cuando
+  hay una `StorageClass` (verificado con una clase sin provisionador y PV `hostPath`); automatizarla queda fuera de
+  alcance.
