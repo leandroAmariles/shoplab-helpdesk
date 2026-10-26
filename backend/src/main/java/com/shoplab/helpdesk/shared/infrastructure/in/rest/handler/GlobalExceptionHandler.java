@@ -3,6 +3,7 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.dto.ErrorResponse;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -42,10 +43,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException exception,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        LOG.warn("Request body not readable: code={}", ResponseCodeEnum.INVALID_REQUEST_BODY.getCode());
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(@NonNull HttpMessageNotReadableException exception,
+            @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
         ResponseCodeEnum responseCode = ResponseCodeEnum.INVALID_REQUEST_BODY;
+        LOG.warn("Request body not readable: code={}", responseCode.getCode());
         return ResponseEntity.status(responseCode.getHttpStatus())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorResponse(responseCode.getCode(), responseCode.getDefaultMessage()));

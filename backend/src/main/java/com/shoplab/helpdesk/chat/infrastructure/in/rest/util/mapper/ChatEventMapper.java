@@ -12,6 +12,7 @@ public final class ChatEventMapper {
 
     private ChatEventMapper() {
     }
+
     public static ServerSentEvent<Object> toServerSentEvent(ChatEvent event) {
         return switch (event) {
             case TokenEvent token -> build(ChatConstants.TOKEN_EVENT, new ChatEventPayload.Token(token.content()));
@@ -22,6 +23,6 @@ public final class ChatEventMapper {
     }
 
     private static ServerSentEvent<Object> build(String name, Object payload) {
-        return ServerSentEvent.<Object>builder().event(name).data(payload).build();
+        return ServerSentEvent.builder().event(name).data(payload).build();
     }
 }
