@@ -87,6 +87,16 @@ check "política: sale con 12" test "$code" -eq 12
 check "política: el remoto no cambia" test "$(remote_commits "$c")" -eq 1
 check "política: el árbol local queda restaurado" test -z "$(git -C "$c/clone" status --porcelain)"
 
+# --- US1: policy-check sin bit de ejecución (en shoplab-infra el archivo se versionó como 100644) -------------------
+c="$(new_remote policy-no-exec)"
+cp "$FIXTURES/policy-check.sh" "$c/policy-check-no-exec.sh"
+chmod 644 "$c/policy-check-no-exec.sh"
+run_deploy "$c" "$SHA_A" POLICY_CHECK="$c/policy-check-no-exec.sh"; code=$?
+check "policy sin bit de ejecución: se ejecuta con bash y sale con 0" test "$code" -eq 0
+check "policy sin bit de ejecución: crea el commit" test "$(remote_commits "$c")" -eq 2
+
+check "policy se invoca con bash, no directamente" grep -Eq 'bash "\$POLICY_CHECK"' "$SCRIPT"
+
 # --- US2: formato del commit -----------------------------------------------------------------------------------
 c="$(new_remote commit-format)"
 run_deploy "$c" "$SHA_A" >/dev/null

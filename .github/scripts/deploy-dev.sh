@@ -78,7 +78,8 @@ apply_and_check() {
   if grep -Eq 'image:.*:latest([[:space:]]|$)' "$rendered"; then
     git checkout -- "$OVERLAY"; die $EXIT_CHECKS "el render contiene una imagen :latest"
   fi
-  if ! "$POLICY_CHECK" "$rendered" dev; then
+  # Con bash y no directo: el archivo de shoplab-infra no tiene el bit de ejecución (se versionó desde Windows).
+  if ! bash "$POLICY_CHECK" "$rendered" dev; then
     git checkout -- "$OVERLAY"; die $EXIT_CHECKS "policy-check rechazó el render de $OVERLAY"
   fi
 }
