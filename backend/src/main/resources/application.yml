@@ -1,9 +1,20 @@
 spring:
   application:
     name: helpdesk-backend
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_CHAT_MODEL:llama3.2:3b}
+          keep-alive: ${OLLAMA_KEEP_ALIVE:30m}
 
 server:
   port: 8080
+
+shoplab:
+  chat:
+    max-message-length: 4000
 
 management:
   endpoints:

@@ -1,0 +1,92 @@
+Pasa a eopenapi: 3.1.0
+info:
+  title: ShopLab Helpdesk - Chat
+  version: 0.1.0
+  description: >
+    Respuesta del chat en streaming (LAB-12). El flujo de eventos se describe en detalle en chat-stream.md;
+    OpenAPI no modela bien los eventos SSE, por eso aquí solo se fijan petición, cabeceras y errores.
+paths:
+  /api/chat:
+    post:
+      operationId: streamChat
+      summary: Envía un mensaje y recibe la respuesta del modelo token a token
+      parameters:
+        - name: X-Request-Id
+          in: header
+          required: false
+          description: Identificador de correlación; si falta, el servidor genera uno y lo devuelve.
+          schema:
+            type: string
+            maxLength: 64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Flujo de eventos del servidor. Termina siempre con un evento `done` o `error`.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache
+            X-Accel-Buffering:
+              schema:
+                type: string
+                example: 'no'
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Secuencia de eventos `token`*, y un `done` o `error` final (ver chat-stream.md).
+        '400':
+          description: >
+            Mensaje ausente, vacío, solo espacios o demasiado largo (`SLHD_CHAT_00001`), o cuerpo
+            ilegible (`SLHD_GENE_00002`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: SLHD_CHAT_00001
+                message: The message must not be blank
+        '503':
+          description: Modelo no disponible antes de emitir el primer evento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: SLHD_CHAT_00002
+                message: The chat model is not available
+        '500':
+          description: Error inesperado antes de iniciar el flujo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Texto del cliente. No puede estar formado solo por espacios.
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          pattern: '^SLHD_[A-Z]{4}_[0-9]{5}$'
+        message:
+          type: string

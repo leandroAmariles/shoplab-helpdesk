@@ -1,0 +1,179 @@
+# LAB-12 - Respuesta del chat en streaming (SSE): casos de prueba de la spec, de arriba abajo.
+# Sintaxis IntelliJ HTTP Client (los guiones de pre-solicitud `< {% ... %}` no los entiende REST Client de VS Code).
+#
+# Requisitos: backend en marcha (`cd backend && ./mvnw spring-boot:run`) y Ollama con el modelo de chat cargado
+# (`docker compose -f infra/docker-compose.yml up -d`). Calienta el modelo con la primera petición: el criterio de
+# 2 s del primer token (FR-005 / SC-001) aplica con el modelo ya cargado.
+#
+# Not covered here (no se pueden comprobar con una sola petición HTTP; los cubren las pruebas automáticas
+# y el quickstart.md):
+#  - FR-010 / US4 (cancelar al cerrar el cliente): requiere cortar la conexión a mitad; ver quickstart.md paso 5.
+#  - FR-008 / US3-4 (fallo del modelo a mitad de la respuesta): requiere cortar Ollama durante la generación.
+#  - FR-015 / SC-007 (peticiones concurrentes sin mezclar flujos): ChatStreamingIntegrationTests.
+#  - FR-014 (logs con requestId y sin contenido): StreamChatUseCaseTests.
+#  - FR-016 (UTF-8 sin cortar caracteres entre eventos): OllamaChatAdapterTests y ChatStreamingIntegrationTests.
+#  - SC-001 (95 % de las peticiones con primer token < 2 s): se mide con quickstart.md paso 3 y la métrica del paso final.
+
+@baseUrl = http://localhost:8080
+@requestId = lab-12-demo-1
+
+### FR-001, FR-002, FR-003 / US1 Escenarios 1-4 - respuesta token a token: 200 text/event-stream, eventos `token` y un `done` final
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Explícame en tres frases cómo devolver un pedido" }
+
+> {%
+    client.test("responde 200 como flujo de eventos", function () {
+        client.assert(response.status === 200, "esperado 200, recibido " + response.status);
+        client.assert(response.contentType.mimeType === "text/event-stream", "esperado text/event-stream");
+    });
+%}
+
+### US1 Escenario 5 / FR-016 - mensaje con tildes, eñes y emoji: los caracteres llegan íntegros
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el envío a Cañete? Gracias 😀" }
+
+> {%
+    client.test("responde 200", function () {
+        client.assert(response.status === 200, "esperado 200, recibido " + response.status);
+    });
+%}
+
+### FR-005 / US2 Escenario 1 - primer token < 2 s con el modelo cargado (mira el tiempo hasta el primer evento en la vista de respuesta)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola" }
+
+### FR-017 / US3 - correlación: el X-Request-Id enviado vuelve en la respuesta
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Request-Id: {{requestId}}
+
+{ "message": "Hola" }
+
+> {%
+    client.test("devuelve el mismo X-Request-Id", function () {
+        client.assert(response.headers.valueOf("X-Request-Id") === "lab-12-demo-1", "X-Request-Id distinto");
+    });
+%}
+
+### FR-007 / US3 Escenario 1 - mensaje vacío: 400 SLHD_CHAT_00001, sin llamar al modelo
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "" }
+
+> {%
+    client.test("rechaza el mensaje vacío con 400", function () {
+        client.assert(response.status === 400, "esperado 400, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00001", "código distinto");
+    });
+%}
+
+### FR-007 / US3 Escenario 1 - mensaje de solo espacios: 400 SLHD_CHAT_00001
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "     " }
+
+> {%
+    client.test("rechaza el mensaje en blanco con 400", function () {
+        client.assert(response.status === 400, "esperado 400, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00001", "código distinto");
+    });
+%}
+
+### FR-007 / US3 - campo `message` ausente: 400 SLHD_CHAT_00001
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ }
+
+> {%
+    client.test("rechaza la petición sin mensaje con 400", function () {
+        client.assert(response.status === 400, "esperado 400, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00001", "código distinto");
+    });
+%}
+
+### FR-007 / Edge Cases - JSON mal formado: 400 SLHD_GENE_00002
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message":
+
+> {%
+    client.test("rechaza el JSON ilegible con 400", function () {
+        client.assert(response.status === 400, "esperado 400, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_GENE_00002", "código distinto");
+    });
+%}
+
+### FR-007 / US3 Escenario 2 (justo en el límite) - mensaje de exactamente 4000 caracteres: se acepta, 200
+< {% request.variables.set("message4000", "x".repeat(4000)); %}
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "{{message4000}}" }
+
+> {%
+    client.test("acepta 4000 caracteres", function () {
+        client.assert(response.status === 200, "esperado 200, recibido " + response.status);
+    });
+%}
+
+### FR-007 / US3 Escenario 2 (justo fuera del límite) - mensaje de 4001 caracteres: 400 SLHD_CHAT_00001, sin llamar al modelo
+< {% request.variables.set("message4001", "x".repeat(4001)); %}
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "{{message4001}}" }
+
+> {%
+    client.test("rechaza 4001 caracteres con 400", function () {
+        client.assert(response.status === 400, "esperado 400, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00001", "código distinto");
+    });
+%}
+
+### FR-008 / US3 Escenario 3 - modelo no disponible: 503 SLHD_CHAT_00002 (también con Accept: text/event-stream)
+# Antes de enviarla: `docker compose -f infra/docker-compose.yml stop ollama`.
+# Después: `docker compose -f infra/docker-compose.yml start ollama`.
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola" }
+
+> {%
+    client.test("responde 503 con JSON cuando Ollama está parado", function () {
+        client.assert(response.status === 503, "esperado 503, recibido " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00002", "código distinto");
+    });
+%}
+
+### FR-013 / US2 Escenario 3 - métricas del chat en el punto de lectura de Prometheus
+# Busca `shoplab_chat_first_token_seconds` y `shoplab_chat_response_seconds{...outcome="completed"...}`.
+GET {{baseUrl}}/actuator/prometheus
+
+> {%
+    client.test("publica las métricas del chat", function () {
+        client.assert(response.status === 200, "esperado 200, recibido " + response.status);
+        client.assert(response.body.indexOf("shoplab_chat_first_token_seconds") >= 0, "falta la métrica del primer token");
+        client.assert(response.body.indexOf("shoplab_chat_response_seconds") >= 0, "falta la métrica de la respuesta");
+    });
+%}

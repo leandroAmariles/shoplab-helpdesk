@@ -9,7 +9,7 @@ import org.springframework.modulith.core.ApplicationModules;
 
 class ModularityTests {
 
-    private static final Set<String> EXPECTED_MODULES = Set.of("chat", "retrieval", "tools", "tickets");
+    private static final Set<String> EXPECTED_MODULES = Set.of("chat", "retrieval", "tools", "tickets", "shared");
 
     private final ApplicationModules modules = ApplicationModules.of(ShopLabHelpdeskApplication.class);
 
