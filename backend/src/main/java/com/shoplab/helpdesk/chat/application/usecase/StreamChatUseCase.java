@@ -4,6 +4,7 @@ import com.shoplab.helpdesk.chat.application.port.in.StreamChatServicePort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
@@ -78,14 +79,21 @@ public class StreamChatUseCase implements StreamChatServicePort {
 
     /** Before the first fragment the failure is the flux's error (an HTTP error); afterwards it is a last event. */
     private Flux<ChatEvent> failed(StreamChatCommand command, Throwable error, boolean streamStarted) {
-        ResponseCodeEnum code = error instanceof HelpdeskException typed
-                ? typed.getResponseCode() : ResponseCodeEnum.CHAT_STREAM_FAILED;
+        ResponseCodeEnum code = codeOf(error, streamStarted);
         LOG.warn("Chat answer failed: requestId={}, code={}, streamStarted={}", command.requestId(), code.getCode(),
                 streamStarted, error);
         if (!streamStarted) {
             return Flux.error(error);
         }
         return Flux.just(new ErrorEvent(code.getCode(), code.getDefaultMessage()));
+    }
+
+    /** A model failure means "unavailable" before the first fragment and "broke half-way" after it. */
+    private ResponseCodeEnum codeOf(Throwable error, boolean streamStarted) {
+        if (error instanceof ChatModelException) {
+            return streamStarted ? ResponseCodeEnum.CHAT_STREAM_FAILED : ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE;
+        }
+        return error instanceof HelpdeskException typed ? typed.getResponseCode() : ResponseCodeEnum.CHAT_STREAM_FAILED;
     }
 
     /** A response is recorded once, whichever of completion, failure or cancellation happens first. */

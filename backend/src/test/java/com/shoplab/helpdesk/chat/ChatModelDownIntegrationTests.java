@@ -24,7 +24,7 @@ class ChatModelDownIntegrationTests {
 
     @Test
     void respondsServiceUnavailableAsJsonWhenTheClientAsksForAnEventStream() {
-        SseTestClient.Result result = new SseTestClient(port)
+        ChatTestClient.Result result = new ChatTestClient(port)
                 .post("{\"message\":\"Hola\"}", "text/event-stream", "req-down-1");
 
         assertThat(result.status()).isEqualTo(503);
@@ -35,7 +35,7 @@ class ChatModelDownIntegrationTests {
 
     @Test
     void respondsServiceUnavailableToAClientThatAcceptsAnything() {
-        SseTestClient.Result result = new SseTestClient(port)
+        ChatTestClient.Result result = new ChatTestClient(port)
                 .post("{\"message\":\"Hola\"}", "*/*", null);
 
         assertThat(result.status()).isEqualTo(503);
@@ -44,7 +44,7 @@ class ChatModelDownIntegrationTests {
 
     @Test
     void aClientThatOnlyAcceptsJsonIsNotAcceptable() {
-        SseTestClient.Result result = new SseTestClient(port)
+        ChatTestClient.Result result = new ChatTestClient(port)
                 .post("{\"message\":\"Hola\"}", "application/json", null);
 
         assertThat(result.status()).isEqualTo(406);
@@ -52,7 +52,7 @@ class ChatModelDownIntegrationTests {
 
     @Test
     void theRequestIdIsReturnedAlsoOnErrors() {
-        SseTestClient.Result result = new SseTestClient(port)
+        ChatTestClient.Result result = new ChatTestClient(port)
                 .post("{\"message\":\"Hola\"}", "text/event-stream", "req-down-2");
 
         assertThat(result.header("X-Request-Id")).isEqualTo("req-down-2");

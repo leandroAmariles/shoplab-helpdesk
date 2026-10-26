@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
@@ -33,6 +34,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
+import reactor.test.publisher.TestPublisher;
 
 @ExtendWith(OutputCaptureExtension.class)
 class StreamChatUseCaseTests {
@@ -179,6 +181,29 @@ class StreamChatUseCaseTests {
     }
 
     @Test
+    void aModelFailureBeforeTheFirstFragmentIsModelUnavailable() {
+        StreamChatUseCase useCase = useCaseAnswering(Flux.error(new ChatModelException(new IllegalStateException())));
+
+        StepVerifier.create(useCase.stream(command("Hola")))
+                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class)
+                        .extracting(e -> ((ChatModelException) e).getResponseCode())
+                        .isEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE))
+                .verify();
+    }
+
+    @Test
+    void aModelFailureAfterSomeFragmentsIsAStreamFailedEvent() {
+        Flux<String> answer = Flux.concat(Flux.just("uno"), Flux.error(new ChatModelException(null)));
+        StreamChatUseCase useCase = useCaseAnswering(answer);
+
+        StepVerifier.create(useCase.stream(command("Hola")))
+                .expectNext(new TokenEvent("uno"))
+                .expectNext(new ErrorEvent(ResponseCodeEnum.CHAT_STREAM_FAILED.getCode(),
+                        ResponseCodeEnum.CHAT_STREAM_FAILED.getDefaultMessage()))
+                .verifyComplete();
+    }
+
+    @Test
     void logsCarryTheRequestIdButNeverTheCustomerText(CapturedOutput output) {
         ChatModelPort model = mock(ChatModelPort.class);
         when(model.streamAnswer(any())).thenReturn(Flux.concat(Flux.just("x"), Flux.error(new IllegalStateException())));
@@ -207,6 +232,21 @@ class StreamChatUseCaseTests {
         verify(metrics, times(1)).recordResponse(eq(ChatOutcome.CANCELLED), any(Duration.class));
         verify(metrics, never()).recordResponse(eq(ChatOutcome.COMPLETED), any(Duration.class));
         verify(metrics, never()).recordResponse(eq(ChatOutcome.ERROR), any(Duration.class));
+    }
+
+    @Test
+    void cancellingLeavesTheModelWithoutSubscribersSoNoOrphanFragmentsAreProduced() {
+        TestPublisher<String> model = TestPublisher.create();
+        StreamChatUseCase useCase = useCaseAnswering(model.flux());
+
+        StepVerifier.create(useCase.stream(command("Hola")))
+                .then(() -> model.next("uno"))
+                .expectNext(new TokenEvent("uno"))
+                .thenCancel()
+                .verify();
+
+        model.assertCancelled();
+        model.assertNoSubscribers();
     }
 
     @Test

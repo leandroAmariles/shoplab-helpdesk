@@ -1,74 +1,80 @@
 package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.shared.exception.BusinessException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.exception.TechnicalException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-/** The only place where exceptions become HTTP responses (specs/LAB-12, FR-009). */
-@WebMvcTest(controllers = GlobalExceptionHandlerTests.ProbeController.class)
+/** The only place where exceptions become HTTP responses (specs/LAB-12, FR-009; reactive since LAB-111). */
+@WebFluxTest(controllers = GlobalExceptionHandlerTests.ProbeController.class)
 @Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTests.ProbeController.class})
 class GlobalExceptionHandlerTests {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @Test
-    void businessExceptionUsesTheStatusAndCodeOfItsResponseCode() throws Exception {
-        mockMvc.perform(get("/probe/business"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.code").value("SLHD_CHAT_00001"))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+    void businessExceptionUsesTheStatusAndCodeOfItsResponseCode() {
+        webTestClient.get().uri("/probe/business").exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("SLHD_CHAT_00001")
+                .jsonPath("$.message").isNotEmpty();
     }
 
     @Test
-    void technicalExceptionWithModelUnavailableCodeIsServiceUnavailable() throws Exception {
-        mockMvc.perform(get("/probe/technical"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("SLHD_CHAT_00002"));
+    void technicalExceptionWithModelUnavailableCodeIsServiceUnavailable() {
+        webTestClient.get().uri("/probe/technical").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
     }
 
     @Test
-    void unexpectedExceptionIsInternalErrorWithoutLeakingItsMessage() throws Exception {
-        mockMvc.perform(get("/probe/unexpected"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value("SLHD_GENE_00001"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("secret internal detail"))));
+    void unexpectedExceptionIsInternalErrorWithoutLeakingItsMessage() {
+        webTestClient.get().uri("/probe/unexpected").exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_GENE_00001").doesNotContain("secret internal detail"));
     }
 
     @Test
-    void unreadableBodyIsBadRequestWithGenericCode() throws Exception {
-        mockMvc.perform(post("/probe/body").contentType(MediaType.APPLICATION_JSON).content("{\"message\":"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("SLHD_GENE_00002"));
+    void unreadableBodyIsBadRequestWithGenericCode() {
+        webTestClient.post().uri("/probe/body").contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"message\":").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_GENE_00002");
     }
 
     @Test
-    void errorIsJsonEvenWhenTheClientAsksForEventStream() throws Exception {
-        mockMvc.perform(get("/probe/technical").accept(MediaType.TEXT_EVENT_STREAM))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.code").value("SLHD_CHAT_00002"));
+    void errorIsJsonEvenWhenTheClientAsksForEventStream() {
+        webTestClient.get().uri("/probe/stream-technical").accept(MediaType.TEXT_EVENT_STREAM).exchange()
+                .expectStatus().isEqualTo(503)
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
     }
 
-    /** Test-only routes that throw each kind of exception. */
+    @Test
+    void unreadableBodyIsJsonEvenWhenTheClientAsksForEventStream() {
+        webTestClient.post().uri("/probe/stream-body").contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM).bodyValue("{\"message\":").exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_GENE_00002");
+    }
+
+    /** Test-only routes that throw each kind of exception; the {@code stream-*} ones only produce event streams. */
     @RestController
     static class ProbeController {
 
@@ -82,6 +88,11 @@ class GlobalExceptionHandlerTests {
             throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
         }
 
+        @GetMapping(path = "/probe/stream-technical", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+        String streamTechnical() {
+            throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
+        }
+
         @GetMapping("/probe/unexpected")
         String unexpected() {
             throw new IllegalStateException("secret internal detail");
@@ -89,6 +100,11 @@ class GlobalExceptionHandlerTests {
 
         @PostMapping("/probe/body")
         String body(@RequestBody ProbeBody body) {
+            return body.message();
+        }
+
+        @PostMapping(path = "/probe/stream-body", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+        String streamBody(@RequestBody ProbeBody body) {
             return body.message();
         }
     }

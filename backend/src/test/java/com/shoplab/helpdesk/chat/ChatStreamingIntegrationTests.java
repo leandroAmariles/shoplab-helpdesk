@@ -9,14 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import reactor.test.StepVerifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -51,15 +48,15 @@ class ChatStreamingIntegrationTests {
     @LocalServerPort
     private int port;
 
-    private SseTestClient client() {
-        return new SseTestClient(port);
+    private ChatTestClient client() {
+        return new ChatTestClient(port);
     }
 
     @Test
     void streamsTheWholeAnswerInOrderAndEndsWithDone() {
         OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.fixtureBody()));
 
-        SseTestClient.Result result = client().post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.header("Content-Type")).startsWith("text/event-stream");
@@ -78,14 +75,14 @@ class ChatStreamingIntegrationTests {
                     .withChunkedDribbleDelay(3, 300)));
         }
 
-        List<CompletableFuture<SseTestClient.Result>> calls = new ArrayList<>();
+        List<CompletableFuture<ChatTestClient.Result>> calls = new ArrayList<>();
         try (ExecutorService executor = Executors.newFixedThreadPool(requests)) {
             for (int i = 0; i < requests; i++) {
                 String message = "{\"message\":\"msg-" + i + "\"}";
                 calls.add(CompletableFuture.supplyAsync(() -> client().post(message), executor));
             }
             for (int i = 0; i < requests; i++) {
-                SseTestClient.Result result = calls.get(i).get();
+                ChatTestClient.Result result = calls.get(i).get();
                 assertThat(result.status()).isEqualTo(200);
                 assertThat(result.text()).isEqualTo("R" + i + "-a R" + i + "-b R" + i + "-c");
                 assertThat(result.last().name()).isEqualTo("done");
@@ -100,7 +97,7 @@ class ChatStreamingIntegrationTests {
                         "ocho ", "nueve ", "diez"))
                 .withChunkedDribbleDelay(10, 3000)));
 
-        SseTestClient.Result result = client().post("{\"message\":\"slow\"}");
+        ChatTestClient.Result result = client().post("{\"message\":\"slow\"}");
 
         long firstTokenMillis = result.events().get(0).at() / 1_000_000;
         long doneMillis = result.last().at() / 1_000_000;
@@ -122,6 +119,8 @@ class ChatStreamingIntegrationTests {
 
         assertThat(metrics.body())
                 .contains("shoplab_chat_first_token_seconds_bucket")
+                .containsPattern("http_server_requests_seconds_count\\{[^}]*application=\"helpdesk-backend\"[^}]*"
+                        + "uri=\"/api/chat\"[^}]*\\}")
                 .containsPattern("shoplab_chat_response_seconds_count\\{[^}]*outcome=\"completed\"[^}]*\\}")
                 .containsPattern("shoplab_chat_first_token_seconds_count\\{[^}]*application=\"helpdesk-backend\"");
     }
@@ -129,7 +128,7 @@ class ChatStreamingIntegrationTests {
     @ParameterizedTest
     @ValueSource(strings = {"{\"message\":\"   \"}", "{\"message\":\"\"}", "{\"message\":null}", "{}"})
     void blankOrMissingMessagesAreRejectedWithoutCallingTheModel(String body) {
-        SseTestClient.Result result = client().post(body, "text/event-stream", "req-bad-1");
+        ChatTestClient.Result result = client().post(body, "text/event-stream", "req-bad-1");
 
         assertThat(result.status()).isEqualTo(400);
         assertThat(result.header("Content-Type")).startsWith("application/json");
@@ -142,19 +141,19 @@ class ChatStreamingIntegrationTests {
     void aMessageOverTheLimitIsRejectedAndOneOfExactlyTheLimitIsAccepted() {
         OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
 
-        SseTestClient.Result tooLong = client().post("{\"message\":\"" + "x".repeat(4001) + "\"}");
+        ChatTestClient.Result tooLong = client().post("{\"message\":\"" + "x".repeat(4001) + "\"}");
         assertThat(tooLong.status()).isEqualTo(400);
         assertThat(tooLong.body()).contains("\"code\":\"SLHD_CHAT_00001\"");
         ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
 
-        SseTestClient.Result atLimit = client().post("{\"message\":\"" + "x".repeat(4000) + "\"}");
+        ChatTestClient.Result atLimit = client().post("{\"message\":\"" + "x".repeat(4000) + "\"}");
         assertThat(atLimit.status()).isEqualTo(200);
         assertThat(atLimit.text()).isEqualTo("ok");
     }
 
     @Test
     void unreadableJsonIsABadRequestWithTheGenericCode() {
-        SseTestClient.Result result = client().post("{\"message\":");
+        ChatTestClient.Result result = client().post("{\"message\":");
 
         assertThat(result.status()).isEqualTo(400);
         assertThat(result.body()).contains("\"code\":\"SLHD_GENE_00002\"");
@@ -166,7 +165,7 @@ class ChatStreamingIntegrationTests {
         OllamaStubs.stubAnyChat(ollama, aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":\"model not found\"}"));
 
-        SseTestClient.Result result = client().post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
 
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.header("Content-Type")).startsWith("application/json");
@@ -177,7 +176,7 @@ class ChatStreamingIntegrationTests {
     void theRequestIdSentByTheClientIsEchoedOnSuccess() {
         OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
 
-        SseTestClient.Result result = client().post("{\"message\":\"Hola\"}", "text/event-stream", "req-ok-9");
+        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}", "text/event-stream", "req-ok-9");
 
         assertThat(result.header("X-Request-Id")).isEqualTo("req-ok-9");
     }
@@ -189,26 +188,32 @@ class ChatStreamingIntegrationTests {
                 .streaming(OllamaStubs.body("a ".repeat(40).split("(?<= )")))
                 .withChunkedDribbleDelay(40, 8000)));
         double cancelledBefore = cancelledResponses();
+        double errorsBefore = responsesWithOutcome("error");
 
-        HttpResponse<InputStream> open = client().open("{\"message\":\"long\"}");
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(open.body(), StandardCharsets.UTF_8))) {
-            assertThat(reader.readLine()).startsWith("event:token");
-        }
+        StepVerifier.create(client().open("{\"message\":\"long\"}"))
+                .assertNext(event -> assertThat(event.event()).isEqualTo("token"))
+                .thenCancel()
+                .verify(Duration.ofSeconds(10));
 
         await().atMost(Duration.ofSeconds(3)).untilAsserted(
                 () -> assertThat(cancelledResponses()).isEqualTo(cancelledBefore + 1));
-        SseTestClient.Result next = client().post("{\"message\":\"Hola\"}");
+        assertThat(responsesWithOutcome("error")).isEqualTo(errorsBefore);
+        ChatTestClient.Result next = client().post("{\"message\":\"Hola\"}");
         assertThat(next.status()).isEqualTo(200);
         assertThat(next.events().get(0).at() / 1_000_000).isLessThan(2000);
     }
 
     private double cancelledResponses() throws Exception {
+        return responsesWithOutcome("cancelled");
+    }
+
+    private double responsesWithOutcome(String outcome) throws Exception {
         String body = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/prometheus")).build(),
                 HttpResponse.BodyHandlers.ofString()).body();
         return body.lines()
                 .filter(line -> line.startsWith("shoplab_chat_response_seconds_count")
-                        && line.contains("outcome=\"cancelled\""))
+                        && line.contains("outcome=\"" + outcome + "\""))
                 .mapToDouble(line -> Double.parseDouble(line.substring(line.lastIndexOf(' ') + 1)))
                 .sum();
     }

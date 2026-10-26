@@ -2,9 +2,8 @@ package com.shoplab.helpdesk.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.infrastructure.out.ollama.OllamaChatAdapter;
-import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
-import com.shoplab.helpdesk.shared.exception.TechnicalException;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.AfterAll;
@@ -42,18 +41,16 @@ class ChatMidStreamFailureIntegrationTests {
     private OllamaChatAdapter adapter;
 
     @Test
-    void theAdapterSignalsAStreamFailureAfterTheFragmentsAlreadyEmitted() {
+    void theAdapterSignalsAModelExceptionAfterTheFragmentsAlreadyEmitted() {
         StepVerifier.create(adapter.streamAnswer("Hola"))
                 .expectNext("uno ", "dos")
-                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(TechnicalException.class)
-                        .extracting(e -> ((TechnicalException) e).getResponseCode())
-                        .isEqualTo(ResponseCodeEnum.CHAT_STREAM_FAILED))
+                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class))
                 .verify();
     }
 
     @Test
     void theClientGetsTheTokensThenAFinalErrorEventAndTheConnectionCloses() {
-        SseTestClient.Result result = new SseTestClient(port).post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"Hola\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.text()).isEqualTo("uno dos");

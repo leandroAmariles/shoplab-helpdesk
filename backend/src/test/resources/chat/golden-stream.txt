@@ -1,0 +1,21 @@
+event:token
+data:{"content":"Hola"}
+
+event:token
+data:{"content":" se"}
+
+event:token
+data:{"content":"ñor"}
+
+event:token
+data:{"content":" 😀"}
+
+event:token
+data:{"content":", ¿en"}
+
+event:token
+data:{"content":" qué puedo ayudarle?"}
+
+event:done
+data:{"fragments":6}
+

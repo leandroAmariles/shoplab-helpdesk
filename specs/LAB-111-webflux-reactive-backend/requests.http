@@ -1,0 +1,151 @@
+### LAB-111 · Backend reactivo con Spring WebFlux — casos HTTP de la spec
+#
+# El contrato de POST /api/chat es el de LAB-12: estos casos comprueban que no cambió tras la migración.
+# Requisitos: backend en marcha (`cd backend && ./mvnw spring-boot:run`) y Ollama con llama3.2:3b cargado.
+#
+# Not covered here (no se alcanzan por HTTP):
+#   - US2 cancelación al modelo: se prueba con `curl -N` + Ctrl+C (quickstart.md paso 4) y con
+#     ChatStreamingIntegrationTests / StreamChatUseCaseTests / OllamaChatAdapterTests.
+#   - US3 BlockHound, reglas ArchUnit y BlockingCalls: pruebas automáticas (BlockHound*, ReactiveArchitecture*, ...).
+#   - US5 ADR-0011: revisión de docs/adr/0011-web-reactiva-persistencia-jdbc.md.
+#   - Modelo caído (503 SLHD_CHAT_00002): requiere parar Ollama; ver el caso manual del final.
+
+@baseUrl = http://localhost:8080
+
+### US1 / FR-002 · Escenario "El cliente recibe la respuesta token a token" — expects 200 text/event-stream con event:token... y event:done
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Explícame en una frase cómo devolver un pedido" }
+
+> {%
+    client.test("responde 200 como flujo SSE", function () {
+        client.assert(response.status === 200, "status " + response.status);
+        client.assert(response.contentType.mimeType === "text/event-stream", "content-type " + response.contentType.mimeType);
+    });
+%}
+
+### US1 / FR-002 · UTF-8 íntegro (tildes, eñes, emoji) — expects 200 y el texto sin caracteres cortados
+POST {{baseUrl}}/api/chat
+Content-Type: application/json; charset=utf-8
+Accept: text/event-stream
+
+{ "message": "Responde solo con: señor 😀 ¿qué tal?" }
+
+### US1 / FR-002 · Escenario "Mensaje en blanco se rechaza sin llamar al modelo" — expects 400 SLHD_CHAT_00001
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "   " }
+
+> {%
+    client.test("400 con código estándar y JSON", function () {
+        client.assert(response.status === 400, "status " + response.status);
+        client.assert(response.body.code === "SLHD_CHAT_00001", "code " + response.body.code);
+    });
+%}
+
+### US1 / FR-002 · Mensaje vacío — expects 400 SLHD_CHAT_00001
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "" }
+
+### US1 / FR-002 · Mensaje ausente (cuerpo sin el campo) — expects 400 SLHD_CHAT_00001
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{}
+
+### US1 / FR-002 · Límite: 4001 caracteres (justo fuera) — expects 400 SLHD_CHAT_00001
+< {%
+    request.variables.set("overLimit", "x".repeat(4001));
+%}
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "{{overLimit}}" }
+
+### US1 / FR-002 · Límite: 4000 caracteres (justo dentro) — expects 200 text/event-stream
+< {%
+    request.variables.set("atLimit", "x".repeat(4000));
+%}
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "{{atLimit}}" }
+
+### US1 / FR-002 · JSON ilegible — expects 400 SLHD_GENE_00002 (JSON, aunque se pida event-stream)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message":
+
+> {%
+    client.test("400 SLHD_GENE_00002", function () {
+        client.assert(response.status === 400, "status " + response.status);
+        client.assert(response.body.code === "SLHD_GENE_00002", "code " + response.body.code);
+    });
+%}
+
+### US1 · Cliente que solo acepta JSON — expects 406 (comportamiento de LAB-12 conservado)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+
+{ "message": "Hola" }
+
+### FR-013 / FR-002 · X-Request-Id válido se devuelve igual — expects cabecera X-Request-Id: req-111-ok
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Request-Id: req-111-ok
+
+{ "message": "Hola" }
+
+> {%
+    client.test("eco del X-Request-Id", function () {
+        client.assert(response.headers.valueOf("X-Request-Id") === "req-111-ok");
+    });
+%}
+
+### FR-013 · X-Request-Id inseguro se sustituye por un UUID — expects X-Request-Id distinto del enviado
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Request-Id: no es seguro/con espacios
+
+{ "message": "   " }
+
+### US4 / FR-012 · /actuator/prometheus sigue respondiendo con métricas HTTP, JVM y del chat — expects 200
+GET {{baseUrl}}/actuator/prometheus
+
+> {%
+    client.test("200 y métricas base", function () {
+        client.assert(response.status === 200, "status " + response.status);
+        client.assert(response.body.indexOf("http_server_requests_seconds_count") >= 0, "falta http_server_requests");
+        client.assert(response.body.indexOf("jvm_memory_used_bytes") >= 0, "falta jvm_memory_used_bytes");
+        client.assert(response.body.indexOf("shoplab_chat_first_token_seconds") >= 0, "falta la métrica del chat");
+    });
+%}
+
+### US4 / FR-012 · /actuator/health — expects 200 {"status":"UP"}
+GET {{baseUrl}}/actuator/health
+
+### US4 / FR-012 · Otros endpoints de actuator no se exponen — expects 404
+GET {{baseUrl}}/actuator/env
+
+### MANUAL · US1.4 Modelo no disponible antes del primer evento — expects 503 SLHD_CHAT_00002 en JSON
+# Antes de enviarlo: `docker compose -f infra/docker-compose.yml stop ollama`; después: `... start ollama`.
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola" }

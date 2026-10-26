@@ -1,6 +1,8 @@
 spring:
   application:
     name: helpdesk-backend
+  reactor:
+    context-propagation: auto
   ai:
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
