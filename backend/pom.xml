@@ -11,7 +11,7 @@
 
     <groupId>com.shoplab</groupId>
     <artifactId>helpdesk-backend</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
     <name>helpdesk-backend</name>
     <description>ShopLab Helpdesk modular monolith (Spring Modulith + Spring AI)</description>
 
