@@ -87,6 +87,7 @@ GitHub, así que las `Application` hijas todavía no existen en el clúster; ver
 | §1 Violaciones a propósito | `repoURL` de plantilla, `targetRevision: HEAD` y finalizer ausente fallan en `policies`; raíz listada en el kustomization y raíz ausente fallan en `kustomize-build` |
 | §2 Arranque desde cero | `up.sh` termina con 30 recursos creados; `shoplab-root` existe, `Synced/Healthy`, con finalizer, `prune`, `selfHeal` y `retry` idénticos a `root.yaml`; `guestbook` ya no existe |
 | §5 Ingress | Ingress `argo-cd-argocd-server` (clase `nginx`, host `argocd.localtest.me`); con el `port-forward` al controlador: HTTP 200 por `Host` y por nombre, título "Argo CD", login con la contraseña inicial y la API lista `shoplab-root` |
+| Smoke de CI reproducido en local (`SMOKE_ROOT_REVISION` = commit de la PR) | pasa: la raíz se apunta a la revisión, queda `Synced/Healthy` y crea `shoplab-dev`, `shoplab-staging` y `shoplab-prod`; destroy limpio |
 | Limpieza | `down.sh`: 30 + 2 recursos destruidos, sin contenedores ni volumen del clúster |
 
 Incidencia: el primer `up.sh` falló con `cannot re-use a name that is still in use` porque el volumen k3s

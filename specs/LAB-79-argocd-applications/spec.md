@@ -248,3 +248,6 @@ contenido, compara ambas alternativas y figura en el índice.
   desde CI pertenecen a historias posteriores del sprint y quedan fuera de alcance.
 - Fuera de alcance: notificaciones de Argo CD, ApplicationSets, SSO, TLS gestionado y Argo CD
   Image Updater.
+- En la prueba de humo de CI las `Application` de ambiente solo se exige que existan, no que queden `Healthy`: el k3s
+  de Floci no trae `StorageClass` y sus PVC no se enlazan. SC-001 (`Synced` y `Healthy`) se verifica en local con una
+  `StorageClass`.
