@@ -83,7 +83,7 @@ cd backend
 curl http://localhost:8080/actuator/health
 ```
 
-Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos (`chat`, `retrieval`, `tools`, `tickets`) y sus fronteras se verifican en `ModularityTests`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`.
+Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos (`chat`, `retrieval`, `tools`, `tickets` y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
 
 Los pasos de arranque de `frontend/` e `ingest/` se documentan cuando cada uno tenga código.
 

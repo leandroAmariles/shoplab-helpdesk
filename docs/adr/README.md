@@ -17,6 +17,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0007 | [Despliegue continuo a dev con una GitHub App con bypass](0007-despliegue-continuo-dev-app-con-bypass.md) | aceptado (parcialmente sustituido por 0008) |
 | 0008 | [Un solo ambiente dev en shoplab-infra](0008-un-solo-ambiente-dev.md) | aceptado |
 | 0009 | [Observabilidad base con una sola fuente de dashboards entre dos repositorios](0009-observabilidad-base-fuente-unica-de-dashboards.md) | aceptado |
+| 0010 | [Módulo abierto `shared` para errores y correlación comunes](0010-modulo-shared-errores.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
