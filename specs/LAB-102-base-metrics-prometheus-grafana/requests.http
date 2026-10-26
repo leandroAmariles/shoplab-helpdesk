@@ -1,0 +1,65 @@
+### LAB-102 · Métricas base: casos HTTP del backend (IntelliJ HTTP Client / VS Code REST Client)
+#
+# Cubre solo lo alcanzable por HTTP contra el backend (US1). Se ejecutan de arriba abajo.
+#
+# Not covered here (no se alcanzan por HTTP del backend):
+#   - Escenario 1.5 (agrupar por plantilla de ruta): el backend aún no tiene rutas con variable de ruta; lo cubre
+#     MetricsEndpointTests con una ruta de prueba (/probe/{id}).
+#   - US2 (compose), US3 (ServiceMonitor y clúster), US4 (dashboards) y US5 (alerta): se validan con el quickstart
+#     (Prometheus, Grafana y Alertmanager), no con peticiones al backend.
+#
+# Nota: el puerto por defecto del backend es 8080 (server.port de application.yml). Si otro servicio local ya lo
+# usa, arranca el backend con --server.port=<otro> y cambia baseUrl.
+
+@baseUrl = http://localhost:8080
+
+### FR-001 / FR-002 / Scenario 1.1 "El punto de métricas devuelve JVM y HTTP" — expects 200 con jvm_memory_used_bytes
+GET {{baseUrl}}/actuator/prometheus
+
+> {%
+  client.test("responde 200", function () {
+    client.assert(response.status === 200, "status esperado 200");
+  });
+  client.test("incluye métricas de JVM", function () {
+    client.assert(response.body.indexOf("jvm_memory_used_bytes") !== -1, "falta jvm_memory_used_bytes");
+  });
+%}
+
+### Genera tráfico para las series HTTP (Scenario 1.2) — expects 200
+GET {{baseUrl}}/actuator/health
+
+### FR-003 / Scenario 1.2 "La duración HTTP se publica con histograma" — expects 200 con http_server_requests_seconds_bucket
+GET {{baseUrl}}/actuator/prometheus
+
+> {%
+  client.test("incluye cubos de histograma HTTP", function () {
+    client.assert(response.body.indexOf("http_server_requests_seconds_bucket") !== -1,
+      "falta http_server_requests_seconds_bucket");
+  });
+  client.test("cada serie lleva la etiqueta application", function () {
+    client.assert(response.body.indexOf('application="helpdesk-backend"') !== -1,
+      "falta application=\"helpdesk-backend\"");
+  });
+%}
+
+### FR-004 / Scenario 1.3 "Las series llevan la etiqueta de la aplicación" — expects 200; buscar application="helpdesk-backend" en el cuerpo
+GET {{baseUrl}}/actuator/prometheus
+
+### FR-006 / Scenario 1.4 "health sigue funcionando igual" — expects 200 {"status":"UP", ...}
+GET {{baseUrl}}/actuator/health
+
+> {%
+  client.test("health sigue en UP", function () {
+    client.assert(response.status === 200, "status esperado 200");
+    client.assert(response.body.status === "UP", "status UP esperado");
+  });
+%}
+
+### FR-006 "No se exponen otros endpoints de Actuator" — expects 404
+GET {{baseUrl}}/actuator/env
+
+> {%
+  client.test("env no está expuesto", function () {
+    client.assert(response.status === 404, "status esperado 404");
+  });
+%}

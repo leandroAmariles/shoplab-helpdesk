@@ -5,7 +5,9 @@
 # Perfiles:
 #   core           postgres + ollama. Siempre activo (sin clave `profiles:`); `--profile core` es no-op.
 #   llmops         reservado, sin servicios todavia (llega en una fase posterior).
-#   observability  reservado, sin servicios todavia (F6).
+#   observability  prometheus + grafana (LAB-102): Prometheus recoge el backend que corre en el host (puerto 8080)
+#                  y Grafana arranca con el origen de datos y los dashboards de infra/observability/.
+#                  Activar: --profile observability.
 #   kafka          reservado, sin servicios todavia (F4).
 # Activar un perfil reservado no produce error: `--profile <nombre>`.
 # GPU NVIDIA opcional: anadir `-f infra/docker-compose.gpu.yml`.
@@ -60,6 +62,50 @@ services:
       start_period: 600s
     restart: unless-stopped
 
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.15.0}
+    profiles: [observability]
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    # El backend corre en el host: host.docker.internal tambien debe resolver en Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:13.2.4}
+    profiles: [observability]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-only}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
 volumes:
   pgdata:
   ollama_models:
+  prometheus_data:
+  grafana_data:

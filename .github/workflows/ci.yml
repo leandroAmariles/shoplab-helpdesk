@@ -21,6 +21,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       ingest: ${{ steps.filter.outputs.ingest }}
       eval: ${{ steps.filter.outputs.eval }}
+      observability: ${{ steps.filter.outputs.observability }}
       ci: ${{ steps.filter.outputs.ci }}
       python_matrix: ${{ steps.python.outputs.matrix }}
     steps:
@@ -37,6 +38,9 @@ jobs:
               - 'ingest/**'
             eval:
               - 'eval/**'
+            observability:
+              - 'infra/observability/**'
+              - 'infra/docker-compose.yml'
             ci:
               - '.github/workflows/ci.yml'
       # The matrix context is not available in a job-level `if`, so the Python
@@ -241,8 +245,31 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: uv run pytest
 
+  observability:
+    needs: changes
+    if: needs.changes.outputs.observability == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Grafana dashboards
+        run: bash infra/observability/check-dashboards.sh
+      - name: Validate the compose profile
+        run: docker compose -f infra/docker-compose.yml --profile observability config -q
+      # Every dashboard JSON must be packaged as a labelled ConfigMap for the cluster (Argo CD reads this path).
+      - name: Validate the dashboards kustomization
+        run: |
+          rendered="$(kubectl kustomize infra/observability)"
+          expected="$(ls infra/observability/dashboards/*.json | wc -l)"
+          configmaps="$(echo "$rendered" | grep -c '^kind: ConfigMap')"
+          labelled="$(echo "$rendered" | grep -c 'grafana_dashboard: "1"')"
+          if [ "$configmaps" -ne "$expected" ] || [ "$labelled" -ne "$expected" ]; then
+            echo "Expected $expected labelled ConfigMaps, got $configmaps ConfigMaps and $labelled labels" >&2
+            exit 1
+          fi
+
   ci-gate:
-    needs: [changes, backend, qodana, trivy, frontend, python]
+    needs: [changes, backend, qodana, trivy, frontend, python, observability]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

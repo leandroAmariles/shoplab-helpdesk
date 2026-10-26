@@ -1,0 +1,23 @@
+# Dashboards de Grafana como ConfigMaps para el clúster (LAB-102). Lo sincroniza la Application `shoplab-observability`
+# de shoplab-infra (path infra/observability de este repositorio); en docker compose los mismos JSON se montan directo.
+# El sidecar de Grafana de kube-prometheus-stack carga todo ConfigMap con la etiqueta grafana_dashboard en cualquier
+# namespace. Esta kustomization vive en la raíz de infra/observability/ para leer dashboards/*.json sin salir de su
+# directorio (Argo CD no activa --load-restrictor LoadRestrictionsNone). Al añadir un dashboard, súmalo aquí.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: shoplab
+configMapGenerator:
+  - name: shoplab-dashboard-jvm
+    files:
+      - dashboards/jvm.json
+  - name: shoplab-dashboard-http
+    files:
+      - dashboards/http.json
+  - name: shoplab-dashboard-pods
+    files:
+      - dashboards/pods.json

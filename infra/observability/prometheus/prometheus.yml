@@ -1,0 +1,12 @@
+# Prometheus local (perfil `observability` de docker compose, LAB-102).
+# El backend corre en el host durante el desarrollo (compose solo tiene Postgres y Ollama), por eso se recoge en
+# host.docker.internal. Prometheus no expande variables de entorno en este archivo: el puerto del backend (8080,
+# `server.port` de application.yml) es fijo; si lo cambias, edita el objetivo de abajo.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: helpdesk-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
