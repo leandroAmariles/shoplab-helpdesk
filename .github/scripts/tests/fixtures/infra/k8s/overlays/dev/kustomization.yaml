@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shoplab-dev
+resources:
+  - ../../base
+images:
+  # Fixture del overlay dev de shoplab-infra: las tres imágenes fijadas por digest, como en LAB-80.
+  - name: ghcr.io/leandroamariles/backend
+    digest: sha256:0566c4464e4819549acdf6be9f538703197ac7ea7dbcd01e481fadafa3b5614d
+  - name: ghcr.io/leandroamariles/frontend
+    digest: sha256:277b6289ef14fbe341cfff55e71604892add02c1c097dc6f2b2ec922753efd62
+  - name: ghcr.io/leandroamariles/ingest
+    digest: sha256:573339322d509d42ea804051bb206b85e2864e57b7806428712c50af3aa92e4b

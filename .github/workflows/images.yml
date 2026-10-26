@@ -164,3 +164,64 @@ jobs:
             echo "- Tags:"
             while read -r tag; do echo "  - \`${tag}\`"; done <<< "${TAGS}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Fija en el overlay dev de shoplab-infra el tag del SHA recién publicado (LAB-81). Argo CD sincroniza dev desde
+  # main; este job nunca toca el clúster. Solo corre tras publicar las tres imágenes de un push a una rama.
+  deploy:
+    needs: publish
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dev
+    # Un grupo propio y sin cancelación: GitHub conserva solo el pendiente más reciente, así dev termina en el último SHA.
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      INFRA_REPO: shoplab-infra
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      # Token efímero de la GitHub App, limitado a shoplab-infra y al permiso de escritura de contenido.
+      - name: Token for shoplab-infra
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ env.INFRA_REPO }}
+          permission-contents: write
+      - name: Check out shoplab-infra
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/${{ env.INFRA_REPO }}
+          ref: main
+          path: infra
+          token: ${{ steps.app-token.outputs.token }}
+      # La misma versión de Kustomize que valida el CI de shoplab-infra.
+      - name: Kustomize version
+        id: kustomize
+        run: echo "version=$(sed -n 's/^KUSTOMIZE_VERSION=//p' infra/versions.env)" >> "$GITHUB_OUTPUT"
+      - uses: imranismail/setup-kustomize@53f941b41dca13ed61874bbc6b4b6e1562877530 # v3.0.0
+        with:
+          kustomize-version: ${{ steps.kustomize.outputs.version }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pin dev images to the published SHA
+        env:
+          APP_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          INFRA_DIR: ${{ github.workspace }}/infra
+          REGISTRY_PREFIX: ${{ env.IMAGE_NAMESPACE }}
+          SERVICES: backend,frontend,ingest
+          DEPLOY_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: bash .github/scripts/deploy-dev.sh
