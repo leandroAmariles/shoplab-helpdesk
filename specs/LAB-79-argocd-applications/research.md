@@ -88,13 +88,21 @@ repositorio y documentación de Argo CD. Lo que no se pudo comprobar se marca **
 
 ## R8. Prueba de humo con tres ambientes
 
-- **Hallazgo**: `smoke.sh` espera que *todas* las `Application` estén `Synced/Healthy` (hoy: una). Con la raíz serían
-  cuatro (`shoplab-root`, `dev`, `staging` y `prod`) y `staging`/`prod` (HPA, más réplicas, Ollama) no
-  caben en un runner de CI.
-- **Decisión**: el smoke espera `shoplab-root` y `shoplab-dev` `Synced/Healthy` y que `shoplab-staging` y
-  `shoplab-prod` **existan** (creadas por la raíz). La convergencia completa de los tres se prueba en local.
-- **A validar** (T-quickstart): memoria necesaria en local para los tres ambientes; si no alcanza se rebaja el
-  tamaño de `staging`/`prod` en LAB-80.
+- **Hallazgo**: `smoke.sh` esperaba que *todas* las `Application` estuvieran `Synced/Healthy` (hoy: una). Con la raíz
+  serían cuatro, y en un runner de CI ni `staging`/`prod` (más réplicas, HPA) ni `dev` pueden quedar Healthy: el k3s
+  de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama quedan `Pending` (ver `docs/kustomize.md`).
+- **Hallazgo 2 (CI de la PR #8)**: Argo CD sincroniza git y una PR no está en `main`, así que la raíz sincronizaba un
+  `k8s/argocd` sin los cambios y no creaba ninguna hija. Como `ci-gate` es obligatorio para fusionar, el smoke nunca
+  habría podido pasar antes de fusionar.
+- **Decisión**: el smoke (a) apunta `shoplab-root` a la revisión de la PR con `kubectl patch` solo durante la prueba
+  (`SMOKE_ROOT_REVISION`, que el workflow toma de `github.event.pull_request.head.sha`); `root.yaml` y las políticas
+  siguen exigiendo `targetRevision: main`, y las hijas siguen en `main`; y (b) exige `shoplab-root` `Synced/Healthy` y
+  que existan `shoplab-dev`, `shoplab-staging` y `shoplab-prod` (`ARGOCD_READY_APPS` y `ARGOCD_PRESENT_APPS` en
+  `versions.env`). La convergencia completa de los ambientes se prueba en local, con una `StorageClass`.
+- **Verificado**: el smoke reproducido en local con el commit de la PR pasa (la raíz queda `Synced/Healthy` aunque sus
+  hijas no estén Healthy: Argo CD no evalúa la salud de las `Application` hijas por defecto).
+- **Alternativas**: pasar solo en `push` a `main` (la PR que rompe la estructura se enteraría después de fusionar);
+  sobrescribir `targetRevision` en Terraform (obliga a relajar la validación de `main` del módulo).
 
 ## R9. Guía y ADR
 
