@@ -16,4 +16,4 @@ El título del PR será el mensaje del commit de squash en `main`: usa
 - [ ] Tests nuevos o actualizados
 - [ ] La evaluación RAG no empeora (desde F2)
 - [ ] Documentación o ADR actualizados si aplica
-- [ ] Servicio nuevo (desde F4): incluye su base y sus overlays en `shoplab-infra/k8s/` (Definition of Done)
+- [ ] Servicio nuevo (desde F4): incluye su base y su entrada en el overlay `dev` en `shoplab-infra/k8s/` (Definition of Done)

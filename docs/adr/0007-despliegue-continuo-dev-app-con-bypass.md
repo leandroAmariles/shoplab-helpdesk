@@ -1,6 +1,6 @@
 # ADR-0007: Despliegue continuo a dev con una GitHub App con bypass
 
-- Estado: aceptado
+- Estado: aceptado (parcialmente sustituido por [ADR-0008](0008-un-solo-ambiente-dev.md) en lo relativo a los ambientes `staging` y `prod`)
 - Fecha: 2026-10-26
 
 ## Contexto
