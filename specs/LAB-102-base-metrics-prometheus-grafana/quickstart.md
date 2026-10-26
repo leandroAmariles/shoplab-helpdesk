@@ -56,7 +56,7 @@ kubectl -n argocd get applications          # shoplab-root, shoplab-dev y shopla
 ```
 
 Esperado: el backend como objetivo `up` (uno por réplica); `shoplab-dev` en Synced/Healthy; los 3 dashboards en
-Grafana (`Dashboards → ShopLab`) con datos; en Prometheus, la regla `BackendDown` cargada y en estado `inactive`.
+Grafana (carpeta *General*; en compose están en «ShopLab») con datos; en Prometheus, la regla `BackendDown` cargada y en estado `inactive`.
 Los nombres exactos de los `Service` dependen del release (`kube-prometheus-stack`); se ajustan si difieren.
 
 ## D. Alerta «backend caído» (US5)

@@ -42,7 +42,13 @@ cd backend && ./mvnw spring-boot:run                                            
 ## En el clúster local
 
 Lo despliega `shoplab-infra` (ver su `docs/observability.md`): el backend aparece como objetivo `backend` en Prometheus, la
-alerta `BackendDown` en Alertmanager y los tres dashboards en Grafana, sin pasos manuales tras `make up`.
+alerta `BackendDown` en Alertmanager y los tres dashboards en Grafana, sin pasos manuales tras `make up`. Dos matices del
+entorno local (k3s de Floci):
+
+- El objetivo tarda unos 2-3 minutos en aparecer tras crearse el `ServiceMonitor`, y en ese rato `BackendDown` puede pasar por
+  `pending` (con el backend ausente `absent()` es verdadero) hasta que se recoge; si el backend tardara más de 2 minutos en
+  arrancar, la alerta saltaría, que es lo esperado.
+- Los dashboards del clúster salen en la carpeta *General* de Grafana (la carpeta «ShopLab» solo existe en compose).
 
 ## Qué muestra cada dashboard
 
@@ -50,7 +56,7 @@ alerta `BackendDown` en Alertmanager y los tres dashboards en Grafana, sin pasos
 | --- | --- |
 | `ShopLab · JVM` (`shoplab-jvm`) | Heap usada y máxima, hilos vivos y daemon, pausas de GC (tiempo por segundo y máximo), CPU del proceso y del sistema, tiempo en marcha |
 | `ShopLab · HTTP` (`shoplab-http`) | Tasa de peticiones por ruta, latencia p95 por ruta, tasa y porcentaje de errores 5xx, peticiones por estado |
-| `ShopLab · Pods` (`shoplab-pods`) | Estado y disponibilidad de los pods del backend, reinicios, CPU y memoria del contenedor (solo en el clúster) |
+| `ShopLab · Pods` (`shoplab-pods`) | Estado y disponibilidad de los pods del backend, reinicios, CPU y memoria del contenedor (solo en el clúster). En el k3s local de Floci CPU y memoria salen **sin datos**: el kubelet rechaza el scrape con `401` y no hay métricas de cAdvisor; en un clúster normal sí aparecen |
 
 Las rutas se agrupan por su plantilla (`/tickets/{id}`), no por el valor concreto, para no multiplicar las series. Las
 rutas que no existen se agrupan en `/**`.
