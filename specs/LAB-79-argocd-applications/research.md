@@ -115,3 +115,25 @@ repositorio y documentación de Argo CD. Lo que no se pudo comprobar se marca **
 - **Contenido del ADR**: push desde Actions exige dar al CI credenciales de escritura sobre el clúster y no detecta
   deriva; pull mantiene las credenciales dentro del clúster, audita con git, revierte la deriva (`selfHeal`) y permite
   `git revert` como rollback. Costo: componente extra que operar y un repo adicional.
+
+## R10. Solo `dev` en el clúster local
+
+- **Hallazgo (validación en vivo con `main` fusionado)**: con la raíz sincronizando `k8s/argocd` (tres ambientes) el
+  único nodo de k3s de Floci tiene 1930m de CPU asignables y los ambientes pedían 1900m (98 %): 17 pods `Pending`
+  (`Insufficient cpu`); la memoria no era el límite (39 %). Las `Application` estaban `Synced` pero `Degraded`.
+- **Decisión**: en local solo se despliega `dev`. `k8s/argocd-local/kustomization.yaml` parte de `../argocd` y retira
+  `shoplab-staging` y `shoplab-prod` con `$patch: delete`; `root.yaml` sincroniza `k8s/argocd-local`. `staging` y `prod`
+  siguen definidas en `k8s/argocd` y se construyen y validan en CI; una raíz de un clúster real apuntaría a `k8s/argocd`.
+  `app_environments` vuelve a `["dev"]` y la prueba de humo espera `shoplab-root` Healthy y `shoplab-dev` creada.
+- **Justificación**: rebajar las solicitudes de `staging`/`prod` desvirtuaría esos overlays (LAB-80) y pedir más CPU al
+  nodo depende de Floci; la selección por ambiente es declarativa, reversible y no toca los overlays.
+- **Alternativas**: bajar las solicitudes de CPU de los overlays (cambia LAB-80); `directory.include` en la raíz
+  (Argo CD ignora `directory` cuando hay `kustomization.yaml`); un archivo `k8s/argocd/local/` dentro del directorio
+  (kustomize detecta un ciclo: «candidate root contains visited root»), de ahí el directorio hermano `argocd-local`.
+- **Guardas de CI**: `kustomize-build.sh` construye `argocd` y `argocd-local`, y falla si la raíz aparece en cualquiera de
+  las dos salidas o si `root.yaml` sincroniza un directorio que el script no valida.
+- **Verificado en vivo** (raíz apuntada al commit de la rama): solo `shoplab-root` y `shoplab-dev`; CPU reservada 44 % con
+  backend, frontend e ingest `1/1 Running`. Con una `StorageClass` sin provisionador y PV `hostPath` (más
+  `chmod 777` de esos directorios en el nodo, porque Postgres no corre como root) `shoplab-dev` pasó a
+  `Synced/Healthy` con los 5 pods `Running`; el frontend responde 200 por el ingress y el backend `{"status":"UP"}` en
+  su readiness. Sin esa `StorageClass`, `dev` queda `Progressing` (PVC `Pending`).

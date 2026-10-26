@@ -89,6 +89,9 @@ shoplab-infra/
 │   ├── application-dev.yaml           # movida desde k8s/argocd/dev/application.yaml
 │   ├── application-staging.yaml       # movida desde k8s/argocd/staging/application.yaml
 │   └── application-prod.yaml          # movida desde k8s/argocd/prod/application.yaml
+│
+├── k8s/argocd-local/
+│   └── kustomization.yaml             # parte de ../argocd y retira staging y prod: solo dev en local
 ├── terraform/
 │   ├── modules/platform/
 │   │   ├── argocd.tf                  # values del chart: ingress + server.insecure
@@ -116,7 +119,7 @@ lista solo las `Application` de ambiente; `root.yaml` convive en el directorio p
 
 ## Riesgos y puntos abiertos
 
-- **Alcance de la prueba de humo (LAB-99)**: con la raíz, el clúster local recibe `dev`, `staging` y `prod`; los
+- **Alcance de la prueba de humo (LAB-99), superado por R10 (en local solo se despliega `dev`; ver research.md)**: con la raíz, el clúster local recibe `dev`, `staging` y `prod`; los
   dos últimos son más grandes (más réplicas, HPA) y pueden no quedar Healthy en un runner de CI. El smoke exige
   raíz y `dev` Synced/Healthy y solo que `staging` y `prod` existan; la espera completa se valida en local
   (T-quickstart). Si en local los tres no caben en memoria, se reduce `prod`/`staging` en LAB-80, no aquí.

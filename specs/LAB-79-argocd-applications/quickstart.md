@@ -9,7 +9,7 @@ Contratos: [application-contract.md](contracts/application-contract.md) y
 - LAB-98 y LAB-80 aplicados: Docker, Terraform, `kubectl`, `kustomize`, `kubeconform` y `yq` (ver
   `scripts/check-tools.sh`); `secrets.auto.tfvars` creado.
 - Los cambios de LAB-79 fusionados en `main` de `shoplab-infra` (Argo CD sincroniza `main`, no la rama local).
-- Memoria libre suficiente para los tres ambientes (ver riesgo de `plan.md`); 16 GB recomendados.
+- Memoria libre para el entorno local (16 GB recomendados para Docker); en local solo se despliega `dev`.
 
 ## 1. Estáticos (sin clúster)
 
@@ -95,10 +95,52 @@ Incidencia: el primer `up.sh` falló con `cannot re-use a name that is still in 
 (con su `terraform destroy`) lo eliminó y el segundo `up.sh` funcionó desde cero. Si vuelve a ocurrir: `make down`
 antes de `make up`.
 
-### Pendiente (requiere los cambios en `main` de `shoplab-infra`)
+### Validación en vivo con los cambios ya en `main` (2026-10-25)
 
-- §2: que `shoplab-root` cree `shoplab-dev`, `shoplab-staging` y `shoplab-prod` y queden `Synced/Healthy`.
-- §3: `selfHeal` y `prune` sobre un ambiente real y cambio fusionado reflejado en < 5 min.
-- §4: añadir y quitar una `Application` en `k8s/argocd/kustomization.yaml` y comprobar el finalizer.
-- §5: `shoplab.localtest.me` respondiendo y las cuatro `Application` en la interfaz.
-- R8 / T003: memoria usada con los tres ambientes a la vez (16 GB asignados a Docker).
+Entorno levantado desde cero con `up.sh`, sin ningún override de revisión (la raíz sincroniza `main`).
+
+| Verificación | Resultado |
+| --- | --- |
+| §2 Arranque desde cero | 30 recursos creados. `shoplab-root` `Synced/Healthy` crea `shoplab-dev`, `shoplab-staging` y `shoplab-prod` y sus namespaces en segundos, sin pasos manuales |
+| `selfHeal` | el host del ingress de `dev` editado a mano volvió al valor de git en menos de 10 s |
+| Finalizer y raíz | borrar `shoplab-staging` a mano dejó sus workloads en 0 en 10 s (cascada del finalizer) y la raíz recreó la `Application` (nuevo `uid`) y sus recursos en 20 s |
+| §5 Ingress | por `port-forward` al controlador: `argocd.localtest.me` 200 con la interfaz de Argo CD y la API lista las 4 `Application`; `shoplab.localtest.me` (dev) y `shoplab.example` (prod) responden 503 (ruta válida, sin `frontend` listo); `staging.shoplab.example` 200; un host inventado 404 de nginx |
+| Limpieza | `down.sh`: 30 + 2 recursos destruidos, sin contenedores ni volumen del clúster |
+
+**Los tres ambientes quedan `Synced` pero `Degraded`.** Dos causas, ninguna es de las `Application`:
+
+- **CPU (T003):** el único nodo de k3s de Floci tiene 1930m asignables y los tres ambientes juntos piden más: con 1900m (98 %) reservados quedan 17 pods `Pending` (`Insufficient cpu`). La memoria no es el límite (39 % usada, 2960 Mi).
+- **Almacenamiento:** el k3s de Floci no trae `StorageClass`; los PVC de Postgres y Ollama quedan `Pending` en los tres ambientes (ya documentado en `docs/kustomize.md`).
+
+Los `ExternalSecret` de los tres ambientes sí sincronizaron (`SecretSynced`), de modo que las claves de `app_environments` funcionan.
+
+### Segunda validación: solo `dev` en local (2026-10-25)
+
+Tras la decisión de desplegar solo `dev` (research R10). Entorno levantado desde cero y la raíz apuntada al commit de la
+rama `fix/LAB-79-solo-dev-en-local` (en `main` aún no existía `k8s/argocd-local`).
+
+| Verificación | Resultado |
+| --- | --- |
+| Alcance | solo `shoplab-root` y `shoplab-dev`; no hay namespaces de `staging` ni `prod` |
+| CPU reservada | 44 % (850m) con `backend`, `frontend` e `ingest` `1/1 Running` (antes, con tres ambientes, 98 % y 17 pods `Pending`) |
+| `dev` sin `StorageClass` | `Synced/Progressing`: Postgres y Ollama esperan sus PVC `Pending` |
+| `dev` con una `StorageClass` sin provisionador y PV `hostPath` | `Synced/Healthy`, 5 pods `1/1 Running`; hizo falta `chmod 777` de los directorios `hostPath` en el nodo porque Postgres no corre como root |
+| Aplicación por el ingress (`port-forward` al 18080) | `shoplab.localtest.me` 200 con el título «ShopLab Helpdesk»; readiness del backend `{"status":"UP"}`; `argocd.localtest.me` 200 |
+| Limpieza | `down.sh`: 22 + 2 recursos destruidos, sin contenedores ni volumen del clúster |
+
+`/api/actuator/health` por el ingress devuelve 404: el ingress enruta `/api` al backend sin reescribir la ruta y Actuator
+no cuelga de `/api`. No es un fallo de esta historia.
+
+### Pendiente
+
+- `prune` y alta/baja de una `Application` por git: requieren una PR que cambie `k8s/argocd` o un overlay en `main`
+  (el cambio de `main` ya hace que la raíz cree y recree las `Application`, y la baja manual activa el finalizer).
+- §3 «cambio fusionado reflejado en < 5 min» y la prueba de lectura de la guía (T033).
+- Que `dev` quede `Healthy` sin pasos manuales: falta una `StorageClass` en el clúster local de LAB-98 (hoy solo
+  se probó con una creada a mano).
+
+### Aviso sobre el puerto 8080
+
+`docs/gitops.md` y `argocd_url` usan el puerto 8080 para el `port-forward`. En esta máquina otra aplicación ya lo
+ocupaba y las respuestas eran de ella (no del ingress). Si el 8080 está ocupado, usa otro puerto local
+(`kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 18080:80`) y `curl -H 'Host: argocd.localtest.me'`.
