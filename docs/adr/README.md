@@ -13,6 +13,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0003 | [Ollama como servidor local de modelos](0003-ollama-modelos-locales.md) | aceptado |
 | 0004 | [Spring Boot 4 con Spring AI 2.0 y Spring Modulith para el backend](0004-spring-boot-4-spring-ai-2.md) | aceptado |
 | 0005 | [Terraform sobre Floci para practicar un EKS local](0005-terraform-floci-eks-local.md) | aceptado |
+| 0006 | [GitOps pull con repositorio de infraestructura separado](0006-gitops-pull-repo-infra-separado.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
