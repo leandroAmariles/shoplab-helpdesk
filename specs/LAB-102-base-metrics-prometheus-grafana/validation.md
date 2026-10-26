@@ -112,8 +112,44 @@ que invoca cada objetivo. Trivy no está instalado: el paso `trivy` de `make che
 - Recursos de la validación local eliminados: contenedores `prometheus` y `grafana`, sus dos volúmenes y los procesos del
   backend en 18080; `shoplab_pgdata` y `shoplab_ollama_models` intactos.
 
-## Pendiente tras fusionar (T034 y T040)
+## Validación en el clúster local (T034, T040 y paso E), 2026-10-26
 
-Los pasos C, D y E del [quickstart](quickstart.md) sobre el clúster local: se ejecutan con la PR de `shoplab-helpdesk`
-fusionada y el backend nuevo desplegado por LAB-81. Hasta entonces, la parte del clúster está validada solo de forma
-estática (renderizado, esquemas, políticas, `terraform test` y `promtool`).
+Con las dos PR fusionadas: `shoplab-helpdesk` #61 (`77aebd1`) y `shoplab-infra` #13 (`272586e`), y el backend con
+`/actuator/prometheus` desplegado por LAB-81 (imagen `ghcr.io/leandroamariles/backend:77aebd1…`). `shoplab-infra` en `main`;
+`scripts/up.sh` y `scripts/down.sh` (no hay `make` en esta máquina); Floci y k3s en Docker (24 CPUs, 16 GB).
+
+- **Arranque desde cero**: `up.sh` en 4 min 31 s (14:46:54 → 14:51:25). `shoplab-root` y `shoplab-observability` en
+  `Synced/Healthy`; `shoplab-dev` en `Synced/Degraded` por Postgres y Ollama en `Pending` (el k3s de Floci no trae
+  `StorageClass`, limitación ya documentada en `docs/kustomize.md` y ajena a esta historia). Alertmanager `2/2 Running`.
+- **3.1 / 3.4 / SC-002**: `/api/v1/targets` → un objetivo `backend` en `up` (`http://10.42.0.25:8080/actuator/prometheus`,
+  namespace `shoplab-dev`); `jvm_memory_used_bytes{application="helpdesk-backend",job="backend",…}` con 3 series. El
+  objetivo no aparece hasta ~2-3 minutos después de crearse el `ServiceMonitor` (la primera consulta, a los ~77 s de su
+  creación, no devolvió nada; las siguientes sí): es el tiempo que tarda el operador en recargar la configuración.
+- **3.2 / SC-002**: Grafana lista `shoplab-jvm`, `shoplab-http` y `shoplab-pods` cargados por el sidecar desde los
+  `ConfigMap` de `shoplab-observability`. En el clúster quedan en la carpeta *General*, no en «ShopLab» (la carpeta solo
+  la crea el aprovisionamiento por archivos de compose). Las consultas de los paneles contra el Prometheus del clúster:
+  - JVM y HTTP: todos los paneles devuelven series.
+  - Pods: estado, pods listos y reinicios devuelven series; **CPU y memoria del contenedor devuelven 0 series**. Causa:
+    el kubelet del k3s de Floci rechaza el scrape con `401 Unauthorized` (`https://172.17.0.3:10250/metrics`,
+    `/metrics/cadvisor` y `/metrics/probes` en `down`), así que no hay ninguna métrica de cAdvisor
+    (`container_cpu_usage_seconds_total`, `container_memory_working_set_bytes` y `kubelet_running_pods` con 0 series).
+    Es una limitación del entorno local de LAB-98, no del dashboard; el spec (FR-015) exige estado, reinicios y
+    disponibilidad, que sí funcionan.
+- **5.1**: la regla `BackendDown` aparece cargada (`state=inactive`, `for=120`, `health=ok`). Justo tras crearse el
+  `ServiceMonitor` quedó `pending` unos minutos (activa desde las 19:52:43 UTC, antes de que existiera el objetivo, porque
+  `absent()` era verdadero) y se limpió sola sin llegar a dispararse.
+- **5.2 / SC-004 (alerta)**: `kubectl scale deployment/backend --replicas=0` a las 14:54:20 → la serie `up` desaparece a los
+  ~46 s y `BackendDown` está `active` / `critical` en Alertmanager a los **185 s** (< 5 min). El HPA no lo restaura desde 0.
+- **5.4 (resolución)**: `--replicas=1` a las 14:57:41 → la alerta desaparece de Alertmanager a los **77 s** (< 5 min).
+- **5.3 (reinicio normal)**: `kubectl rollout restart deployment/backend` y 16 comprobaciones durante 250 s: la regla
+  permaneció `inactive` y Alertmanager sin `BackendDown` en todas.
+- **Paso E / 3.3 / 4.5 / 5.5 / SC-003**: `down.sh` (2 min 30 s, `verify-clean.sh` → «entorno limpio») y `up.sh` de nuevo
+  (4 min 5 s). Sin ningún paso manual, a los pocos minutos: `shoplab-observability` `Synced/Healthy`, objetivo `backend` en
+  `up`, la regla `BackendDown` cargada e `inactive`, los 3 dashboards en Grafana y solo `Watchdog` en Alertmanager.
+- **Limpieza**: port-forwards cerrados y clúster destruido (`down.sh` → «entorno limpio»); solo quedan contenedores
+  parados que ya existían y no son de esta validación.
+
+## Resumen
+
+Todas las tareas (T001-T046) están completadas. Desviaciones respecto al diseño: dashboards en *General* en el clúster y
+sin CPU/memoria del contenedor en el clúster local de Floci (kubelet `401`), ambas documentadas en `docs/observabilidad.md`.

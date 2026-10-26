@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-26
 
-**Status**: Implemented (validación en el clúster pendiente: T034 y T040 en tasks.md)
+**Status**: Implemented
 
 **Input**: User description: "LAB-102 (F0-21) Como desarrollador, quiero ver desde el principio cómo se comportan el backend y el clúster, para detectar problemas antes de añadir el LLM. Criterios: backend con Actuator y Micrometer exponiendo `/actuator/prometheus`; en local, Prometheus y Grafana en el perfil `observability` de docker compose, con imágenes de versión fija; en el clúster, kube-prometheus-stack (lo instala Terraform en LAB-98) con un ServiceMonitor para el backend; dashboards versionados como código (JSON en git): JVM, HTTP (latencia p95, errores) y estado de los pods; una alerta de ejemplo (backend caído) en Alertmanager; los paneles de coste de LLM y lag de Kafka llegan después (LAB-65). Funciona en local: sí, en compose y en el clúster local. Depende de: LAB-98."
 
