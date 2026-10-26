@@ -48,8 +48,9 @@ RENDER_DIR="$(mktemp -d)"
 trap 'rm -rf "$RENDER_DIR"' EXIT
 
 # 1. Cada servicio publicado debe estar declarado en el overlay: si no, se fallaría en silencio al ignorarlo.
+# `kustomize edit` ordena las claves alfabéticamente: la entrada empieza con `- digest:` (name sin guion) o con `- name:`.
 for svc in "${SERVICE_LIST[@]}"; do
-  grep -Eq "^[[:space:]]*-[[:space:]]+name:[[:space:]]+${REGISTRY_PREFIX}/${svc}[[:space:]]*$" "$KUSTOMIZATION" \
+  grep -Eq "^[[:space:]]*(-[[:space:]]+)?name:[[:space:]]+${REGISTRY_PREFIX}/${svc}[[:space:]]*$" "$KUSTOMIZATION" \
     || die $EXIT_UNDECLARED "el servicio $svc no figura en images: de $KUSTOMIZATION"
 done
 
