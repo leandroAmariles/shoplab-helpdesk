@@ -116,10 +116,10 @@ La dimensión del embedding fija el tamaño de la columna `vector(n)` en las his
 | --- | --- | --- |
 | `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` | Siempre activo |
 | `llmops` | — | Reservado |
-| `observability` | — | Reservado (F6) |
+| `observability` | `prometheus`, `grafana` (métricas del backend y dashboards, LAB-102) | Opcional: `--profile observability` |
 | `kafka` | — | Reservado (F4) |
 
-Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores.
+Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores. El perfil `observability` ya tiene servicios (ver más abajo).
 
 ### Operar el entorno
 
@@ -136,8 +136,12 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 
 - **Salud:** `ollama` solo pasa a `healthy` cuando el modelo de chat y el de embeddings están descargados; `postgres`, cuando acepta conexiones y la extensión `vector` existe.
 - **Cambiar de modelo:** define `OLLAMA_CHAT_MODEL` u `OLLAMA_EMBED_MODEL` en `infra/.env` y vuelve a ejecutar `up -d --wait`. El modelo anterior sigue en el disco; se elimina con `down -v`.
-- **Puerto ocupado:** cambia `POSTGRES_PORT` u `OLLAMA_PORT` en `infra/.env`.
+- **Puerto ocupado:** cambia `POSTGRES_PORT`, `OLLAMA_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
 - **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y Ollama en `http://localhost:11434`; las credenciales de ejemplo están en `infra/.env.example`.
+
+### Observabilidad local (perfil `observability`)
+
+`docker compose -f infra/docker-compose.yml --profile observability up -d --wait` levanta Prometheus (`http://localhost:9090`) y Grafana (`http://localhost:3000`, usuario `admin`, contraseña `GRAFANA_ADMIN_PASSWORD`, por defecto `change-me-local-only` y solo válida en local). Prometheus recoge `/actuator/prometheus` del backend que corre en el host en el puerto 8080; Grafana arranca con el origen de datos y los dashboards de `infra/observability/`. Sin el perfil no arranca nada de esto. Detalle, dashboards, alerta y cómo borrar solo sus datos: [docs/observabilidad.md](docs/observabilidad.md).
 
 ## Integración continua
 

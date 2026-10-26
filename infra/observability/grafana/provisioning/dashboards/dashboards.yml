@@ -1,0 +1,12 @@
+# Proveedor de dashboards (LAB-102): carga los JSON versionados en infra/observability/dashboards.
+# allowUiUpdates: false -> lo que se cambie en la interfaz se pierde al reiniciar; se cambia con una pull request.
+apiVersion: 1
+
+providers:
+  - name: ShopLab
+    folder: ShopLab
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,10 @@
+# Origen de datos aprovisionado (LAB-102). Los dashboards no dependen de su uid: usan una variable de tipo datasource.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
