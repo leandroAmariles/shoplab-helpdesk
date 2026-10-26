@@ -28,7 +28,8 @@ class ReactiveArchitectureTests {
                 ReactiveArchitectureRules::noJdbcInDomainOrApplication,
                 ReactiveArchitectureRules::schedulersOnlyInInfrastructure,
                 ReactiveArchitectureRules::noBlockingHttpClients,
-                ReactiveArchitectureRules::noBlockingOnPublishers);
+                ReactiveArchitectureRules::noBlockingOnPublishers,
+                ReactiveArchitectureRules::noSecureRandomIds);
     }
 
     @Test

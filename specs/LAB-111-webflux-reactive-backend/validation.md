@@ -49,7 +49,7 @@
 - BlockHound se instala una vez por sesión de JUnit (`BlockHoundSessionListener`). Pruebas: `BlockHoundDetectionTests`
   (bloqueo en `parallel` → `BlockingOperationError`; en `boundedElastic` pasa) y `EventLoopGuardTests` (un handler que
   bloquea el hilo de Netty falla con `Blocking call! java.lang.Thread.sleep0`; aislado, responde 200).
-- La suite completa **no necesitó ningún allowance** (`HelpdeskBlockHoundIntegration` queda vacía).
+- Ningún allowance (`HelpdeskBlockHoundIntegration` queda vacía). Ver el fallo de CI en Linux más abajo.
 - Prueba manual de la guardia (T035, no commiteada): un `Thread.sleep(50)` metido en el `doOnNext` de
   `StreamChatUseCase` hace fallar 6 de 13 pruebas de `ChatStreamingIntegrationTests` con `BlockingOperationError`
   (el error aparece en `http_server_requests` como `exception="BlockingOperationError"`). Revertido.
@@ -95,3 +95,15 @@
   del stream: antes del primer fragmento el error sigue hasta el `GlobalExceptionHandler` (503 `SLHD_CHAT_00002`), y
   después se emite el evento `error` con `SLHD_CHAT_00003`. Contrato HTTP sin cambios (golden y pruebas de integración
   en verde). `mvn clean verify`: 101 pruebas, cobertura y Checkstyle/PMD en verde.
+
+### Fallo de CI en el PR #66 y corrección (2026-10-26)
+
+- **`backend`**: 9 tests fallaban en Linux con `BlockingOperationError: java.io.FileInputStream#readBytes`. Causa:
+  `UUID.randomUUID()` en `RequestIdFilter` (y en el fallback de `ChatController`) lee `/dev/urandom` en el hilo del
+  bucle de eventos. En Windows no ocurre, por eso pasaba en local. Corregido en el código (`newRequestId()` con
+  `ThreadLocalRandom`) y protegido con la regla ArchUnit A6 (+ fixture) y una prueba del formato UUID v4. Reproducido y
+  verificado en Linux/JDK 21 con Docker: 103 tests en verde.
+- **`ChatStreamContractTests` en Windows**: `core.autocrlf=true` reescribía el golden con CRLF tras el rebase;
+  `.gitattributes` fija `eol=lf` para `golden-stream.txt`.
+- **Qodana**: 2 problemas de nulabilidad (overrides de métodos `@NullMarked` sin anotar en `RequestIdFilter.filter` y
+  `GlobalExceptionHandler.handleServerWebInputException`). Anotados con `@NonNull` (incluido el retorno).

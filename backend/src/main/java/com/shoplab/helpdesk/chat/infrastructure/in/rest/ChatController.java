@@ -5,7 +5,6 @@ import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.infrastructure.in.rest.dto.ChatRequest;
 import com.shoplab.helpdesk.chat.infrastructure.in.rest.util.mapper.ChatEventMapper;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
-import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
@@ -30,7 +29,7 @@ public class ChatController {
     public ResponseEntity<Flux<ServerSentEvent<Object>>> chat(@RequestBody ChatRequest request,
             @RequestAttribute(name = RequestIdFilter.REQUEST_ATTRIBUTE, required = false) String requestId) {
         StreamChatCommand command = new StreamChatCommand(request.message(),
-                requestId == null ? UUID.randomUUID().toString() : requestId);
+                requestId == null ? RequestIdFilter.newRequestId() : requestId);
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-cache")
                 .header("X-Accel-Buffering", "no")

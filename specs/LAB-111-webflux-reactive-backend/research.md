@@ -238,8 +238,13 @@ delega al plan y deja explícito lo que **no se pudo verificar sin ejecutar**; e
   ilegible. Un cliente que solo acepta `application/json` sigue recibiendo 406 (comportamiento de LAB-12).
 - **R3 (cancelación)**: no hizo falta código; cerrar la conexión cancela la cadena y el contador `outcome="cancelled"`
   sube en 1 (sin `error`). Con Ollama real: +1 y la siguiente petición responde en ~110 ms.
-- **R6 (BlockHound)**: la suite completa no necesitó ningún allowance; ni el logging por consola ni `UUID.randomUUID()`
-  fueron marcados. La integración `HelpdeskBlockHoundIntegration` queda vacía a propósito.
+- **R6 (BlockHound)**: ningún allowance. En Windows la suite pasaba sin tocar nada, pero **en Linux (CI) BlockHound
+  marcó `UUID.randomUUID()`** (`NativePRNG` lee `/dev/urandom` con `FileInputStream#readBytes` en el hilo del bucle
+  de eventos). En vez de permitirlo, se eliminó la llamada bloqueante de producción: `RequestIdFilter.newRequestId()`
+  genera un UUID v4 con `ThreadLocalRandom` (un id de correlación no necesita ser criptográfico) y la regla ArchUnit A6
+  prohíbe `UUID.randomUUID()`/`SecureRandom` en producción. El logging por consola no fue marcado.
+  `HelpdeskBlockHoundIntegration` queda vacía a propósito. Lección: verificar la suite también en Linux (se reproduce
+  con `maven:3.9-eclipse-temurin-21` en Docker).
 - **R7 (MDC)**: `Slf4jThreadLocalAccessor("requestId")` registrado en `ReactorContextConfig` +
   `spring.reactor.context-propagation=auto` deja `requestId` en el MDC de un hilo `boundedElastic` (prueba
   `RequestIdPropagationTests`). El filtro escribe el mapa del MDC en el contexto de Reactor bajo la clave

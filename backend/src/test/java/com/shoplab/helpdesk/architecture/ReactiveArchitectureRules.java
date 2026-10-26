@@ -8,6 +8,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
 import java.net.HttpURLConnection;
+import java.security.SecureRandom;
+import java.util.UUID;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import reactor.core.publisher.Flux;
@@ -56,5 +58,12 @@ final class ReactiveArchitectureRules {
                                 .and(target(owner(assignableTo(Mono.class)))
                                         .or(target(owner(assignableTo(Flux.class))))))
                 .because("a blocking wait on a publisher defeats the reactive chain");
+    }
+
+    /** A6: random ids must not come from the OS entropy source, which blocks on Linux. */
+    static ArchRule noSecureRandomIds() {
+        return noClasses().should().callMethod(UUID.class, "randomUUID")
+                .orShould().dependOnClassesThat().belongToAnyOf(SecureRandom.class)
+                .because("UUID.randomUUID() and SecureRandom read /dev/urandom on the event loop");
     }
 }

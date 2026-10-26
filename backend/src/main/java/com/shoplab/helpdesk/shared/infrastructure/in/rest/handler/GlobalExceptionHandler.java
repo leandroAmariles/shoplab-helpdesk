@@ -46,8 +46,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected Mono<ResponseEntity<Object>> handleServerWebInputException(@NonNull ServerWebInputException exception,
-            @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull ServerWebExchange exchange) {
+    protected @NonNull Mono<ResponseEntity<Object>> handleServerWebInputException(
+            @NonNull ServerWebInputException exception, @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status, @NonNull ServerWebExchange exchange) {
         ResponseCodeEnum responseCode = ResponseCodeEnum.INVALID_REQUEST_BODY;
         LOG.warn("Request body not readable: code={}", responseCode.getCode());
         exchange.getAttributes().remove(HandlerMapping.PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE);

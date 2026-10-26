@@ -3,7 +3,9 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.filter;
 import io.micrometer.context.integration.Slf4jThreadLocalAccessor;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.NonNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -25,10 +27,15 @@ public class RequestIdFilter implements WebFilter {
     public static final String MDC_KEY = "requestId";
     public static final String REQUEST_ATTRIBUTE = "requestId";
 
+    private static final long UUID_VERSION_MASK = 0xF000L;
+    private static final long UUID_VERSION_4 = 0x4000L;
+    private static final long UUID_VARIANT_MASK = 0xC000000000000000L;
+    private static final long UUID_VARIANT_RFC_4122 = 0x8000000000000000L;
+
     private static final Pattern SAFE_ID = Pattern.compile("^[A-Za-z0-9._-]{1,64}$");
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    public @NonNull Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
         String requestId = resolve(exchange.getRequest().getHeaders().getFirst(HEADER));
         exchange.getAttributes().put(REQUEST_ATTRIBUTE, requestId);
         exchange.getResponse().getHeaders().set(HEADER, requestId);
@@ -41,6 +48,17 @@ public class RequestIdFilter implements WebFilter {
         if (candidate != null && SAFE_ID.matcher(candidate).matches()) {
             return candidate;
         }
-        return UUID.randomUUID().toString();
+        return newRequestId();
+    }
+
+    /**
+     * A fresh UUID-shaped id. It is not {@code UUID.randomUUID()}: that reads {@code /dev/urandom} on Linux, a blocking
+     * call that must not run on the event loop (BlockHound flags it). A correlation id does not need to be unguessable.
+     */
+    public static String newRequestId() {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        long mostSignificant = (random.nextLong() & ~UUID_VERSION_MASK) | UUID_VERSION_4;
+        long leastSignificant = (random.nextLong() & ~UUID_VARIANT_MASK) | UUID_VARIANT_RFC_4122;
+        return new UUID(mostSignificant, leastSignificant).toString();
     }
 }

@@ -2,6 +2,9 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -27,6 +30,21 @@ class RequestIdFilterTests {
         assertThat(generated).isNotBlank();
         assertThat(seenInChain.get()).isEqualTo(generated);
         assertThat(exchange.<String>getAttribute(RequestIdFilter.REQUEST_ATTRIBUTE)).isEqualTo(generated);
+    }
+
+    @Test
+    void generatedIdsAreUniqueVersion4UuidsWithoutTheSecureRandom() {
+        Set<String> ids = new HashSet<>();
+        for (int i = 0; i < 1000; i++) {
+            ids.add(RequestIdFilter.newRequestId());
+        }
+
+        assertThat(ids).hasSize(1000)
+                .allSatisfy(id -> {
+                    assertThat(id).matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
+                    assertThat(UUID.fromString(id).version()).isEqualTo(4);
+                    assertThat(UUID.fromString(id).variant()).isEqualTo(2);
+                });
     }
 
     @Test
