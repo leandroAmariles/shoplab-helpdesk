@@ -2,43 +2,44 @@ package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
 
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
-import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
+import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
-import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.springframework.ai.chat.client.ChatClient;
+import java.util.List;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
-/** Talks to the local model through Spring AI; the rest of the module only knows {@link ChatModelPort}. */
+/**
+ * Talks to the local model through Spring AI; the rest of the module only knows {@link ChatModelPort}.
+ *
+ * <p>It streams from the {@link ChatModel} directly instead of {@code ChatClient.stream()}: the client's terminal
+ * advisor re-publishes every stream on {@code Schedulers.boundedElastic()}, which pins one thread per open stream and
+ * defeats the point of the reactive web layer (ADR-0011). The request sent to the model is the same.
+ */
 @Component
 public class OllamaChatAdapter implements ChatModelPort {
 
-    private final ChatClient chatClient;
+    private final ChatModel chatModel;
+    private final String systemPrompt;
 
     public OllamaChatAdapter(ChatModel chatModel, ChatProperties properties) {
-        this.chatClient = ChatClient.builder(chatModel).defaultSystem(properties.systemPrompt()).build();
+        this.chatModel = chatModel;
+        this.systemPrompt = properties.systemPrompt();
     }
 
-    /**
-     * A failure before any fragment means the model could not be reached or refused the call; one after the first
-     * fragment means the answer broke half-way. Both are typed so the caller never sees client exceptions.
-     */
+    /** Any failure of the model is a {@link ChatModelException}; the use case decides what it means for the stream. */
     @Override
     public Flux<String> streamAnswer(String message) {
         return Flux.defer(() -> {
-            AtomicBoolean emitted = new AtomicBoolean();
-            return chatClient.prompt()
-                    .user(message)
-                    .stream()
-                    .content()
+            Prompt prompt = new Prompt(List.of(new SystemMessage(systemPrompt), new UserMessage(message)));
+            return chatModel.stream(prompt)
+                    .mapNotNull(response -> response.getResult() == null ? null
+                            : response.getResult().getOutput().getText())
                     .filter(fragment -> !fragment.isEmpty())
-                    .doOnNext(fragment -> emitted.set(true))
-                    .onErrorMap(error -> !(error instanceof HelpdeskException),
-                            error -> ExceptionUtil.technical(emitted.get()
-                                    ? ResponseCodeEnum.CHAT_STREAM_FAILED
-                                    : ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, error));
+                    .onErrorMap(error -> !(error instanceof HelpdeskException), ChatModelException::new);
         });
     }
 }

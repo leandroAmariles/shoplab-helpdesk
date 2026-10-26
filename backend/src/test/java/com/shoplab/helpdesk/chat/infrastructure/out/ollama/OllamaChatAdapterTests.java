@@ -11,8 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.OllamaStubs;
+import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
-import com.shoplab.helpdesk.shared.exception.TechnicalException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,8 +93,8 @@ class OllamaChatAdapterTests {
                 .withBody("{\"error\":\"model 'llama3.2:3b' not found\"}"));
 
         StepVerifier.create(adapter.streamAnswer("Hola"))
-                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(TechnicalException.class)
-                        .extracting(e -> ((TechnicalException) e).getResponseCode())
+                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class)
+                        .extracting(e -> ((ChatModelException) e).getResponseCode())
                         .isEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE))
                 .verify();
     }
@@ -100,8 +104,8 @@ class OllamaChatAdapterTests {
         OllamaStubs.stubAnyChat(ollama, aResponse().withStatus(500));
 
         StepVerifier.create(adapter.streamAnswer("Hola"))
-                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(TechnicalException.class)
-                        .extracting(e -> ((TechnicalException) e).getResponseCode())
+                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class)
+                        .extracting(e -> ((ChatModelException) e).getResponseCode())
                         .isEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE))
                 .verify();
     }
@@ -111,9 +115,35 @@ class OllamaChatAdapterTests {
         OllamaStubs.stubAnyChat(ollama, aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER));
 
         StepVerifier.create(adapter.streamAnswer("Hola"))
-                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(TechnicalException.class)
-                        .extracting(e -> ((TechnicalException) e).getResponseCode())
+                .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class)
+                        .extracting(e -> ((ChatModelException) e).getResponseCode())
                         .isEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE))
                 .verify();
+    }
+
+    @Test
+    void cancellingTheAnswerReturnsRightAwayWithoutWaitingForTheRestOfTheModelOutput() {
+        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(
+                OllamaStubs.body("a ".repeat(40).split("(?<= )"))).withChunkedDribbleDelay(40, 8000));
+
+        long start = System.nanoTime();
+        StepVerifier.create(adapter.streamAnswer("Hola"))
+                .expectNextCount(1)
+                .thenCancel()
+                .verify(Duration.ofSeconds(5));
+
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
+    }
+
+    @Test
+    void emitsOnTheHttpClientThreadWithoutPinningAThreadPerStreamOnTheElasticScheduler() {
+        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.fixtureBody()));
+        List<String> threads = Collections.synchronizedList(new ArrayList<>());
+
+        StepVerifier.create(adapter.streamAnswer("Hola").doOnNext(fragment ->
+                        threads.add(Thread.currentThread().getName())).then())
+                .verifyComplete();
+
+        assertThat(threads).isNotEmpty().noneMatch(name -> name.startsWith("boundedElastic-"));
     }
 }
