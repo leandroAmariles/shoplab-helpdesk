@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.2.0...v0.3.0) (2026-10-26)
+
+
+### Features
+
+* **observability:** [LAB-102] métricas base con Prometheus y Grafana ([#61](https://github.com/leandroAmariles/shoplab-helpdesk/issues/61)) ([77aebd1](https://github.com/leandroAmariles/shoplab-helpdesk/commit/77aebd130a26691d3b008efdd880be6d02f0bac2))
+
 ## [0.2.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.1.1...v0.2.0) (2026-10-26)
 
 
