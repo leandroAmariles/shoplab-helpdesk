@@ -208,4 +208,40 @@ class ModuleSchemasIntegrationTests {
             jdbc.execute("DROP SCHEMA IF EXISTS tmp_parent CASCADE");
         }
     }
+
+    @Test
+    void retrievalForeignKeysStayInsideItsSchema() {
+        assertThat(foreignKeysOf("retrieval")).containsExactly("chunk->document");
+    }
+
+    @Test
+    void retrievalHistoryHasTheBaselineAndTheKnowledgeBaseTablesAppliedOnce() {
+        jdbc.update("INSERT INTO retrieval.document (source, title) VALUES ('test/history.md', 'History')");
+        try {
+            List<String> applied = appliedVersionsOf("retrieval");
+            List<Integer> before = historySizes("retrieval");
+
+            new ModuleSchemaMigrator(schemas, dataSource).migrate();
+
+            assertThat(applied).containsExactly("1", "2");
+            assertThat(historySizes("retrieval")).isEqualTo(before);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM retrieval.document WHERE source = 'test/history.md'",
+                    Integer.class)).isEqualTo(1);
+        } finally {
+            jdbc.update("DELETE FROM retrieval.document WHERE source = 'test/history.md'");
+        }
+    }
+
+    @Test
+    void theOtherModulesKeepTheirHistory() {
+        assertThat(appliedVersionsOf("chat")).containsExactly("1");
+        assertThat(appliedVersionsOf("tickets")).containsExactly("1");
+        assertThat(appliedVersionsOf("orders")).containsExactly("1", "2");
+        assertThat(appliedVersionsOf("catalog")).containsExactly("1", "2");
+    }
+
+    private List<String> appliedVersionsOf(String module) {
+        return jdbc.queryForList("SELECT version FROM " + module + ".flyway_schema_history "
+                + "WHERE success AND version IS NOT NULL ORDER BY installed_rank", String.class);
+    }
 }

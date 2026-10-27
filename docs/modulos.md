@@ -49,3 +49,15 @@ CI falla si `docs/modulos/` no coincide con lo que genera el código.
 2. Declarar su esquema: un bean `ModuleSchema` en `<modulo>/config` y `db/migration/<modulo>/V1__baseline.sql`.
 3. Las tablas nuevas van en una migración `V<n>__<descripcion>.sql` de ese módulo, solo sobre su propio esquema.
 4. Regenerar `docs/modulos/` (comando de arriba).
+
+## Datos de `retrieval`
+
+`retrieval.document` (un archivo fuente del corpus) y `retrieval.chunk` (un fragmento con su vector de 1024
+dimensiones, el modelo de embeddings que lo generó y metadatos JSONB) los crea
+`db/migration/retrieval/V2__knowledge_base_tables.sql` (LAB-19). Solo `retrieval` los lee y escribe; el resto de
+módulos guarda, como mucho, el `id` de un documento o chunk. `ingest` no tiene credenciales de base de datos: entrega
+su salida a `retrieval`.
+
+Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
+`public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
+`public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.
