@@ -202,7 +202,7 @@ jobs:
       - name: Test
         if: steps.detect.outputs.exists == 'true'
         working-directory: frontend
-        run: npm test -- --watch=false --browsers=ChromeHeadless
+        run: npm test -- --watch=false
       - name: Build
         if: steps.detect.outputs.exists == 'true'
         working-directory: frontend

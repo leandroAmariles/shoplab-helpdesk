@@ -85,7 +85,22 @@ curl http://localhost:8080/actuator/health
 
 Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos (`chat`, `retrieval`, `tools`, `tickets` y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
 
-Los pasos de arranque de `frontend/` e `ingest/` se documentan cuando cada uno tenga código.
+### Frontend (Angular)
+
+Requiere Node `22.22.3` o superior de la línea 22 (`frontend/.nvmrc`; con `nvm use` se selecciona). `npm ci` falla con un mensaje claro si la versión no cumple (`engine-strict`).
+
+```bash
+cd frontend
+npm ci
+npm start                  # http://localhost:4200, redirige /api a http://localhost:8080
+npm test -- --watch=false  # Vitest + jsdom, sin navegador instalado
+npm run lint
+npm run build              # genera frontend/dist/browser
+```
+
+La app usa componentes standalone, signals y Angular Material (ver `docs/adr/0013-biblioteca-ui-angular-material.md`). El proxy de desarrollo (`frontend/proxy.conf.json`) evita configurar CORS: levanta el backend (`./mvnw spring-boot:run`) y llama a rutas relativas `/api/...`. Para apuntar a otro backend basta con cambiar el `target` de ese archivo.
+
+Los pasos de arranque de `ingest/` se documentan cuando tenga código.
 
 ## Infraestructura local
 
@@ -160,7 +175,7 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
 
 ### Imágenes Docker
 
-El workflow `.github/workflows/images.yml` construye una imagen por servicio (`backend`, `frontend`, `ingest`; Dockerfile multi-stage y usuario no root en cada carpeta) y las publica en `ghcr.io/leandroamariles/<servicio>`. En pull requests que tocan esos directorios solo construye y escanea; no publica. `frontend` e `ingest` usan una página de relevo hasta que exista su código.
+El workflow `.github/workflows/images.yml` construye una imagen por servicio (`backend`, `frontend`, `ingest`; Dockerfile multi-stage y usuario no root en cada carpeta) y las publica en `ghcr.io/leandroamariles/<servicio>`. En pull requests que tocan esos directorios solo construye y escanea; no publica. `ingest` usa una página de relevo hasta que exista su código; `frontend` ya empaqueta la app Angular compilada sobre nginx (con fallback a `index.html` para las rutas internas).
 
 - **Tags:** `<sha completo>` y `latest` en cada merge a `main`; `vX.Y.Z` cuando release-please crea el tag (nunca mueve `latest`). Un tag de versión ya publicado no se sobrescribe.
 - **Escaneo previo (Trivy):** cada imagen se escanea antes de publicar (HIGH y CRITICAL con corrección disponible, mismo `.trivyignore` que el escaneo del repo). Si falla alguna de las tres, no se publica ninguna. El reporte SARIF queda en el artefacto `trivy-image-<servicio>`.

@@ -25,6 +25,21 @@
           "type": "xml",
           "path": "backend/pom.xml",
           "xpath": "//*[local-name()='project']/*[local-name()='version']"
+        },
+        {
+          "type": "json",
+          "path": "frontend/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/package-lock.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/package-lock.json",
+          "jsonpath": "$.packages[\"\"].version"
         }
       ]
     }
