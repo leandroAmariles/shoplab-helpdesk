@@ -110,6 +110,12 @@ Con la infraestructura local levantada y el backend arrancado (crea las tablas d
 público de Olist con `cd data/olist && uv sync && uv run olist-loader load`. Reparto de tablas, stock sintético y
 licencia en [`docs/olist-dataset.md`](docs/olist-dataset.md).
 
+### Base de conocimiento (políticas y FAQs)
+
+El corpus de políticas y preguntas frecuentes de la tienda está en `data/kb/` (24 documentos en Markdown, 10 también en
+PDF). Cómo se organiza, cómo añadir una política y cómo regenerar los PDF en
+[`docs/base-conocimiento.md`](docs/base-conocimiento.md).
+
 ## Infraestructura local
 
 ### Requisitos de hardware
