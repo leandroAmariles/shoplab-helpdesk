@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Chat } from './features/chat/chat';
 import { Home } from './features/home/home';
 import { NotFound } from './features/not-found/not-found';
 import { Shell } from './layout/shell/shell';
@@ -25,6 +26,18 @@ describe('routes', () => {
 
     expect(harness.fixture.debugElement.query(By.directive(Shell))).not.toBeNull();
     expect(harness.fixture.debugElement.query(By.directive(NotFound))).not.toBeNull();
+  });
+
+  it('renders the chat inside the shell and lists it in the navigation', async () => {
+    const harness = await RouterTestingHarness.create('/chat');
+
+    expect(harness.fixture.debugElement.query(By.directive(Shell))).not.toBeNull();
+    expect(harness.fixture.debugElement.query(By.directive(Chat))).not.toBeNull();
+    expect(TestBed.inject(Router).url).toBe('/chat');
+
+    const chat = (routes[0].children ?? []).find((route) => route.path === 'chat');
+    expect(chat?.title).toBe('Chat');
+    expect(chat?.data?.['nav']).toEqual({ label: 'Chat', icon: 'chat' });
   });
 
   it('declares the wildcard route last', () => {

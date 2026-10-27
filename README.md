@@ -100,6 +100,8 @@ npm run build              # genera frontend/dist/browser
 
 La app usa componentes standalone, signals y Angular Material (ver `docs/adr/0013-biblioteca-ui-angular-material.md`). El proxy de desarrollo (`frontend/proxy.conf.json`) evita configurar CORS: levanta el backend (`./mvnw spring-boot:run`) y llama a rutas relativas `/api/...`. Para apuntar a otro backend basta con cambiar el `target` de ese archivo.
 
+**Chat (`/chat`)**: con el backend en `localhost:8080` y el modelo cargado, `npm start` en `frontend/` y abre `http://localhost:4200/chat`. La pantalla envía `POST /api/chat` y lee la respuesta como SSE con `fetch` (el navegador no permite `EventSource` con `POST`; ver `docs/adr/0014-markdown-seguro-en-el-chat.md`). Las respuestas del asistente se muestran como Markdown saneado: **solo** `core/markdown/markdown-renderer.ts` puede confiar en HTML (`bypassSecurityTrustHtml`), y ESLint falla si otro archivo lo intenta. La conversación vive en memoria de la pestaña y se pierde al recargar. Límite conocido: la imagen de contenedor aún no enruta `/api` al backend (lo resuelve el ingreso del clúster), así que el chat se prueba en desarrollo con el proxy.
+
 Los pasos de arranque de `ingest/` se documentan cuando tenga código.
 
 ## Infraestructura local

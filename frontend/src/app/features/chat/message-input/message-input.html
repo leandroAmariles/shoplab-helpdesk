@@ -1,0 +1,28 @@
+<form class="composer" (submit)="$event.preventDefault(); submit()">
+  <mat-form-field appearance="outline" class="field" subscriptSizing="dynamic">
+    <mat-label>Escribe tu mensaje…</mat-label>
+    <textarea matInput #field cdkTextareaAutosize cdkAutosizeMinRows="1" cdkAutosizeMaxRows="6"
+              aria-describedby="message-counter" [value]="draft()" (input)="onInput($event)"
+              (keydown.enter)="onEnter($event)"></textarea>
+    <mat-hint id="message-counter" align="end" [class.over]="overLimit()">
+      @if (showCounter()) {
+        {{ length() }} / {{ maxLength }}
+        @if (overLimit()) {
+          · Máximo {{ maxLength }} caracteres
+        }
+      } @else {
+        Enter envía · Mayús+Enter salta de línea
+      }
+    </mat-hint>
+  </mat-form-field>
+
+  @if (streaming()) {
+    <button mat-icon-button type="button" class="action" aria-label="Detener respuesta" (click)="stop.emit()">
+      <mat-icon>stop_circle</mat-icon>
+    </button>
+  } @else {
+    <button mat-icon-button type="submit" class="action" aria-label="Enviar mensaje" [disabled]="!canSend()">
+      <mat-icon>send</mat-icon>
+    </button>
+  }
+</form>

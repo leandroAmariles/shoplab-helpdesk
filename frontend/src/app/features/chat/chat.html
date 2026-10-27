@@ -1,0 +1,21 @@
+<section class="chat">
+  <div class="history" #history role="log" aria-live="polite" aria-label="Conversación"
+       [attr.aria-busy]="store.isStreaming()" (scroll)="onScroll()">
+    @if (store.messages().length === 0) {
+      <p class="empty">Escribe un mensaje para empezar la conversación.</p>
+    }
+    @for (message of store.messages(); track message.id) {
+      <app-message-bubble [message]="message" [canRetry]="message.id === retryableId()"
+                          (retry)="store.retry()" />
+    }
+  </div>
+
+  @if (!following()) {
+    <button mat-mini-fab type="button" class="to-end" aria-label="Ir al final" (click)="goToEnd()">
+      <mat-icon>arrow_downward</mat-icon>
+    </button>
+  }
+
+  <app-message-input [(draft)]="store.draft" [canSend]="store.canSend()" [streaming]="store.isStreaming()"
+                     (send)="onSend()" (stop)="store.stop()" />
+</section>

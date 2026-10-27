@@ -34,6 +34,20 @@ module.exports = defineConfig([
     },
   },
   {
+    // The Markdown renderer is the only place that may trust HTML (ADR-0014).
+    files: ['src/**/*.ts'],
+    ignores: ['src/app/core/markdown/markdown-renderer.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'MemberExpression[property.name=/^bypassSecurityTrust/]',
+          message: 'Only MarkdownRenderer may bypass Angular sanitization (ADR-0014).',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
