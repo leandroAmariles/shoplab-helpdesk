@@ -1,0 +1,4 @@
+customer_id,customer_unique_id,customer_zip_code_prefix,customer_city,customer_state
+c01,u01,01310,city one,SP
+c02,u02,20040,city two,RJ
+c03,u03,30110,city three,MG
