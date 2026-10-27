@@ -13,4 +13,10 @@ public final class ExceptionUtil {
     public static TechnicalException technical(ResponseCodeEnum responseCode, Throwable cause) {
         return new TechnicalException(responseCode, cause);
     }
+
+    /** A module's schema could not be prepared at start-up; the message names the module. */
+    public static ModuleMigrationException moduleMigration(String module, ResponseCodeEnum responseCode,
+            Throwable cause) {
+        return new ModuleMigrationException(module, responseCode, cause);
+    }
 }

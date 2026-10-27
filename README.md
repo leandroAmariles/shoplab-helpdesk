@@ -74,7 +74,7 @@ La primera vez descarga las imágenes y los modelos (unos 13 GB en total), así 
 
 ### Backend
 
-El backend no necesita la infraestructura levantada para construirse ni arrancar.
+El backend **necesita PostgreSQL para arrancar**: al iniciar aplica las migraciones de cada módulo y, si no hay base de datos, falla indicando el módulo afectado. Levanta solo la base con `docker compose -f infra/docker-compose.yml up -d postgres` (el backend usa por defecto `localhost:5432/shoplab`; se cambia con `POSTGRES_URL`, `POSTGRES_USER` y `POSTGRES_PASSWORD`). Las pruebas (`./mvnw verify`) arrancan su propia PostgreSQL desechable con Testcontainers, así que solo necesitan Docker en marcha.
 
 ```bash
 cd backend
@@ -83,7 +83,7 @@ cd backend
 curl http://localhost:8080/actuator/health
 ```
 
-Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos (`chat`, `retrieval`, `tools`, `tickets` y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
+Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos por contexto de negocio (`chat`, `retrieval`, `orders`, `catalog`, `tickets`, cada uno dueño de su esquema de datos, y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests` y `ModuleArchitectureTests`; la guía está en [docs/modulos.md](docs/modulos.md) y la decisión en `docs/adr/0015-limites-de-contexto-y-repositorios.md`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
 
 ### Frontend (Angular)
 
@@ -164,7 +164,7 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 
 El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`).
 
-- **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración y gate de cobertura de líneas ≥ 80 %). El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
+- **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración con PostgreSQL desechable vía Testcontainers y gate de cobertura de líneas ≥ 80 %). Después comprueba que `docs/modulos/` (generada por `ModularityTests`) coincide con lo versionado. El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
 - **Qodana (backend):** el job `qodana` analiza `backend/` con el linter JVM Community (`backend/qodana.yaml`) y falla si aparecen problemas **nuevos** de severidad alta o crítica respecto al baseline `backend/qodana.sarif.json`. Los hallazgos se ven en *Security > Code scanning*, en el comentario del PR y en el artefacto `qodana-report`; en PRs desde forks solo queda el artefacto. No requiere `QODANA_TOKEN`.
   - *Reproducir en local:* `docker run --rm -v "$PWD/backend:/data/project" -v "$TMPDIR/qodana:/data/results" jetbrains/qodana-jvm-community:2026.2 --baseline qodana.sarif.json --save-report=false`.
   - *Regenerar el baseline:* ejecuta el análisis en `main` sin `--baseline`, reduce `qodana.sarif.json` a los resultados y confírmalo en un PR propio.

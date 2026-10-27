@@ -2,6 +2,7 @@ package com.shoplab.helpdesk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Uses a real HTTP call so the full actuator and Micrometer wiring is exercised.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@PostgresTest
 @Import(MetricsEndpointTests.ProbeController.class)
 class MetricsEndpointTests {
 

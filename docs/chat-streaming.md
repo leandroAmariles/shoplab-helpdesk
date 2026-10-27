@@ -5,7 +5,7 @@ como un flujo de eventos del servidor (SSE). Especificación y decisiones: `spec
 
 ## Probarlo desde la terminal
 
-Con el perfil `core` de compose levantado (Ollama con el modelo de chat descargado) y el backend en marcha
+Con el perfil `core` de compose levantado (PostgreSQL, que el backend necesita para arrancar, y Ollama con el modelo de chat descargado) y el backend en marcha
 (`cd backend && ./mvnw spring-boot:run`):
 
 ```bash

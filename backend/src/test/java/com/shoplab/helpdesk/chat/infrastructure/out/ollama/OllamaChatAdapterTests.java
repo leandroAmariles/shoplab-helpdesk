@@ -13,6 +13,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.OllamaStubs;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
+import com.shoplab.helpdesk.support.PostgresTest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +27,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import reactor.test.StepVerifier;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@PostgresTest
 class OllamaChatAdapterTests {
 
     @RegisterExtension
@@ -51,6 +53,16 @@ class OllamaChatAdapterTests {
                     assertThat(String.join("", parts)).isEqualTo(OllamaStubs.FIXTURE_TEXT);
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    void offersNoToolsWhenNoModulePublishesAny() {
+        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
+
+        StepVerifier.create(adapter.streamAnswer("Hola")).expectNext("ok").verifyComplete();
+
+        ollama.verify(postRequestedFor(urlEqualTo("/api/chat"))
+                .withRequestBody(matchingJsonPath("$.tools.length()", equalTo("0"))));
     }
 
     @Test

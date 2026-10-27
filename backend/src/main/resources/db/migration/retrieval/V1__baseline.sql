@@ -1,0 +1,3 @@
+-- Baseline of the 'retrieval' schema, owned by the retrieval module (specs/LAB-105).
+-- Nothing else reads or writes it: other modules go through the module's API and keep only ids.
+-- Tables arrive with the stories that need them; the first of them adds V2.

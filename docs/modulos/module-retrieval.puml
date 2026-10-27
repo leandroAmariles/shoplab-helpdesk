@@ -1,0 +1,30 @@
+@startuml
+title <size:24>Retrieval</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("ShopLabHelpdeskApplication_boundary", "ShopLabHelpdeskApplication", $tags="") {
+  Container_Boundary("ShopLabHelpdeskApplication.ShopLabHelpdeskApplication_boundary", "ShopLabHelpdeskApplication", $tags="") {
+    Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "Shared", $techn="Module", $descr="", $tags="", $link="")
+    Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Retrieval, "Retrieval", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Retrieval, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml
