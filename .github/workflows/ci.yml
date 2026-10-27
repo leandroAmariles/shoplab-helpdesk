@@ -21,6 +21,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       ingest: ${{ steps.filter.outputs.ingest }}
       eval: ${{ steps.filter.outputs.eval }}
+      olist: ${{ steps.filter.outputs.olist }}
       observability: ${{ steps.filter.outputs.observability }}
       ci: ${{ steps.filter.outputs.ci }}
       python_matrix: ${{ steps.python.outputs.matrix }}
@@ -39,6 +40,11 @@ jobs:
               - 'ingest/**'
             eval:
               - 'eval/**'
+            olist:
+              - 'data/olist/**'
+              # The loader tests apply the migrations of orders and catalog, so they follow those scripts.
+              - 'backend/src/main/resources/db/migration/orders/**'
+              - 'backend/src/main/resources/db/migration/catalog/**'
             observability:
               - 'infra/observability/**'
               - 'infra/docker-compose.yml'
@@ -51,11 +57,13 @@ jobs:
         env:
           INGEST: ${{ steps.filter.outputs.ingest }}
           EVAL: ${{ steps.filter.outputs.eval }}
+          OLIST: ${{ steps.filter.outputs.olist }}
           CI_CHANGED: ${{ steps.filter.outputs.ci }}
         run: |
           items=()
           if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
           if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
+          if [ "$OLIST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/olist"'); fi
           echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
 
   backend:

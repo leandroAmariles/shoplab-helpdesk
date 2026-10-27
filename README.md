@@ -104,6 +104,12 @@ La app usa componentes standalone, signals y Angular Material (ver `docs/adr/001
 
 Los pasos de arranque de `ingest/` se documentan cuando tenga código.
 
+### Datos de ejemplo (Olist)
+
+Con la infraestructura local levantada y el backend arrancado (crea las tablas de `orders` y `catalog`), carga el dataset
+público de Olist con `cd data/olist && uv sync && uv run olist-loader load`. Reparto de tablas, stock sintético y
+licencia en [`docs/olist-dataset.md`](docs/olist-dataset.md).
+
 ## Infraestructura local
 
 ### Requisitos de hardware
