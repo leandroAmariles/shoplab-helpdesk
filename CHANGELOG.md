@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.6.0...v0.7.0) (2026-10-27)
+
+
+### Features
+
+* **data:** [LAB-17] carga del dataset Olist en esquemas por contexto ([#74](https://github.com/leandroAmariles/shoplab-helpdesk/issues/74)) ([514347a](https://github.com/leandroAmariles/shoplab-helpdesk/commit/514347af6fc9383d028280025743e600f089821f))
+
 ## [0.6.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.5.0...v0.6.0) (2026-10-27)
 
 
