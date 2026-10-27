@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.title {
+  margin-left: 8px;
+}
+
+.container {
+  flex: 1;
+  min-height: 0;
+}
+
+mat-sidenav {
+  width: min(260px, 80vw);
+}
+
+.content {
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.active {
+  font-weight: 500;
+}

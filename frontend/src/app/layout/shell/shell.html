@@ -1,0 +1,27 @@
+<div class="layout">
+  <mat-toolbar color="primary">
+    <button mat-icon-button type="button" aria-label="Abrir o cerrar la navegación"
+            (click)="sidenavOpen.set(!sidenavOpen())">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <span class="title">ShopLab Helpdesk</span>
+  </mat-toolbar>
+
+  <mat-sidenav-container class="container">
+    <mat-sidenav [mode]="isHandset() ? 'over' : 'side'" [(opened)]="sidenavOpen" role="navigation">
+      <mat-nav-list>
+        @for (item of navItems(); track item.link) {
+          <a mat-list-item [routerLink]="item.link" routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: true }" (click)="onNavigate()">
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="content">
+      <router-outlet />
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>
