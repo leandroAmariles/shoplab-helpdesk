@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.5.0...v0.6.0) (2026-10-27)
+
+
+### Features
+
+* **chat:** [LAB-14] pantalla de chat con streaming y Markdown ([#70](https://github.com/leandroAmariles/shoplab-helpdesk/issues/70)) ([12db754](https://github.com/leandroAmariles/shoplab-helpdesk/commit/12db75421f47aa55f83b6ee1959843f074746d65))
+
 ## [0.5.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.4.0...v0.5.0) (2026-10-27)
 
 
