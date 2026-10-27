@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.7.0...v0.8.0) (2026-10-27)
+
+
+### Features
+
+* **kb:** [LAB-18] corpus de políticas y FAQs de la tienda ([#76](https://github.com/leandroAmariles/shoplab-helpdesk/issues/76)) ([ed9fa34](https://github.com/leandroAmariles/shoplab-helpdesk/commit/ed9fa34200a6f4ff5d107025216638f1274e7e6f))
+
 ## [0.7.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.6.0...v0.7.0) (2026-10-27)
 
 
