@@ -165,15 +165,16 @@ jobs:
             while read -r tag; do echo "  - \`${tag}\`"; done <<< "${TAGS}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Fija en el overlay dev de shoplab-infra el tag del SHA recién publicado (LAB-81). Argo CD sincroniza dev desde
-  # main; este job nunca toca el clúster. Solo corre tras publicar las tres imágenes de un push a una rama.
+  # Fija en el overlay dev de shoplab-infra el tag de la versión recién publicada (LAB-81, ADR-0012). Argo CD sincroniza
+  # dev desde main; este job nunca toca el clúster. Solo corre tras publicar las tres imágenes de un tag vX.Y.Z: un
+  # merge a main publica el SHA pero no despliega. El Environment dev debe admitir el patrón de tags v*.*.*.
   deploy:
     needs: publish
-    if: github.event_name == 'push' && github.ref_type == 'branch'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: dev
-    # Un grupo propio y sin cancelación: GitHub conserva solo el pendiente más reciente, así dev termina en el último SHA.
+    # Un grupo propio y sin cancelación: GitHub conserva solo el pendiente más reciente, así dev termina en la última versión.
     concurrency:
       group: deploy-dev
       cancel-in-progress: false
@@ -216,8 +217,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pin dev images to the published SHA
+      - name: Pin dev images to the released version
         env:
+          APP_VERSION: ${{ github.ref_name }}
           APP_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           INFRA_DIR: ${{ github.workspace }}/infra
