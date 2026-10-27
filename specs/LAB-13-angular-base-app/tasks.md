@@ -61,7 +61,7 @@ relevo.
 abre sin errores en la consola ([quickstart.md](quickstart.md), escenario 1).
 
 - [X] T009 [US1] Comprobar que `FE/src/app/app.config.ts` usa `provideRouter` y `provideHttpClient(withInterceptors([]))`, que el proyecto no tiene `NgModule` (`grep -r "NgModule" FE/src` sin resultados) y que el estado local de la interfaz usa signals (`grep -rE "signal\(|toSignal\(" FE/src/app` devuelve resultados una vez hecha T020); dejar la detección de cambios como la generó el CLI
-- [ ] T010 [US1] Verificar que el job `frontend` de `.github/workflows/ci.yml` detecta `FE/package.json` y ejecuta `npm ci`, `npm run lint`, test y build reales; en el PR comprobar que ningún paso termina en «skipping Angular checks» (FR-010, SC-005)
+- [X] T010 [US1] Verificar que el job `frontend` de `.github/workflows/ci.yml` detecta `FE/package.json` y ejecuta `npm ci`, `npm run lint`, test y build reales; en el PR comprobar que ningún paso termina en «skipping Angular checks» (FR-010, SC-005)
 - [X] T011 [P] [US1] Añadir `frontend/package.json` a `extra-files` de `release-please-config.json` con `{ "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" }` y dos entradas más para `frontend/package-lock.json` (`$.version` y `$.packages[""].version`), para que `npm ci` en CI no falle por versiones divergentes (R9); no tocar `CHANGELOG.md` ni el manifiesto
 - [X] T012 [US1] Documentar en `README.md` (sustituir la frase «Los pasos de arranque de `frontend/` … se documentan cuando cada uno tenga código» por una sección propia para `frontend/`): requisito de Node, `npm ci`, `npm start`, `npm test`, `npm run lint`, `npm run build` (FR-013)
 
@@ -146,7 +146,7 @@ abre sin errores en la consola ([quickstart.md](quickstart.md), escenario 1).
 
 - [ ] T031 Ejecutar la verificación completa en `FE/`: `npm ci && npm run lint && npm test && npm run build` (0 errores, 0 advertencias de lint, SC-002) y revisar el ancho 360 px y 1440 px en el navegador (SC-006); registrarlo en `SPEC/validation.md`
 - [X] T032 Revisar `git status --short` y `git diff --staged`: sin `node_modules/`, `dist/`, `.angular/` ni archivos temporales, y con `FE/.gitignore` generado por el CLI incluyendo esas rutas
-- [ ] T033 Confirmar que el workflow `.github/workflows/images.yml` construye la imagen de `frontend` con el nuevo `Dockerfile` (revisar la ejecución del PR) y actualizar la mención de «página de relevo» en `README.md` (sección de imágenes) para que refleje que ya contiene la app real
+- [X] T033 Confirmar que el workflow `.github/workflows/images.yml` construye la imagen de `frontend` con el nuevo `Dockerfile` (revisar la ejecución del PR) y actualizar la mención de «página de relevo» en `README.md` (sección de imágenes) para que refleje que ya contiene la app real
 - [ ] T034 Marcar los criterios de aceptación en Jira LAB-13 solo después de que el PR esté fusionado y el job `frontend` de CI haya pasado sobre el proyecto real
 
 ---
