@@ -48,6 +48,26 @@ class SchemaIsolationTests {
     }
 
     @Test
+    void theQualifiedVectorTypeOfTheExtensionIsNotAViolation() {
+        String sql = """
+                CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;
+                CREATE TABLE chunk (id uuid PRIMARY KEY, embedding public.vector(1024) NOT NULL);
+                CREATE INDEX chunk_embedding_hnsw_idx ON chunk USING hnsw (embedding public.vector_cosine_ops);
+                """;
+
+        assertThat(SchemaIsolationRules.lint("V2.sql", "retrieval", MODULES, sql)).isEmpty();
+    }
+
+    @Test
+    void anotherModuleReadingRetrievalTablesIsReported() {
+        String sql = "SELECT content FROM retrieval.chunk";
+
+        List<String> violations = SchemaIsolationRules.lint("chat.sql", "chat", MODULES, sql);
+
+        assertThat(violations).anySatisfy(line -> assertThat(line).contains(": S2:").contains("'retrieval'"));
+    }
+
+    @Test
     void theRealMigrationsAndSourcesRespectTheRules() {
         assertThat(SchemaIsolationRules.lintProject(MIGRATIONS, JAVA_SOURCES)).isEmpty();
     }
