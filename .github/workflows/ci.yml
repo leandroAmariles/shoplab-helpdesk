@@ -32,6 +32,7 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'docs/modulos/**'
             frontend:
               - 'frontend/**'
             ingest:
@@ -75,6 +76,14 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - name: Verify (Checkstyle, PMD, Modulith, tests, JaCoCo gate)
         run: ./mvnw -B -ntp clean verify
+      - name: Module documentation is up to date
+        # ModularityTests regenerates docs/modulos from the code (LAB-105); a diff means it was not committed.
+        run: |
+          if [ -n "$(git status --porcelain -- ../docs/modulos)" ]; then
+            git status --short -- ../docs/modulos
+            echo "::error::docs/modulos is out of date: run './mvnw test -Dtest=ModularityTests' in backend/ and commit the result"
+            exit 1
+          fi
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7

@@ -2,6 +2,7 @@ package com.shoplab.helpdesk.blockhound;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.support.PostgresTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -17,6 +18,7 @@ import reactor.core.scheduler.Schedulers;
  * fails the request, and the same handler isolated on the elastic scheduler works (specs/LAB-111, FR-009).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@PostgresTest
 @Import(EventLoopGuardTests.BlockingProbeController.class)
 class EventLoopGuardTests {
 

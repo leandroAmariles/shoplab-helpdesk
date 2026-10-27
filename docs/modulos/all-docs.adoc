@@ -1,0 +1,27 @@
+== ShopLabHelpdeskApplication
+plantuml::components.puml[,,format=svg]
+
+== Shared
+plantuml::module-shared.puml[,,format=svg]
+include::module-shared.adoc[]
+
+== Catalog
+plantuml::module-catalog.puml[,,format=svg]
+include::module-catalog.adoc[]
+
+== Chat
+plantuml::module-chat.puml[,,format=svg]
+include::module-chat.adoc[]
+
+== Orders
+plantuml::module-orders.puml[,,format=svg]
+include::module-orders.adoc[]
+
+== Retrieval
+plantuml::module-retrieval.puml[,,format=svg]
+include::module-retrieval.adoc[]
+
+== Tickets
+plantuml::module-tickets.puml[,,format=svg]
+include::module-tickets.adoc[]
+

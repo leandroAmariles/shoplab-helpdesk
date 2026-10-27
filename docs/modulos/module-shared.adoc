@@ -1,0 +1,13 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.shoplab.helpdesk.shared`
+|Spring components
+|* `c.s.h.s.config.DatabaseConfig` -- The database is mandatory: the schemas of all modules are migrated while the context starts, and a failure stops the application. Beans that read or write data must declare `@DependsOn("moduleSchemaMigrator")` so they never see a schema that is not ready.
+* `c.s.h.s.config.ReactorContextConfig` -- Copies the `requestId` that the request filter puts in the Reactor context into the MDC of whichever thread runs each operator, so every log line of a request carries its correlation id (needs `spring.reactor.context-propagation=auto`).
+* `c.s.h.s.infrastructure.in.rest.filter.RequestIdFilter` -- Correlation id of each request: taken from `X-Request-Id` when it is safe, generated otherwise. It goes to an exchange attribute, to the response and to the Reactor context, which carries it to the MDC of whichever thread runs each operator (a reactive chain hops threads, so a plain MDC would be lost).
+* `c.s.h.s.infrastructure.in.rest.handler.GlobalExceptionHandler` -- The only place where exceptions are mapped to HTTP responses. Errors are always JSON, even when the client asked for `text/event-stream`: the handler mapping publishes `text/event-stream` as the only producible type of the chat route and content negotiation would otherwise answer 406 to a streaming client.
+* `c.s.h.s.infrastructure.out.database.ModuleSchemaMigrator` -- Applies the migrations of every module, one Flyway per module, each in its own schema with its own history table. Running them separately makes it impossible for a script of one module to land in another's schema, and lets a module leave the monolith together with its data (specs/LAB-105, research D-2).  
++
+Runs at start-up on the main thread. Any failure stops the application with a `c.s.h.s.exception.ModuleMigrationException` that names the module; nothing is left half started.
+|===

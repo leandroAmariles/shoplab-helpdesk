@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.shoplab.helpdesk.support.PostgresTest;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,6 +35,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * simulated by WireMock so the suite is deterministic.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@PostgresTest
 class ChatStreamingIntegrationTests {
 
     @RegisterExtension

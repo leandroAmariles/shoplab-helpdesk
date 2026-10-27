@@ -22,6 +22,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0012 | [Dev despliega solo versiones de release](0012-dev-despliega-solo-versiones-de-release.md) | aceptado |
 | 0013 | [Angular Material como biblioteca de componentes del frontend](0013-biblioteca-ui-angular-material.md) | aceptado |
 | 0014 | [Streaming por fetch y Markdown saneado en el chat](0014-markdown-seguro-en-el-chat.md) | aceptado |
+| 0015 | [Límites de contexto y estrategia de repositorios](0015-limites-de-contexto-y-repositorios.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

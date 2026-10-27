@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,6 +30,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * instead of comparing, which is how both were captured before the migration to WebFlux.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@PostgresTest
 class ChatStreamContractTests {
 
     private static final Path GOLDEN = Path.of("src/test/resources/chat/golden-stream.txt");

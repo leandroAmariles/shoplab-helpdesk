@@ -10,6 +10,12 @@ public abstract class HelpdeskException extends RuntimeException {
         this.responseCode = responseCode;
     }
 
+    /** For failures nobody sees over HTTP (start-up), where the message may carry more detail than the public one. */
+    protected HelpdeskException(ResponseCodeEnum responseCode, String message, Throwable cause) {
+        super(message, cause);
+        this.responseCode = responseCode;
+    }
+
     public ResponseCodeEnum getResponseCode() {
         return responseCode;
     }
