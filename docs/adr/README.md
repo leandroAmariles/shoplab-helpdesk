@@ -14,11 +14,12 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0004 | [Spring Boot 4 con Spring AI 2.0 y Spring Modulith para el backend](0004-spring-boot-4-spring-ai-2.md) | aceptado |
 | 0005 | [Terraform sobre Floci para practicar un EKS local](0005-terraform-floci-eks-local.md) | aceptado |
 | 0006 | [GitOps pull con repositorio de infraestructura separado](0006-gitops-pull-repo-infra-separado.md) | aceptado (parcialmente sustituido por 0008) |
-| 0007 | [Despliegue continuo a dev con una GitHub App con bypass](0007-despliegue-continuo-dev-app-con-bypass.md) | aceptado (parcialmente sustituido por 0008) |
+| 0007 | [Despliegue continuo a dev con una GitHub App con bypass](0007-despliegue-continuo-dev-app-con-bypass.md) | aceptado (parcialmente sustituido por 0008 y 0012) |
 | 0008 | [Un solo ambiente dev en shoplab-infra](0008-un-solo-ambiente-dev.md) | aceptado |
 | 0009 | [Observabilidad base con una sola fuente de dashboards entre dos repositorios](0009-observabilidad-base-fuente-unica-de-dashboards.md) | aceptado |
 | 0010 | [Módulo abierto `shared` para errores y correlación comunes](0010-modulo-shared-errores.md) | aceptado |
 | 0011 | [Web reactiva con persistencia JDBC](0011-web-reactiva-persistencia-jdbc.md) | aceptado |
+| 0012 | [Dev despliega solo versiones de release](0012-dev-despliega-solo-versiones-de-release.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
