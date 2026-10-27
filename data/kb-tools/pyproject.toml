@@ -1,0 +1,40 @@
+[project]
+name = "kb-tools"
+version = "0.1.0"
+description = "Builds the PDFs and validates the knowledge-base corpus of ShopLab Helpdesk (data/kb)"
+requires-python = ">=3.12"
+dependencies = [
+    "fpdf2>=2.8",
+    "markdown-it-py>=3.0",
+    "pypdf>=5.0",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.scripts]
+kb-tools = "kb_tools.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kb_tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 121
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
