@@ -53,7 +53,7 @@ public class OllamaChatAdapter implements ChatModelPort {
 
     /** Per-request options replace the defaults instead of merging, so the tools go on a copy of the defaults. */
     private ChatOptions withTools(List<ToolCallback> callbacks) {
-        ToolCallingChatOptions.Builder<?> builder = chatModel.getDefaultOptions() instanceof ToolCallingChatOptions d
+        ToolCallingChatOptions.Builder<?> builder = chatModel.getOptions() instanceof ToolCallingChatOptions d
                 ? d.mutate()
                 : ToolCallingChatOptions.builder();
         return builder.toolCallbacks(callbacks).build();

@@ -76,7 +76,7 @@ Esta historia no añade ni cambia endpoints HTTP, así que no se genera `request
 - T006: la migración inválida está en `src/test/resources/db/migration/broken/` (el migrador deduce la carpeta del
   nombre del módulo), no en `schema/broken/`.
 - T018: las herramientas se pasan sobre una copia de las opciones por defecto del modelo
-  (`ChatModel.getDefaultOptions().mutate()`); las opciones por petición no se fusionan con las por defecto en Spring AI
+  (`ChatModel.getOptions().mutate()` (`getDefaultOptions()` está marcado para eliminación y lo rechaza Qodana)); las opciones por petición no se fusionan con las por defecto en Spring AI
   2.0 y sin esa copia el modelo llega vacío.
 - T029: no hay fixtures de Kafka ni de JPA porque esas librerías no están en el classpath; la prueba comprueba que la
   lista de familias prohibidas las incluye y que Spring AI y Reactor se rechazan con el nombre de la clase.
