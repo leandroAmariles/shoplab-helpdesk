@@ -1,0 +1,19 @@
+.composer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+}
+
+.action {
+  flex: none;
+  margin-top: 4px;
+}
+
+.over {
+  color: var(--mat-sys-error);
+}

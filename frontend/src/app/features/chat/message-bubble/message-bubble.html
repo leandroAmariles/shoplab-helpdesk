@@ -1,0 +1,34 @@
+<article class="bubble" [class.user]="isUser()" [class.assistant]="!isUser()"
+         [class.failed]="message().status === 'failed'" [attr.aria-label]="authorLabel()">
+  <span class="author" aria-hidden="true">{{ authorLabel() }}</span>
+
+  @if (isUser()) {
+    <p class="text">{{ message().content }}</p>
+  } @else {
+    @if (message().content) {
+      <div class="markdown" [innerHTML]="html()"></div>
+    } @else if (message().status === 'complete') {
+      <p class="note">Sin respuesta</p>
+    }
+
+    @switch (message().status) {
+      @case ('streaming') {
+        <div class="typing" role="status" aria-label="El asistente está escribiendo">
+          <span></span><span></span><span></span>
+        </div>
+      }
+      @case ('stopped') {
+        <p class="note">Respuesta interrumpida</p>
+      }
+      @case ('failed') {
+        <div class="error" role="alert">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <span>{{ errorText() }}</span>
+          @if (canRetry()) {
+            <button mat-button type="button" (click)="retry.emit()">Reintentar</button>
+          }
+        </div>
+      }
+    }
+  }
+</article>
