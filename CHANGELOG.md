@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.4.0...v0.5.0) (2026-10-27)
+
+
+### Features
+
+* **frontend:** [LAB-13] app Angular base con layout, proxy y Material ([#68](https://github.com/leandroAmariles/shoplab-helpdesk/issues/68)) ([73f48cd](https://github.com/leandroAmariles/shoplab-helpdesk/commit/73f48cd6f699c65a1b66b81db10844bcdcaff255))
+
 ## [0.4.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.3.0...v0.4.0) (2026-10-26)
 
 
