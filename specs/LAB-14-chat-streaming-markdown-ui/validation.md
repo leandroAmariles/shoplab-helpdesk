@@ -71,5 +71,5 @@ error de servidor. Ahora 502 y 504 se mapean a `network` («No se pudo conectar 
   1440 px) y **SC-007** (30 s de la primera conversación). Su lógica está cubierta por pruebas unitarias.
 - **Backend caído en el navegador (escenario 10)**: cubierto por prueba unitaria (502 y fallo de `fetch`), no
   probado con el backend apagado.
-- **T043 — CI en el pull request**: ver el estado del PR.
-- **T044 — commit y PR**: ver el estado del PR.
+- **T043 — CI**: en verde sobre el commit del merge `3eaf775` (PR #70): `build-scan` de backend, frontend e ingest, `changes`, `pr-title`, `trivy`, `frontend` y `ci-gate`.
+- **T044 — commit y PR**: dos commits atómicos más el merge de `main` (LAB-13 llegó aplastado y chocaba); PR #70 mergeable.
