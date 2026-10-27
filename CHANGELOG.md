@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.8.0...v0.9.0) (2026-10-27)
+
+
+### Features
+
+* **retrieval:** [LAB-19] esquema retrieval con documentos y chunks vectorizados ([#78](https://github.com/leandroAmariles/shoplab-helpdesk/issues/78)) ([3368764](https://github.com/leandroAmariles/shoplab-helpdesk/commit/3368764d5f3bfde49ec45b5b7c64262830c7341e))
+
 ## [0.8.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.7.0...v0.8.0) (2026-10-27)
 
 
