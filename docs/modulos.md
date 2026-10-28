@@ -58,6 +58,13 @@ dimensiones, el modelo de embeddings que lo generó y metadatos JSONB) los crea
 módulos guarda, como mucho, el `id` de un documento o chunk. `ingest` no tiene credenciales de base de datos: entrega
 su salida a `retrieval`.
 
+**Ingesta (LAB-20).** El caso de uso `IngestDocumentServicePort` de `retrieval` envía el documento (PDF o Markdown) a
+`POST /ingest` del servicio `ingest` (`shoplab.retrieval.ingest.*`; contrato en `ingest/openapi.json`, ADR-0016) y
+guarda el resultado en una transacción: una fila en `document` por origen (la reingesta conserva su `id` y reemplaza
+sus chunks) y una por chunk en `chunk`. Los chunks se guardan **sin vector**: `V3__chunk_embedding_optional.sql` hace
+opcionales `embedding` y `embedding_model` (siempre los dos a la vez) y la historia de embeddings (LAB-21) los completa;
+mientras tanto no participan en la búsqueda, que filtra `embedding IS NOT NULL`.
+
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.

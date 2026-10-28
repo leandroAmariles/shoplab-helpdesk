@@ -3,6 +3,11 @@
 Esquema dueño: `retrieval` (módulo `retrieval`). Migración: `V2__knowledge_base_tables.sql`. Decisiones en
 [research.md](research.md).
 
+> **Cambio posterior (LAB-20):** `V3__chunk_embedding_optional.sql` relaja el FR-003 de esta historia: `chunk.embedding` y
+> `chunk.embedding_model` dejan de ser `NOT NULL` y pasan a ser «ambos presentes o ambos ausentes»
+> (`CHECK ((embedding IS NULL) = (embedding_model IS NULL))`), porque la ingesta guarda los chunks antes de que LAB-21
+> calcule sus vectores. Ver `specs/LAB-20-document-parsing-chunking/data-model.md`.
+
 ## `retrieval.document`
 
 Un archivo fuente del corpus (p. ej. una política de `data/kb`).

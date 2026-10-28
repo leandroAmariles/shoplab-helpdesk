@@ -151,6 +151,46 @@ class RetrievalSchemaIntegrationTests {
         assertThat(countChunksOf(document)).isZero();
     }
 
+    /** V3 (specs/LAB-20) relaxes LAB-19 FR-003: a chunk may wait for its vector, but never half of the pair. */
+    @Test
+    void aChunkWithoutVectorAndWithoutModelIsAccepted() {
+        UUID document = insertDocument("test/pending.md", "Pending");
+
+        insertChunk(document, 0, "waiting for its embedding", null, null, "{\"section\":\"A\"}");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT embedding IS NULL AND embedding_model IS NULL FROM retrieval.chunk WHERE document_id = ?",
+                Boolean.class, document)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"vectorWithoutModel", "modelWithoutVector"})
+    void halfOfTheEmbeddingPairIsRejected(String half) {
+        UUID document = insertDocument("test/half-" + half + ".md", "Half");
+        String embedding = "vectorWithoutModel".equals(half) ? vector(1.0) : null;
+        String model = "vectorWithoutModel".equals(half) ? null : MODEL;
+
+        assertThatThrownBy(() -> insertChunk(document, 0, "text", embedding, model, "{}"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("chunk_embedding_pair_chk");
+        assertThat(countChunksOf(document)).isZero();
+    }
+
+    @Test
+    void aChunkWithoutVectorDoesNotTakePartInTheNearestSearch() {
+        UUID document = insertDocument("test/search-pending.md", "Search pending");
+        insertChunk(document, 0, "indexed", vector(1.0));
+        insertChunk(document, 1, "pending", null, null, "{}");
+
+        List<String> nearest = jdbc.queryForList("""
+                SELECT content FROM retrieval.chunk
+                WHERE embedding IS NOT NULL AND document_id = ?
+                ORDER BY embedding <=> ?::public.vector LIMIT 5
+                """, String.class, document, vector(1.0));
+
+        assertThat(nearest).containsExactly("indexed");
+    }
+
     @Test
     void twoChunksCannotShareAPositionInTheSameDocument() {
         UUID document = insertDocument("test/position.md", "Position");

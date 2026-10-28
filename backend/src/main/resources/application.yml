@@ -23,6 +23,11 @@ server:
 shoplab:
   chat:
     max-message-length: 4000
+  retrieval:
+    ingest:
+      base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}
+      timeout: ${SHOPLAB_RETRIEVAL_INGEST_TIMEOUT:30s}
+      max-response-bytes: ${SHOPLAB_RETRIEVAL_INGEST_MAX_RESPONSE_BYTES:33554432}
 
 management:
   endpoints:

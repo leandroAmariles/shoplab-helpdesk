@@ -6,3 +6,7 @@ __pycache__/
 .env
 *.local
 .gitkeep
+.pytest_cache/
+.ruff_cache/
+.coverage
+tests/

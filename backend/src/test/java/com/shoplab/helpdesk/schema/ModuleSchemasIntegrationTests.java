@@ -223,7 +223,7 @@ class ModuleSchemasIntegrationTests {
 
             new ModuleSchemaMigrator(schemas, dataSource).migrate();
 
-            assertThat(applied).containsExactly("1", "2");
+            assertThat(applied).containsExactly("1", "2", "3");
             assertThat(historySizes("retrieval")).isEqualTo(before);
             assertThat(jdbc.queryForObject("SELECT count(*) FROM retrieval.document WHERE source = 'test/history.md'",
                     Integer.class)).isEqualTo(1);

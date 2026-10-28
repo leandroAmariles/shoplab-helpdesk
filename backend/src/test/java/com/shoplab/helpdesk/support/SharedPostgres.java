@@ -16,6 +16,8 @@ public final class SharedPostgres {
     private static final DockerImageName IMAGE = DockerImageName.parse("pgvector/pgvector:0.8.7-pg16")
             .asCompatibleSubstituteFor("postgres");
 
+    private static final int MAX_CONNECTIONS = 300;
+
     private static PostgreSQLContainer container;
 
     private SharedPostgres() {
@@ -24,6 +26,9 @@ public final class SharedPostgres {
     public static synchronized PostgreSQLContainer instance() {
         if (container == null) {
             container = new PostgreSQLContainer(IMAGE);
+            // Every cached application context keeps its own connection pool against this one server: the default
+            // limit of 100 connections runs out once the suite has enough distinct contexts.
+            container.withCommand("postgres", "-c", "max_connections=" + MAX_CONNECTIONS);
             container.start();
         }
         return container;
