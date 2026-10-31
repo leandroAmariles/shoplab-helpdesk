@@ -24,7 +24,7 @@ class ResponseCodeEnumTests {
         assertThat(ResponseCodeEnum.DOCUMENT_TOO_LARGE.getCode()).isEqualTo("SLHD_RETR_00002");
         assertThat(ResponseCodeEnum.DOCUMENT_TOO_LARGE.getHttpStatus().value()).isEqualTo(413);
         assertThat(ResponseCodeEnum.DOCUMENT_INVALID.getCode()).isEqualTo("SLHD_RETR_00003");
-        assertThat(ResponseCodeEnum.DOCUMENT_INVALID.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(ResponseCodeEnum.DOCUMENT_INVALID.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(ResponseCodeEnum.INGEST_SERVICE_UNAVAILABLE.getCode()).isEqualTo("SLHD_RETR_00004");
         assertThat(ResponseCodeEnum.INGEST_SERVICE_UNAVAILABLE.getHttpStatus())
                 .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);

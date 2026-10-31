@@ -12,7 +12,7 @@ public enum ResponseCodeEnum {
     DOCUMENT_UNSUPPORTED_FORMAT("SLHD_RETR_00001", HttpStatus.UNSUPPORTED_MEDIA_TYPE,
             "The document format is not supported: only PDF and Markdown are accepted"),
     DOCUMENT_TOO_LARGE("SLHD_RETR_00002", HttpStatus.CONTENT_TOO_LARGE, "The document is too large"),
-    DOCUMENT_INVALID("SLHD_RETR_00003", HttpStatus.UNPROCESSABLE_ENTITY,
+    DOCUMENT_INVALID("SLHD_RETR_00003", HttpStatus.UNPROCESSABLE_CONTENT,
             "The document is empty, has no extractable text, is corrupt or cannot be chunked"),
     INGEST_SERVICE_UNAVAILABLE("SLHD_RETR_00004", HttpStatus.SERVICE_UNAVAILABLE,
             "The document parsing service is not available"),

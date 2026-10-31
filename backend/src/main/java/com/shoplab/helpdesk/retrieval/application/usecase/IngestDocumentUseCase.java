@@ -41,7 +41,7 @@ public class IngestDocumentUseCase implements IngestDocumentServicePort {
                     .doOnSuccess(parsed -> metrics.recordParse(IngestOutcome.OK, elapsedSince(startedAt)))
                     .doOnError(error -> metrics.recordParse(outcomeOf(error), elapsedSince(startedAt)))
                     .flatMap(knowledgeBase::replaceDocument)
-                    .doOnSuccess(stored -> LOG.info("Document ingested: source={}, documentId={}, chunks={}",
+                    .doOnNext(stored -> LOG.info("Document ingested: source={}, documentId={}, chunks={}",
                             stored.source(), stored.documentId(), stored.chunkCount()));
         });
     }
