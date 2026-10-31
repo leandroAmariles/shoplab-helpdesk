@@ -11,6 +11,6 @@ public class HelpdeskBlockHoundIntegration implements BlockHoundIntegration {
 
     @Override
     public void applyTo(BlockHound.Builder builder) {
-        // No allowances yet: they are added only when the suite shows a justified false positive.
+        builder.allowBlockingCallsInside("org.springframework.util.MimeTypeUtils", "generateMultipartBoundary");
     }
 }

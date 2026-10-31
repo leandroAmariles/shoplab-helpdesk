@@ -1,0 +1,441 @@
+### =====================================================================================================================
+### LAB-20 · POST /ingest (servicio ingest) · casos de prueba de la lógica de negocio del spec
+###
+### Arranque:  cd ingest && uv run uvicorn app.main:app --port 8000
+###            (o: docker compose -f infra/docker-compose.yml up -d --wait ingest)
+### Valores por defecto: chunk_size = 1000, chunk_overlap = 100, documento máximo = 10 MiB.
+### Los archivos del corpus se leen de data/kb con rutas relativas a esta carpeta (specs/LAB-20-.../).
+###
+### Not covered here (no alcanzable por HTTP en esta historia; lo cubren las pruebas automáticas):
+###   - FR-011 a FR-015 y FR-017: guardado en retrieval.document / retrieval.chunk, atomicidad y reingesta
+###     (JdbcKnowledgeBaseAdapterTests, IngestDocumentFlowIntegrationTests). El endpoint de subida llega con LAB-25.
+###   - FR-018 / SC-009: ingest sin credenciales de base de datos (IngestHasNoDatabaseCredentialsTests).
+###   - SC-007: un fallo de ingest no deja filas (IngestDocumentFlowIntegrationTests).
+###   - PDF sin texto extraíble (escaneado) y PDF con contraseña: no hay un fixture binario en el repositorio; los generan
+###     los tests de ingest (tests/test_pdf_parser.py).
+###   - Markdown que no es UTF-8: el archivo no se puede escribir en texto plano aquí (tests/test_detect.py).
+### =====================================================================================================================
+
+@baseUrl = http://localhost:8000
+
+
+### FR-001, FR-002 / Scenario "Un Markdown con encabezados se trocea por sección" — expects 200 con document y chunks
+### (cada chunk con metadata.document, metadata.section = ruta de encabezados y metadata.position)
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="returns-01-return-policy.md"
+Content-Type: text/markdown
+
+< ../../data/kb/returns-01-return-policy.md
+--WebAppBoundary--
+
+> {% client.test("200 con chunks", function () {
+  client.assert(response.status === 200, "status");
+  client.assert(response.body.document.format === "markdown", "format");
+  client.assert(response.body.chunks.length > 0, "chunks");
+  client.assert(response.body.chunks[0].metadata.position === 0, "position 0");
+}); %}
+
+
+### FR-004, FR-006 / Scenario "La sección es la ruta de encabezados y un chunk no mezcla secciones" — expects 200
+### con secciones "Garantía > Alcance" y "Garantía > Plazos"; los acentos y la «ñ» llegan intactos
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="garantia.md"
+Content-Type: text/markdown
+
+# Garantía
+
+## Alcance
+La reparación del año cubre a los niños y a las señoras.
+
+## Plazos
+Treinta días desde la entrega.
+--WebAppBoundary--
+
+
+### FR-006 / Edge "Encabezados saltados" — expects 200 con la sección "A > C" (no se inventa un nivel intermedio)
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="saltado.md"
+Content-Type: text/markdown
+
+# A
+
+### C
+Texto bajo un encabezado de nivel tres.
+--WebAppBoundary--
+
+
+### FR-007, FR-008 / Scenario "Una sección más larga que el máximo se divide con solape" — expects 200 con varios
+### chunks de la misma sección, ninguno de más de 200 caracteres, y cada uno (salvo el primero) empieza con los últimos
+### 20 caracteres del anterior
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="larga.md"
+Content-Type: text/markdown
+
+# Larga
+
+Frase número 1 termina aquí. Frase número 2 termina aquí. Frase número 3 termina aquí. Frase número 4 termina aquí. Frase número 5 termina aquí. Frase número 6 termina aquí. Frase número 7 termina aquí. Frase número 8 termina aquí. Frase número 9 termina aquí. Frase número 10 termina aquí. Frase número 11 termina aquí. Frase número 12 termina aquí.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+200
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_overlap"
+
+20
+--WebAppBoundary--
+
+> {% client.test("varios chunks de a lo sumo 200 caracteres", function () {
+  client.assert(response.status === 200, "status");
+  client.assert(response.body.chunks.length > 1, "varios chunks");
+  client.assert(response.body.chunks.every(function (c) { return c.text.length <= 200; }), "tamaño máximo");
+}); %}
+
+
+### FR-008 / Scenario "Con solape 0 no hay repetición" — expects 200 sin texto repetido entre chunks consecutivos
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="larga.md"
+Content-Type: text/markdown
+
+# Larga
+
+Frase número 1 termina aquí. Frase número 2 termina aquí. Frase número 3 termina aquí. Frase número 4 termina aquí. Frase número 5 termina aquí. Frase número 6 termina aquí. Frase número 7 termina aquí. Frase número 8 termina aquí.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+200
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_overlap"
+
+0
+--WebAppBoundary--
+
+
+### US1 Scenario 5 "Un Markdown sin encabezados" — expects 200 con chunks por tamaño y section vacía ("")
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="sin-encabezados.md"
+Content-Type: text/markdown
+
+Primer párrafo sin ningún encabezado.
+
+Segundo párrafo, también sin encabezado.
+--WebAppBoundary--
+
+> {% client.test("sección vacía", function () {
+  client.assert(response.status === 200, "status");
+  client.assert(response.body.chunks[0].metadata.section === "", "section vacía");
+  client.assert(response.body.document.title === "sin-encabezados", "título = nombre sin extensión");
+}); %}
+
+
+### US1 Scenario 7 "Un encabezado sin texto debajo no genera chunk" — expects 200 solo con el chunk de "Con texto"
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="encabezado-vacio.md"
+Content-Type: text/markdown
+
+# Vacío
+
+# Con texto
+Algo de contenido bajo el segundo encabezado.
+--WebAppBoundary--
+
+
+### US1 Scenario 6 / SC-005 "El mismo documento dos veces da respuestas idénticas" — enviar esta petición dos veces y
+### comparar las respuestas: expects 200 y el mismo cuerpo exacto
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="repetido.md"
+Content-Type: text/markdown
+
+# Repetido
+Contenido que no cambia entre envíos.
+--WebAppBoundary--
+
+
+### Edge "Nombre del archivo con ruta" — expects 200 con document.name = "politica.md" (solo el nombre base)
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="carpeta/politica.md"
+Content-Type: text/markdown
+
+# Política
+Texto de la política.
+--WebAppBoundary--
+
+> {% client.test("nombre base", function () {
+  client.assert(response.body.document.name === "politica.md", "nombre base");
+}); %}
+
+
+### FR-009 · límite inferior · chunk_size = 100 (el mínimo) — expects 200
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="limite.md"
+Content-Type: text/markdown
+
+# Límite
+Un texto corto para comprobar el tamaño mínimo de chunk permitido por el servicio.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+100
+--WebAppBoundary--
+
+
+### FR-009 · justo fuera del límite inferior · chunk_size = 99 — expects 422 INVALID_CHUNKING_CONFIG
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="limite.md"
+Content-Type: text/markdown
+
+# Límite
+Un texto corto.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+99
+--WebAppBoundary--
+
+> {% client.test("422 INVALID_CHUNKING_CONFIG", function () {
+  client.assert(response.status === 422, "status");
+  client.assert(response.body.code === "INVALID_CHUNKING_CONFIG", "code");
+}); %}
+
+
+### FR-009 · justo dentro · chunk_overlap = chunk_size - 1 (199 de 200) — expects 200
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="solape-maximo.md"
+Content-Type: text/markdown
+
+# Solape máximo
+Frase uno termina aquí. Frase dos termina aquí. Frase tres termina aquí. Frase cuatro termina aquí. Frase cinco.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+200
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_overlap"
+
+199
+--WebAppBoundary--
+
+
+### FR-009 · justo fuera · chunk_overlap = chunk_size — expects 422 INVALID_CHUNKING_CONFIG
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="solape.md"
+Content-Type: text/markdown
+
+# Solape
+Texto.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+200
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_overlap"
+
+200
+--WebAppBoundary--
+
+> {% client.test("422", function () { client.assert(response.status === 422, "status"); }); %}
+
+
+### FR-009 · solape negativo · chunk_overlap = -1 — expects 422 INVALID_CHUNKING_CONFIG
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="solape.md"
+Content-Type: text/markdown
+
+# Solape
+Texto.
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_overlap"
+
+-1
+--WebAppBoundary--
+
+
+### FR-005 / US2 Scenario 1 "Un PDF con texto se devuelve con los mismos metadatos" — expects 200, format "pdf",
+### secciones por los títulos del PDF
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="returns-01-return-policy.pdf"
+Content-Type: application/pdf
+
+< ../../data/kb/returns-01-return-policy.pdf
+--WebAppBoundary--
+
+> {% client.test("PDF troceado", function () {
+  client.assert(response.status === 200, "status");
+  client.assert(response.body.document.format === "pdf", "format");
+  client.assert(response.body.chunks.length > 0, "chunks");
+}); %}
+
+
+### US2 Scenario 5 "Un PDF corrupto" — expects 422 INVALID_DOCUMENT
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="roto.pdf"
+Content-Type: application/pdf
+
+%PDF-1.7
+esto está muy roto y no tiene estructura de PDF
+--WebAppBoundary--
+
+> {% client.test("422 INVALID_DOCUMENT", function () {
+  client.assert(response.status === 422, "status");
+  client.assert(response.body.code === "INVALID_DOCUMENT", "code");
+}); %}
+
+
+### FR-010 / Edge "Extensión válida con contenido que no corresponde" · .pdf que no es un PDF — expects 422 INVALID_DOCUMENT
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="falso.pdf"
+Content-Type: application/pdf
+
+Esto es texto plano con extensión pdf.
+--WebAppBoundary--
+
+
+### FR-010 / Edge "Formato no soportado" — expects 415 UNSUPPORTED_FORMAT
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="notas.txt"
+Content-Type: text/plain
+
+Contenido de un formato que no se admite.
+--WebAppBoundary--
+
+> {% client.test("415 UNSUPPORTED_FORMAT", function () {
+  client.assert(response.status === 415, "status");
+  client.assert(response.body.code === "UNSUPPORTED_FORMAT", "code");
+}); %}
+
+
+### FR-010 / Edge "Documento vacío o solo espacios" — expects 422 EMPTY_DOCUMENT
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="vacio.md"
+Content-Type: text/markdown
+
+
+--WebAppBoundary--
+
+> {% client.test("422 EMPTY_DOCUMENT", function () {
+  client.assert(response.status === 422, "status");
+  client.assert(response.body.code === "EMPTY_DOCUMENT", "code");
+}); %}
+
+
+### FR-010 / Edge "Solo encabezados, sin texto" — expects 422 EMPTY_DOCUMENT (no se devuelve una lista vacía)
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="solo-titulos.md"
+Content-Type: text/markdown
+
+# Uno
+
+## Dos
+--WebAppBoundary--
+
+
+### FR-010 / Edge "Falta la parte file" — expects 422 INVALID_DOCUMENT
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="chunk_size"
+
+200
+--WebAppBoundary--
+
+
+### FR-009, FR-010 / Edge "Documento demasiado grande" · límite fuera · requiere arrancar ingest con
+### INGEST_MAX_DOCUMENT_BYTES=2048 (returns-01-return-policy.md pesa más de 2 KiB) — expects 413 DOCUMENT_TOO_LARGE
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="returns-01-return-policy.md"
+Content-Type: text/markdown
+
+< ../../data/kb/returns-01-return-policy.md
+--WebAppBoundary--
+
+
+### FR-009 / Edge "Documento justo dentro del límite" · con INGEST_MAX_DOCUMENT_BYTES=2048 un documento de menos de
+### 2 KiB — expects 200
+POST {{baseUrl}}/ingest
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="pequeno.md"
+Content-Type: text/markdown
+
+# Pequeño
+Un documento que cabe de sobra en el límite.
+--WebAppBoundary--
+
+
+### FR-003 · Sonda de salud — expects 200 {"status":"ok"}
+GET {{baseUrl}}/health
+
+> {% client.test("ok", function () { client.assert(response.body.status === "ok", "status"); }); %}
+
+
+### D-14 · Métricas Prometheus tras las peticiones anteriores — expects 200 con ingest_requests_total{outcome=...} y
+### ingest_duration_seconds, sin datos de los documentos
+GET {{baseUrl}}/metrics
+
+
+### FR-016 · Contrato OpenAPI que publica el servicio (debe coincidir con ingest/openapi.json) — expects 200
+GET {{baseUrl}}/openapi.json

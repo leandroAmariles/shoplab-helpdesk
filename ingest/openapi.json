@@ -1,0 +1,292 @@
+{
+  "components": {
+    "schemas": {
+      "Body_ingestDocument": {
+        "properties": {
+          "chunk_overlap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces INGEST_CHUNK_OVERLAP for this request only; it must be smaller than chunk_size.",
+            "title": "Chunk Overlap"
+          },
+          "chunk_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces INGEST_CHUNK_SIZE for this request only (at least 100).",
+            "title": "Chunk Size"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PDF (.pdf) or UTF-8 Markdown (.md); its base file name is the reference of the document.",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_ingestDocument",
+        "type": "object"
+      },
+      "Chunk": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/ChunkMetadata"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "metadata"
+        ],
+        "title": "Chunk",
+        "type": "object"
+      },
+      "ChunkMetadata": {
+        "properties": {
+          "document": {
+            "description": "Name of the source document",
+            "title": "Document",
+            "type": "string"
+          },
+          "position": {
+            "description": "Consecutive position in the document, from 0",
+            "minimum": 0.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "section": {
+            "description": "Chain of headings separated by ' > '; empty when there is none",
+            "title": "Section",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "section",
+          "position"
+        ],
+        "title": "ChunkMetadata",
+        "type": "object"
+      },
+      "DocumentInfo": {
+        "properties": {
+          "format": {
+            "enum": [
+              "markdown",
+              "pdf"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "format"
+        ],
+        "title": "DocumentInfo",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "enum": [
+              "UNSUPPORTED_FORMAT",
+              "DOCUMENT_TOO_LARGE",
+              "EMPTY_DOCUMENT",
+              "NO_EXTRACTABLE_TEXT",
+              "INVALID_DOCUMENT",
+              "INVALID_CHUNKING_CONFIG",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "IngestResponse": {
+        "examples": [
+          {
+            "chunks": [
+              {
+                "metadata": {
+                  "document": "returns-01-return-policy.md",
+                  "position": 0,
+                  "section": "Política de devoluciones > Plazos"
+                },
+                "text": "Plazos\n\nTienes 30 días para devolver un producto."
+              }
+            ],
+            "document": {
+              "format": "markdown",
+              "name": "returns-01-return-policy.md",
+              "title": "Política de devoluciones"
+            }
+          }
+        ],
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/Chunk"
+            },
+            "minItems": 1,
+            "title": "Chunks",
+            "type": "array"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DocumentInfo"
+          }
+        },
+        "required": [
+          "document",
+          "chunks"
+        ],
+        "title": "IngestResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Parses a document (PDF or Markdown) and returns its chunks with metadata. It stores nothing.",
+    "title": "ShopLab Helpdesk Ingest",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness and readiness probe"
+      }
+    },
+    "/ingest": {
+      "post": {
+        "operationId": "ingestDocument",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ingestDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The document is larger than INGEST_MAX_DOCUMENT_BYTES"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only .pdf and .md documents are supported"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Empty, corrupt or protected document, no extractable text, or an invalid chunking configuration"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure"
+          }
+        },
+        "summary": "Parses a document and returns its chunks with metadata; nothing is stored"
+      }
+    }
+  }
+}

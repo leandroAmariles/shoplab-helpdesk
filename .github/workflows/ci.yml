@@ -35,10 +35,14 @@ jobs:
             backend:
               - 'backend/**'
               - 'docs/modulos/**'
+              # The retrieval client is checked against the contract of the ingest service (specs/LAB-20).
+              - 'ingest/openapi.json'
             frontend:
               - 'frontend/**'
             ingest:
               - 'ingest/**'
+              # The corpus tests of ingest chunk every document of the knowledge base.
+              - 'data/kb/**'
             eval:
               - 'eval/**'
             olist:

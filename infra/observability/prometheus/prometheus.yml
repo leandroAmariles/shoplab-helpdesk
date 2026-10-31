@@ -10,3 +10,9 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ["host.docker.internal:8080"]
+
+  # El servicio ingest corre en compose (LAB-20): se llega por el nombre del servicio en la red del proyecto.
+  - job_name: ingest
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["ingest:8000"]
