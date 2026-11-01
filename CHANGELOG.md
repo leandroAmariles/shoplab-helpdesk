@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.10.0...v0.11.0) (2026-11-01)
+
+
+### Features
+
+* **retrieval:** [LAB-21] embeddings calculados solo en retrieval ([#92](https://github.com/leandroAmariles/shoplab-helpdesk/issues/92)) ([ea9ea67](https://github.com/leandroAmariles/shoplab-helpdesk/commit/ea9ea67d6d162099692e380bff8a6dd708dbaf66))
+
 ## [0.10.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.9.0...v0.10.0) (2026-10-31)
 
 
