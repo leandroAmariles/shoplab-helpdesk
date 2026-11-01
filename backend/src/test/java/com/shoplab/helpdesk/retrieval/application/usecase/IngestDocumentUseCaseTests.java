@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.shoplab.helpdesk.retrieval.application.port.out.DocumentParserPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.IngestMetricsPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.KnowledgeBasePort;
+import com.shoplab.helpdesk.retrieval.domain.model.DocumentIngestedEvent;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestedDocument;
 import com.shoplab.helpdesk.retrieval.domain.model.ParsedChunk;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.context.ApplicationEventPublisher;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -41,7 +43,8 @@ class IngestDocumentUseCaseTests {
     private final DocumentParserPort parser = mock(DocumentParserPort.class);
     private final KnowledgeBasePort knowledgeBase = mock(KnowledgeBasePort.class);
     private final IngestMetricsPort metrics = mock(IngestMetricsPort.class);
-    private final IngestDocumentUseCase useCase = new IngestDocumentUseCase(parser, knowledgeBase, metrics);
+    private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+    private final IngestDocumentUseCase useCase = new IngestDocumentUseCase(parser, knowledgeBase, metrics, events);
 
     @Test
     void parsesTheDocumentAndStoresWhatTheParserReturned() {
@@ -53,6 +56,28 @@ class IngestDocumentUseCaseTests {
                 .verifyComplete();
 
         verify(metrics).recordParse(eq(IngestOutcome.OK), any(Duration.class));
+    }
+
+    @Test
+    void announcesTheStoredDocumentSoItsVectorsCanBeComputed() {
+        when(parser.parse("politica.md", CONTENT)).thenReturn(Mono.just(PARSED));
+        when(knowledgeBase.replaceDocument(PARSED)).thenReturn(Mono.just(STORED));
+
+        useCase.ingest(new IngestDocumentCommand("politica.md", CONTENT)).block();
+
+        verify(events).publishEvent(new DocumentIngestedEvent(STORED.documentId(), "politica.md"));
+    }
+
+    @Test
+    void announcesNothingWhenTheDocumentWasNotStored() {
+        when(parser.parse("politica.md", CONTENT)).thenReturn(Mono.just(PARSED));
+        when(knowledgeBase.replaceDocument(PARSED)).thenReturn(Mono.error(
+                ExceptionUtil.technical(ResponseCodeEnum.DATABASE_UNAVAILABLE, new IllegalStateException())));
+
+        StepVerifier.create(useCase.ingest(new IngestDocumentCommand("politica.md", CONTENT)))
+                .expectError(TechnicalException.class).verify();
+
+        verifyNoInteractions(events);
     }
 
     @Test
