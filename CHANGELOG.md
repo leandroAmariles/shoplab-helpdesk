@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.9.0...v0.10.0) (2026-10-31)
+
+
+### Features
+
+* **ingest:** [LAB-20] parseo y chunking de documentos ([#80](https://github.com/leandroAmariles/shoplab-helpdesk/issues/80)) ([3304478](https://github.com/leandroAmariles/shoplab-helpdesk/commit/33044781ff07dda932432f982319f88bbec19c5c))
+
 ## [0.9.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.8.0...v0.9.0) (2026-10-27)
 
 
