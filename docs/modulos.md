@@ -75,6 +75,11 @@ llama a `ReindexDocumentsServicePort.reindex(force)`; no se vuelve a llamar a `i
 calcula el embedding de la consulta y busca solo entre chunks con vector del modelo configurado. Ajustes en
 `shoplab.retrieval.embedding.*` (`batch-size`, `search-limit`, `auto-index`, `reindex-on-startup`).
 
+**Consumo desde `chat` (LAB-22, ADR-0018).** `retrieval.api` publica `KnowledgeSearchApi` (y `KnowledgeChunk`), la búsqueda
+por similitud entre los chunks del modelo configurado. `chat` es el único consumidor: la llama desde su adaptador de salida
+`KnowledgeSearchAdapter` y la traduce a su propio `ContextFragment`; no accede a las tablas ni a clases internas de
+`retrieval`.
+
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.

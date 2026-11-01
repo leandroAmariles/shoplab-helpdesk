@@ -42,6 +42,7 @@ Si el fallo ocurre antes del primer evento no hay flujo: la respuesta es JSON `{
 | 400 | `SLHD_CHAT_00001` | Mensaje ausente, vacío, solo espacios o de más de 4000 caracteres |
 | 400 | `SLHD_GENE_00002` | Cuerpo que no es JSON válido |
 | 503 | `SLHD_CHAT_00002` | Ollama no responde o el modelo no existe |
+| 503 | `SLHD_CHAT_00004` | No se pudo recuperar el contexto de la base de conocimiento (servicio de embeddings o base de datos caídos). El bot no responde sin contexto |
 | 500 | `SLHD_GENE_00001` | Error inesperado |
 
 Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce `text/event-stream`. `curl` sin
@@ -55,14 +56,24 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Dirección de Ollama |
 | `OLLAMA_KEEP_ALIVE` | `30m` | Tiempo que Ollama mantiene el modelo cargado tras la última petición. Con el valor por defecto de Ollama (5 min) una pausa larga descarga el modelo y la siguiente petición tarda decenas de segundos |
 | `shoplab.chat.max-message-length` | `4000` | Longitud máxima del mensaje, en caracteres |
-| `shoplab.chat.system-prompt` | texto breve de mesa de ayuda | Prompt de sistema fijo |
+| `SHOPLAB_CHAT_SYSTEM_PROMPT` / `shoplab.chat.system-prompt` | prompt fundamentado en español | Prompt de sistema; vacío usa el de por defecto (responder solo con el contexto, reconocer lo que no sabe) |
+| `SHOPLAB_CHAT_RAG_TOP_K` / `shoplab.chat.rag.top-k` | `4` | Fragmentos que se piden a la búsqueda por pregunta. Rango 1–20; fuera de rango el arranque falla |
+| `SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD` / `shoplab.chat.rag.similarity-threshold` | `0.6` | Similitud mínima (0–1) de un fragmento; `0` no descarta nada. Con `0` la búsqueda entrega siempre `top-k` fragmentos aunque no se parezcan a la pregunta y el bot responde con contexto de otro tema |
+| `SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS` / `shoplab.chat.rag.max-context-characters` | `8000` | Máximo de caracteres de contexto que recibe el modelo (mínimo 500); los fragmentos van completos o no van |
+| `shoplab.chat.rag.context-template` / `empty-context-template` | plantillas en español | Mensaje de usuario con y sin contexto; llevan los marcadores `{query}` y `{context}` (la segunda, solo `{query}`) |
+| `OLLAMA_NUM_CTX` | `8192` | Ventana de contexto que se pide a Ollama (`num-ctx`); con la de por defecto el servidor podría recortar el contexto |
 
 ## Observabilidad
 
 - Cada petición lleva un `X-Request-Id` (el que envíe el cliente si es válido, o uno generado); se devuelve en la
   respuesta y aparece en los logs. Los logs **no** incluyen el texto del cliente.
-- `/actuator/prometheus` publica `shoplab_chat_first_token_seconds` (tiempo hasta el primer token, con histograma) y
-  `shoplab_chat_response_seconds` con la etiqueta `outcome` = `completed`, `error` o `cancelled`.
+- `/actuator/prometheus` publica `shoplab_chat_first_token_seconds` (tiempo hasta el primer token, con histograma, que
+  incluye la recuperación del contexto) y `shoplab_chat_response_seconds` con la etiqueta `outcome` = `completed`, `error`
+  o `cancelled`.
+- `shoplab_chat_context_retrieval_seconds` (etiqueta `outcome` = `with_context`, `no_context` o `failed`) mide la
+  recuperación y selección del contexto, y `shoplab_chat_context_fragments` resume los fragmentos entregados al modelo por
+  pregunta. Un `no_context` frecuente indica una base sin indexar, un modelo de embeddings cambiado sin reindexar o un
+  umbral demasiado alto.
 - Cerrar la conexión del cliente cancela la generación en el modelo.
 
 ## Detrás de un proxy o ingreso
@@ -70,7 +81,17 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 La respuesta lleva `Cache-Control: no-cache` y `X-Accel-Buffering: no`. Si el proxy intermedio acumula la respuesta
 (compresión o buffering), el streaming se pierde: desactiva ambos para la ruta `/api/chat`.
 
+## Respuestas con los documentos (RAG, LAB-22)
+
+Antes de generar cada respuesta, el chat busca en la base de conocimiento los fragmentos más cercanos a la pregunta
+(`retrieval`, por su API publicada), descarta los que no alcanzan la similitud mínima o repiten texto, se queda con los que
+caben en el presupuesto de caracteres y se los entrega al modelo como contexto. El prompt de sistema le obliga a responder
+**solo** con ese contexto y a reconocer cuando no contiene la respuesta; si no se encontró nada, el modelo recibe una
+plantilla que le dice que no hay información (sigue contestando saludos y cortesías con normalidad). El contrato de eventos
+SSE no cambia. Decisiones: [ADR-0018](adr/0018-recuperacion-de-contexto-en-chat.md); especificación en
+`specs/LAB-22-rag-augmented-answers/`.
+
 ## Alcance actual
 
-Cada petición es independiente: no hay historial ni identificador de conversación, ni recuperación de
-conocimiento (RAG), ni autenticación. Llegan en historias posteriores.
+Cada petición es independiente: no hay historial ni identificador de conversación, ni autenticación. Las respuestas
+todavía no citan las fuentes. Llegan en historias posteriores.

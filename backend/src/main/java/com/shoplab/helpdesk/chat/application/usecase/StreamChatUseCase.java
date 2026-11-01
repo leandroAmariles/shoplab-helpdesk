@@ -3,18 +3,23 @@ package com.shoplab.helpdesk.chat.application.usecase;
 import com.shoplab.helpdesk.chat.application.port.in.StreamChatServicePort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
+import com.shoplab.helpdesk.chat.application.port.out.KnowledgeContextPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
+import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
@@ -29,13 +34,21 @@ public class StreamChatUseCase implements StreamChatServicePort {
     private static final Logger LOG = LoggerFactory.getLogger(StreamChatUseCase.class);
 
     private final ChatModelPort chatModel;
+    private final KnowledgeContextPort knowledgeContext;
+    private final ContextSelector contextSelector;
     private final ChatMetricsPort metrics;
     private final ChatProperties properties;
+    private final RagProperties ragProperties;
 
-    public StreamChatUseCase(ChatModelPort chatModel, ChatMetricsPort metrics, ChatProperties properties) {
+    public StreamChatUseCase(ChatModelPort chatModel, KnowledgeContextPort knowledgeContext,
+            ContextSelector contextSelector, ChatMetricsPort metrics, ChatProperties properties,
+            RagProperties ragProperties) {
         this.chatModel = chatModel;
+        this.knowledgeContext = knowledgeContext;
+        this.contextSelector = contextSelector;
         this.metrics = metrics;
         this.properties = properties;
+        this.ragProperties = ragProperties;
     }
 
     @Override
@@ -48,7 +61,8 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicInteger fragments = new AtomicInteger();
             AtomicBoolean firstTokenSeen = new AtomicBoolean();
             AtomicBoolean responseRecorded = new AtomicBoolean();
-            return chatModel.streamAnswer(command.message())
+            return retrieveContext(command)
+                    .flatMapMany(context -> chatModel.streamAnswer(command.message(), context))
                     .doOnNext(content -> {
                         if (firstTokenSeen.compareAndSet(false, true)) {
                             metrics.recordFirstToken(elapsedSince(startedAt));
@@ -74,6 +88,38 @@ public class StreamChatUseCase implements StreamChatServicePort {
             LOG.warn("Chat request rejected: requestId={}, code={}", command.requestId(),
                     ResponseCodeEnum.INVALID_CHAT_MESSAGE.getCode());
             throw ExceptionUtil.business(ResponseCodeEnum.INVALID_CHAT_MESSAGE);
+        }
+    }
+
+    /**
+     * The fragments the answer may rely on. A failure is recorded here and travels on as the flux's error: the answer
+     * is never generated as if the context had been there.
+     */
+    private Mono<List<ContextFragment>> retrieveContext(StreamChatCommand command) {
+        long startedAt = System.nanoTime();
+        AtomicInteger candidatesFound = new AtomicInteger();
+        return knowledgeContext.retrieve(command.message(), ragProperties.topK())
+                .doOnNext(candidates -> candidatesFound.set(candidates.size()))
+                .map(candidates -> contextSelector.select(candidates, ragProperties.similarityThreshold(),
+                        ragProperties.maxContextCharacters()))
+                .doOnNext(selected -> recordContext(command, selected, candidatesFound.get(), startedAt))
+                .doOnError(error -> {
+                    metrics.recordContext(ContextOutcome.FAILED, 0, elapsedSince(startedAt));
+                    LOG.warn("Context retrieval failed: requestId={}", command.requestId(), error);
+                });
+    }
+
+    private void recordContext(StreamChatCommand command, List<ContextFragment> selected, int candidates,
+            long startedAt) {
+        ContextOutcome outcome = selected.isEmpty() ? ContextOutcome.NO_CONTEXT : ContextOutcome.WITH_CONTEXT;
+        metrics.recordContext(outcome, selected.size(), elapsedSince(startedAt));
+        double bestScore = selected.stream().mapToDouble(ContextFragment::score).max().orElse(0.0);
+        if (selected.isEmpty()) {
+            LOG.warn("No context for the answer: requestId={}, candidates={}, outcome={}", command.requestId(),
+                    candidates, outcome.tagValue());
+        } else {
+            LOG.info("Context retrieved: requestId={}, candidates={}, delivered={}, bestScore={}, outcome={}",
+                    command.requestId(), candidates, selected.size(), bestScore, outcome.tagValue());
         }
     }
 

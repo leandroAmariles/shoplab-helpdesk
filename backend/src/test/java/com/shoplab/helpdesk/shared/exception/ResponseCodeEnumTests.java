@@ -17,6 +17,14 @@ class ResponseCodeEnumTests {
     }
 
     @Test
+    void theContextUnavailableCodeIsAServiceUnavailableOfTheChatModule() {
+        assertThat(ResponseCodeEnum.CHAT_CONTEXT_UNAVAILABLE.getCode()).isEqualTo("SLHD_CHAT_00004");
+        assertThat(ResponseCodeEnum.CHAT_CONTEXT_UNAVAILABLE.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(ResponseCodeEnum.CHAT_CONTEXT_UNAVAILABLE.getDefaultMessage())
+                .isEqualTo("The knowledge base is not available");
+    }
+
+    @Test
     void theRetrievalIngestionCodesCarryTheirHttpStatus() {
         assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getCode()).isEqualTo("SLHD_RETR_00001");
         assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getHttpStatus())

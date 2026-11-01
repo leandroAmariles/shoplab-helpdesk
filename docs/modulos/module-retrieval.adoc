@@ -2,4 +2,6 @@
 |===
 |Base package
 |`com.shoplab.helpdesk.retrieval`
+|Spring components
+|* `c.s.h.r.api.KnowledgeSearchApi` (via `c.s.h.r.infrastructure.in.api.KnowledgeSearchApiAdapter` -- Serves the module's published search with the vector search use case.)
 |===

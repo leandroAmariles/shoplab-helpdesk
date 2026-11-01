@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.chat;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -13,6 +14,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /** Test doubles of Ollama's streaming {@code POST /api/chat}: newline-delimited JSON, one line per fragment. */
@@ -50,10 +52,13 @@ public final class OllamaStubs {
         return aResponse().withStatus(200).withHeader("Content-Type", NDJSON).withBody(body);
     }
 
-    /** Matches the chat call whose user message is exactly {@code userMessage}. */
+    /**
+     * Matches the chat call whose question is exactly {@code userMessage}. The user message is no longer the bare
+     * question (LAB-22): it comes from the context or empty-context template, which end with the question line.
+     */
     public static MappingBuilder chatFor(String userMessage) {
-        return post(urlEqualTo("/api/chat")).withRequestBody(
-                matchingJsonPath("$.messages[?(@.role == 'user' && @.content == '" + userMessage + "')]"));
+        return post(urlEqualTo("/api/chat")).withRequestBody(matchingJsonPath("$.messages[1].content",
+                matching("(?s).*Pregunta del cliente: " + Pattern.quote(userMessage) + "\\s.*")));
     }
 
     public static void stubAnyChat(WireMockExtension ollama, ResponseDefinitionBuilder response) {

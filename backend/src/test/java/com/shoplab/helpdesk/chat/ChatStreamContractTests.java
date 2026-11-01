@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.shoplab.helpdesk.chat.support.EmptyKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.net.URI;
@@ -20,6 +21,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -31,6 +33,7 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @PostgresTest
+@Import(EmptyKnowledgeContextConfig.class)
 class ChatStreamContractTests {
 
     private static final Path GOLDEN = Path.of("src/test/resources/chat/golden-stream.txt");
