@@ -72,6 +72,42 @@ class JdbcKnowledgeBaseAdapterTests {
                 "2|Texto 2 con acentos: año, niños.|test/politica.md|Politica > Costos|2");
     }
 
+    private String state(UUID documentId) {
+        return jdbc.queryForObject("""
+                SELECT index_status || '|' || coalesce(index_error, '-') || '|' || (indexed_at IS NULL)
+                FROM retrieval.document WHERE id = ?
+                """, String.class, documentId);
+    }
+
+    @Test
+    void aStoredDocumentIsPendingUntilItsVectorsAreComputed() {
+        IngestedDocument stored = store(document("test/state.md", "State", DocumentFormat.MARKDOWN, "A", "B"));
+
+        assertThat(state(stored.documentId())).isEqualTo("PENDING|-|true");
+    }
+
+    @Test
+    void ingestingAgainTurnsAnIndexedOrFailedDocumentBackToPendingAndChangesItsVersion() {
+        IngestedDocument stored = store(document("test/again.md", "Again", DocumentFormat.MARKDOWN, "A"));
+        java.time.OffsetDateTime before = jdbc.queryForObject(
+                "SELECT updated_at FROM retrieval.document WHERE id = ?", java.time.OffsetDateTime.class,
+                stored.documentId());
+        jdbc.update("UPDATE retrieval.document SET index_status = 'INDEXED', indexed_at = now() WHERE id = ?",
+                stored.documentId());
+
+        store(document("test/again.md", "Again", DocumentFormat.MARKDOWN, "A", "B"));
+
+        assertThat(state(stored.documentId())).isEqualTo("PENDING|-|true");
+        assertThat(jdbc.queryForObject("SELECT updated_at > ? FROM retrieval.document WHERE id = ?", Boolean.class,
+                before, stored.documentId())).isTrue();
+        jdbc.update("UPDATE retrieval.document SET index_status = 'ERROR', index_error = 'down', indexed_at = NULL "
+                + "WHERE id = ?", stored.documentId());
+
+        store(document("test/again.md", "Again", DocumentFormat.MARKDOWN, "A"));
+
+        assertThat(state(stored.documentId())).isEqualTo("PENDING|-|true");
+    }
+
     @Test
     void theChunksWaitForTheirVector() {
         IngestedDocument stored = store(document("test/pending.pdf", "Pending", DocumentFormat.PDF, "", ""));

@@ -163,6 +163,80 @@ class RetrievalSchemaIntegrationTests {
                 Boolean.class, document)).isTrue();
     }
 
+    /** V4 (specs/LAB-21): a document is pending until its vectors are computed. */
+    @Test
+    void aNewDocumentIsPendingWithoutErrorNorIndexingDate() {
+        UUID document = insertDocument("test/state-new.md", "New");
+
+        assertThat(jdbc.queryForObject("SELECT index_status FROM retrieval.document WHERE id = ?", String.class,
+                document)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("""
+                SELECT index_error IS NULL AND indexed_at IS NULL FROM retrieval.document WHERE id = ?
+                """, Boolean.class, document)).isTrue();
+    }
+
+    @Test
+    void aDocumentCanBeIndexedOrFailedWhenTheStateIsComplete() {
+        UUID indexed = insertDocument("test/state-indexed.md", "Indexed");
+        UUID failed = insertDocument("test/state-failed.md", "Failed");
+
+        jdbc.update("UPDATE retrieval.document SET index_status = 'INDEXED', indexed_at = now() WHERE id = ?",
+                indexed);
+        jdbc.update("UPDATE retrieval.document SET index_status = 'ERROR', index_error = 'model down' WHERE id = ?",
+                failed);
+
+        assertThat(jdbc.queryForObject("SELECT index_status FROM retrieval.document WHERE id = ?", String.class,
+                indexed)).isEqualTo("INDEXED");
+        assertThat(jdbc.queryForObject("SELECT index_error FROM retrieval.document WHERE id = ?", String.class,
+                failed)).isEqualTo("model down");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "index_status = 'DONE'",
+        "index_status = 'ERROR'",
+        "index_status = 'INDEXED'",
+        "index_status = 'PENDING', index_error = 'late'",
+        "index_status = 'PENDING', indexed_at = now()",
+        "index_status = 'ERROR', index_error = 'x', indexed_at = now()",
+        "index_status = 'INDEXED', indexed_at = now(), index_error = 'x'"})
+    void anIncoherentStateIsRejected(String assignment) {
+        UUID document = insertDocument("test/state-bad.md", "Bad");
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE retrieval.document SET " + assignment + " WHERE id = ?",
+                document)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(jdbc.queryForObject("SELECT index_status FROM retrieval.document WHERE id = ?", String.class,
+                document)).isEqualTo("PENDING");
+    }
+
+    /** The UPDATE of V4 runs on the test documents only: indexed when every chunk has its vector, else pending. */
+    @Test
+    void theBackfillOfV4IndexesOnlyTheDocumentsWhoseChunksAllHaveTheirVector() throws Exception {
+        UUID complete = insertDocument("test/backfill-complete.md", "Complete");
+        insertChunk(complete, 0, "one", vector(1.0));
+        insertChunk(complete, 1, "two", vector(0.0, 1.0));
+        UUID partial = insertDocument("test/backfill-partial.md", "Partial");
+        insertChunk(partial, 0, "one", vector(1.0));
+        insertChunk(partial, 1, "waiting", null, null, "{}");
+        UUID empty = insertDocument("test/backfill-empty.md", "Empty");
+        String migration = new String(new org.springframework.core.io.ClassPathResource(
+                "db/migration/retrieval/V4__document_index_status.sql").getInputStream().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        String backfill = migration.substring(migration.indexOf("UPDATE document d"))
+                .replace("UPDATE document d", "UPDATE retrieval.document d")
+                .replace(" chunk c", " retrieval.chunk c")
+                .replace(";", " AND d.source LIKE 'test/backfill-%'");
+
+        jdbc.execute(backfill);
+
+        assertThat(jdbc.queryForObject("SELECT index_status || '|' || (indexed_at IS NOT NULL) "
+                + "FROM retrieval.document WHERE id = ?", String.class, complete)).isEqualTo("INDEXED|true");
+        assertThat(jdbc.queryForObject("SELECT index_status FROM retrieval.document WHERE id = ?", String.class,
+                partial)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT index_status FROM retrieval.document WHERE id = ?", String.class,
+                empty)).isEqualTo("PENDING");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"vectorWithoutModel", "modelWithoutVector"})
     void halfOfTheEmbeddingPairIsRejected(String half) {
