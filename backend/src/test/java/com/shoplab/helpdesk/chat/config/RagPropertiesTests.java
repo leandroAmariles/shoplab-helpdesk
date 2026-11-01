@@ -93,6 +93,20 @@ class RagPropertiesTests {
     }
 
     @Test
+    void aContextTemplateWithOtherBracedNamesFailsAtStartUpNamingTheProperty() {
+        assertThatThrownBy(() -> new RagProperties(null, null, null, "{query} {context} {unknown}", null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("shoplab.chat.rag.context-template cannot be rendered");
+    }
+
+    @Test
+    void aContextTemplateWithTheTwoMarkersAndPlainTextIsAccepted() {
+        RagProperties properties = new RagProperties(null, null, null, "Q: {query}\nC: {context}", null, null, null);
+
+        assertThat(properties.contextTemplate()).isEqualTo("Q: {query}\nC: {context}");
+    }
+
+    @Test
     void theEmptyContextTemplateNeedsTheQueryMarker() {
         assertThatThrownBy(() -> new RagProperties(null, null, null, null, "no marker here", null, null))
                 .isInstanceOf(IllegalArgumentException.class)

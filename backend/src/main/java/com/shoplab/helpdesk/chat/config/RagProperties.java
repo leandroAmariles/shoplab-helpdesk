@@ -2,6 +2,8 @@ package com.shoplab.helpdesk.chat.config;
 
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
+import java.util.Map;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -26,6 +28,20 @@ public record RagProperties(Integer topK, Double similarityThreshold, Integer ma
     private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.6;
     private static final int DEFAULT_MAX_CONTEXT_CHARACTERS = 8000;
     private static final int MIN_CONTEXT_CHARACTERS = 500;
+
+    /**
+     * The context template is rendered by Spring AI, which reads every {@code {name}} as a variable. Rendering it once
+     * here makes a template with other braces fail at start-up instead of on every request that has context.
+     */
+    private static void requireRenderable(String template) {
+        try {
+            new PromptTemplate(template).render(Map.of("query", "question", "context", "fragments"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("shoplab.chat.rag.context-template cannot be rendered: only "
+                    + ChatConstants.QUERY_PLACEHOLDER + " and " + ChatConstants.CONTEXT_PLACEHOLDER
+                    + " may appear between braces (" + e.getMessage() + ")", e);
+        }
+    }
 
     public RagProperties {
         topK = topK == null ? DEFAULT_TOP_K : topK;
@@ -55,6 +71,7 @@ public record RagProperties(Integer topK, Double similarityThreshold, Integer ma
             throw new IllegalArgumentException("shoplab.chat.rag.context-template must contain "
                     + ChatConstants.QUERY_PLACEHOLDER + " and " + ChatConstants.CONTEXT_PLACEHOLDER);
         }
+        requireRenderable(contextTemplate);
         if (!emptyContextTemplate.contains(ChatConstants.QUERY_PLACEHOLDER)) {
             throw new IllegalArgumentException("shoplab.chat.rag.empty-context-template must contain "
                     + ChatConstants.QUERY_PLACEHOLDER);
