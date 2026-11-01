@@ -43,7 +43,9 @@ public final class SharedPostgres {
             TestPropertyValues.of(
                     "spring.datasource.url=" + postgres.getJdbcUrl(),
                     "spring.datasource.username=" + postgres.getUsername(),
-                    "spring.datasource.password=" + postgres.getPassword()).applyTo(context);
+                    "spring.datasource.password=" + postgres.getPassword(),
+                    // No test wants documents indexed behind its back by the real model (specs/LAB-21).
+                    "shoplab.retrieval.embedding.auto-index=false").applyTo(context);
         }
     }
 }
