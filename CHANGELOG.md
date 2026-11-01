@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.11.0...v0.12.0) (2026-11-01)
+
+
+### Features
+
+* **chat:** [LAB-22] respuestas aumentadas con los documentos (RAG) ([#94](https://github.com/leandroAmariles/shoplab-helpdesk/issues/94)) ([851a66f](https://github.com/leandroAmariles/shoplab-helpdesk/commit/851a66fdbc93c29c309c184695726c8384abe5b0))
+
 ## [0.11.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.10.0...v0.11.0) (2026-11-01)
 
 
