@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.15.0}
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.15.1}
     profiles: [observability]
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
