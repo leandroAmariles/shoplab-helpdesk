@@ -58,7 +58,7 @@ public class DocumentEmbedder {
             return Mono.defer(() -> store.findDocuments(scope, model)
                             .concatMap(document -> process(document, model))
                             .reduce(IndexingSummary.empty(), IndexingSummary::plus))
-                    .doOnSuccess(summary -> LOG.info("Embeddings run finished: scope={}, model={}, documents={}, "
+                    .doOnNext(summary -> LOG.info("Embeddings run finished: scope={}, model={}, documents={}, "
                             + "chunks={}, failed={}", scope, model, summary.documents(), summary.chunks(),
                             summary.failed().size()))
                     .doFinally(signal -> guard.release());

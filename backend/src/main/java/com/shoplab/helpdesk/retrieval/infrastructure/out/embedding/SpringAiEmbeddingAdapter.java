@@ -36,7 +36,7 @@ public class SpringAiEmbeddingAdapter implements EmbeddingPort {
         if (texts.isEmpty()) {
             return Mono.just(List.of());
         }
-        return BlockingCalls.<List<float[]>>call(() -> model.embed(texts))
+        return BlockingCalls.call(() -> model.embed(texts))
                 .map(vectors -> validated(vectors, texts.size()))
                 .onErrorMap(error -> !(error instanceof HelpdeskException), SpringAiEmbeddingAdapter::translate);
     }

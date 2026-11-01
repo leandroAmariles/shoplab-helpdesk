@@ -5,6 +5,7 @@ import com.shoplab.helpdesk.retrieval.application.port.in.ReindexDocumentsServic
 import com.shoplab.helpdesk.retrieval.config.EmbeddingProperties;
 import com.shoplab.helpdesk.retrieval.domain.model.IndexingSummary;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.ReindexMode;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -36,7 +37,7 @@ public class IndexOnStartupRunner implements ApplicationRunner {
     }
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(@NonNull ApplicationArguments args) {
         ReindexMode mode = properties.reindexMode();
         run(mode).subscribe(
                 summary -> LOG.info("Start-up indexing finished: mode={}, documents={}, chunks={}, failed={}",
