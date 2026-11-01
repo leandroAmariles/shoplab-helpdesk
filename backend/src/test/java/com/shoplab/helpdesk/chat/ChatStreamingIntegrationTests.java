@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.shoplab.helpdesk.chat.support.EmptyKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,6 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import reactor.test.StepVerifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -34,8 +36,10 @@ import org.springframework.test.context.DynamicPropertySource;
  * The chat endpoint end to end (specs/LAB-12): a real HTTP client against the running backend, with Ollama
  * simulated by WireMock so the suite is deterministic.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
+@Import(EmptyKnowledgeContextConfig.class)
 class ChatStreamingIntegrationTests {
 
     @RegisterExtension

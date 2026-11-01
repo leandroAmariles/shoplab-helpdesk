@@ -9,6 +9,8 @@ public enum ResponseCodeEnum {
     CHAT_MODEL_UNAVAILABLE("SLHD_CHAT_00002", HttpStatus.SERVICE_UNAVAILABLE, "The chat model is not available"),
     CHAT_STREAM_FAILED("SLHD_CHAT_00003", HttpStatus.INTERNAL_SERVER_ERROR,
             "The chat model failed while generating the answer"),
+    CHAT_CONTEXT_UNAVAILABLE("SLHD_CHAT_00004", HttpStatus.SERVICE_UNAVAILABLE,
+            "The knowledge base is not available"),
     DOCUMENT_UNSUPPORTED_FORMAT("SLHD_RETR_00001", HttpStatus.UNSUPPORTED_MEDIA_TYPE,
             "The document format is not supported: only PDF and Markdown are accepted"),
     DOCUMENT_TOO_LARGE("SLHD_RETR_00002", HttpStatus.CONTENT_TOO_LARGE, "The document is too large"),

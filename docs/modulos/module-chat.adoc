@@ -2,4 +2,6 @@
 |===
 |Base package
 |`com.shoplab.helpdesk.chat`
+|Bean references
+|* `c.s.h.r.api.KnowledgeSearchApi` (in Retrieval) -- The search that `retrieval` publishes to other modules; they never reach its tables or internals.
 |===

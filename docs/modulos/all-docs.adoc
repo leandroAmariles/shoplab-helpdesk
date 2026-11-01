@@ -9,10 +9,6 @@ include::module-shared.adoc[]
 plantuml::module-catalog.puml[,,format=svg]
 include::module-catalog.adoc[]
 
-== Chat
-plantuml::module-chat.puml[,,format=svg]
-include::module-chat.adoc[]
-
 == Orders
 plantuml::module-orders.puml[,,format=svg]
 include::module-orders.adoc[]
@@ -24,4 +20,8 @@ include::module-retrieval.adoc[]
 == Tickets
 plantuml::module-tickets.puml[,,format=svg]
 include::module-tickets.adoc[]
+
+== Chat
+plantuml::module-chat.puml[,,format=svg]
+include::module-chat.adoc[]
 

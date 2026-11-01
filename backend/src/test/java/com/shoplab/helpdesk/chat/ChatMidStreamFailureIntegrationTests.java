@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.infrastructure.out.ollama.OllamaChatAdapter;
+import com.shoplab.helpdesk.chat.support.EmptyKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.util.List;
@@ -11,14 +12,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import reactor.test.StepVerifier;
 
 /** Ollama answers two fragments and then drops the connection (specs/LAB-12, US3 scenario 4). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
+@Import(EmptyKnowledgeContextConfig.class)
 class ChatMidStreamFailureIntegrationTests {
 
     private static final RawOllamaServer OLLAMA = new RawOllamaServer(List.of(
@@ -44,7 +48,7 @@ class ChatMidStreamFailureIntegrationTests {
 
     @Test
     void theAdapterSignalsAModelExceptionAfterTheFragmentsAlreadyEmitted() {
-        StepVerifier.create(adapter.streamAnswer("Hola"))
+        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of()))
                 .expectNext("uno ", "dos")
                 .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class))
                 .verify();

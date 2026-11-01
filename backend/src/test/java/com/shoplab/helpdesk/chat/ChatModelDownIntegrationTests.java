@@ -2,16 +2,20 @@ package com.shoplab.helpdesk.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.support.EmptyKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /** Ollama is not running at all: the connection is refused before any answer starts (specs/LAB-12, US3). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
+@Import(EmptyKnowledgeContextConfig.class)
 class ChatModelDownIntegrationTests {
 
     private static final String UNAVAILABLE_BODY = "\"code\":\"SLHD_CHAT_00002\"";
