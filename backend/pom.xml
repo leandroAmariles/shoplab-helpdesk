@@ -23,7 +23,7 @@
         <jacoco.minimum.coverage>0.80</jacoco.minimum.coverage>
         <checkstyle.version>14.3.0</checkstyle.version>
         <pmd.version>3.28.0</pmd.version>
-        <blockhound.version>1.0.11.RELEASE</blockhound.version>
+        <blockhound.version>1.0.18.RELEASE</blockhound.version>
         <argLine/>
     </properties>
 
