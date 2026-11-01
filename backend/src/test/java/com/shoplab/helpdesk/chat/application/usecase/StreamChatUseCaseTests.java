@@ -429,7 +429,7 @@ class StreamChatUseCaseTests {
 
         verifyNoInteractions(model);
         verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
-        verify(metrics).recordFirstToken(any(Duration.class));
+        verify(metrics, never()).recordFirstToken(any(Duration.class));
         verify(metrics).recordResponse(eq(ChatOutcome.COMPLETED), any(Duration.class));
     }
 
@@ -457,6 +457,7 @@ class StreamChatUseCaseTests {
                 .verifyComplete();
 
         verify(model).streamAnswer("q", candidates);
+        verify(metrics).recordFirstToken(any(Duration.class));
     }
 
     @Test

@@ -62,10 +62,16 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicInteger fragments = new AtomicInteger();
             AtomicBoolean firstTokenSeen = new AtomicBoolean();
             AtomicBoolean responseRecorded = new AtomicBoolean();
+            AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
             return retrieveContext(command)
-                    .flatMapMany(context -> answer(command, context))
+                    .flatMapMany(context -> {
+                        fixedMessageAnswer.set(answersWithFixedMessage(context));
+                        return answer(command, context);
+                    })
                     .doOnNext(content -> {
-                        if (firstTokenSeen.compareAndSet(false, true)) {
+                        // The configured message is not a model token: timing it would mix ~0 ms replies into the
+                        // model's first-token latency. It is still counted by the context and response metrics.
+                        if (firstTokenSeen.compareAndSet(false, true) && !fixedMessageAnswer.get()) {
                             metrics.recordFirstToken(elapsedSince(startedAt));
                         }
                     })
@@ -85,10 +91,14 @@ public class StreamChatUseCase implements StreamChatServicePort {
 
     /** Without useful context the answer may be the configured message, and then the model is not called at all. */
     private Flux<String> answer(StreamChatCommand command, List<ContextFragment> context) {
-        if (context.isEmpty() && ragProperties.noContextMode() == NoContextMode.FIXED_MESSAGE) {
+        if (answersWithFixedMessage(context)) {
             return Flux.just(ragProperties.noContextMessage());
         }
         return chatModel.streamAnswer(command.message(), context);
+    }
+
+    private boolean answersWithFixedMessage(List<ContextFragment> context) {
+        return context.isEmpty() && ragProperties.noContextMode() == NoContextMode.FIXED_MESSAGE;
     }
 
     private void validate(StreamChatCommand command) {
