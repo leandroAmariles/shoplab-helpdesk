@@ -2,6 +2,7 @@ package com.shoplab.helpdesk.chat.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -481,5 +482,51 @@ class StreamChatUseCaseTests {
         StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("q")))
                 .expectError(KnowledgeRetrievalException.class)
                 .verify();
+    }
+
+    // --- review fixes ---
+
+    @Test
+    void aSearchThatCompletesWithoutAValueIsTreatedAsNoContext() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.empty());
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+
+        StepVerifier.create(newUseCase(model).stream(command("q")))
+                .expectNext(new TokenEvent("ok"), new DoneEvent(1))
+                .verifyComplete();
+
+        verify(model).streamAnswer("q", List.of());
+        verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
+    }
+
+    @Test
+    void aFailureOfTheSelectorIsNotCountedAsAFailedRetrieval() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        ContextSelector selector = mock(ContextSelector.class);
+        when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of(fragment("Text.", 0.9))));
+        when(selector.select(any(), anyDouble(), anyInt())).thenThrow(new IllegalStateException("bug"));
+        StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector, metrics,
+                new ChatProperties(MAX_LENGTH, "system"), rag(null, null));
+
+        StepVerifier.create(useCase.stream(command("q"))).expectError(IllegalStateException.class).verify();
+
+        verify(metrics, never()).recordContext(eq(ContextOutcome.FAILED), anyInt(), any(Duration.class));
+        verify(metrics).recordResponse(eq(ChatOutcome.ERROR), any(Duration.class));
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void aRetrievalFailureIsLoggedOnceWithItsRequestId(CapturedOutput output) {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve(any(), anyInt()))
+                .thenReturn(Mono.error(new KnowledgeRetrievalException(new IllegalStateException("db down"))));
+
+        StepVerifier.create(newUseCase(model).stream(new StreamChatCommand("q", "req-55")))
+                .expectError(KnowledgeRetrievalException.class)
+                .verify();
+
+        assertThat(output.getOut().split("Chat answer failed", -1)).hasSize(2);
+        assertThat(output.getOut()).contains("req-55").doesNotContain("Context retrieval failed");
     }
 }

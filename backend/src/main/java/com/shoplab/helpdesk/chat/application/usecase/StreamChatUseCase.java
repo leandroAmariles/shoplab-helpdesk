@@ -101,21 +101,19 @@ public class StreamChatUseCase implements StreamChatServicePort {
     }
 
     /**
-     * The fragments the answer may rely on. A failure is recorded here and travels on as the flux's error: the answer
-     * is never generated as if the context had been there.
+     * The fragments the answer may rely on. A failure of the search is counted here and travels on as the flux's
+     * error, which {@code failed} logs once: the answer is never generated as if the context had been there.
      */
     private Mono<List<ContextFragment>> retrieveContext(StreamChatCommand command) {
         long startedAt = System.nanoTime();
         AtomicInteger candidatesFound = new AtomicInteger();
         return knowledgeContext.retrieve(command.message(), ragProperties.topK())
+                .defaultIfEmpty(List.of())
+                .doOnError(error -> metrics.recordContext(ContextOutcome.FAILED, 0, elapsedSince(startedAt)))
                 .doOnNext(candidates -> candidatesFound.set(candidates.size()))
                 .map(candidates -> contextSelector.select(candidates, ragProperties.similarityThreshold(),
                         ragProperties.maxContextCharacters()))
-                .doOnNext(selected -> recordContext(command, selected, candidatesFound.get(), startedAt))
-                .doOnError(error -> {
-                    metrics.recordContext(ContextOutcome.FAILED, 0, elapsedSince(startedAt));
-                    LOG.warn("Context retrieval failed: requestId={}", command.requestId(), error);
-                });
+                .doOnNext(selected -> recordContext(command, selected, candidatesFound.get(), startedAt));
     }
 
     private void recordContext(StreamChatCommand command, List<ContextFragment> selected, int candidates,

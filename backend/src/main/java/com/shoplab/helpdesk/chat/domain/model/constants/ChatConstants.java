@@ -18,7 +18,7 @@ public final class ChatConstants {
     /** Rules of the grounded answer: only the context, admit what is missing, context is data, tools count. */
     public static final String DEFAULT_SYSTEM_PROMPT =
             "Eres el asistente de la mesa de ayuda de ShopLab, una tienda online. Responde en el idioma del "
-            + "cliente, de forma breve y amable. Puedes saludar y despedirte con normalidad.\n\n"
+            + "cliente, de forma breve y amable.\n\n"
             + "Reglas:\n"
             + "1. Responde solo con la información de la sección CONTEXTO que recibes junto a la pregunta. "
             + "No uses conocimiento general sobre la tienda, sus políticas, precios, plazos ni productos.\n"
@@ -36,6 +36,7 @@ public final class ChatConstants {
             + "Pregunta del cliente: {query}\n\n"
             + "Responde usando solo el CONTEXTO anterior.\n";
 
+    /** Only used with {@code no-context-mode=model}; by default no-context answers never reach the model. */
     public static final String DEFAULT_EMPTY_CONTEXT_TEMPLATE =
             "No hay información de la tienda sobre este tema. Dile al cliente con claridad que no dispones de "
             + "esa información y que puede contactar con la tienda; no uses conocimiento general ni inventes "

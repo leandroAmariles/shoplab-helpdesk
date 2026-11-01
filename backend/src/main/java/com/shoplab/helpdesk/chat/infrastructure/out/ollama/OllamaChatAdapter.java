@@ -55,10 +55,9 @@ public class OllamaChatAdapter implements ChatModelPort {
         this.chatModel = chatModel;
         this.systemPrompt = properties.systemPrompt();
         this.emptyContextTemplate = ragProperties.emptyContextTemplate();
+        // Only used with context: its own empty-context path would drop the question, see userText.
         this.augmenter = ContextualQueryAugmenter.builder()
                 .promptTemplate(new PromptTemplate(ragProperties.contextTemplate()))
-                .emptyContextPromptTemplate(new PromptTemplate(ragProperties.emptyContextTemplate()))
-                .allowEmptyContext(false)
                 .documentFormatter(OllamaChatAdapter::formatDocuments)
                 .build();
         this.tools = tools;
