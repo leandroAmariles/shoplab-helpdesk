@@ -18,7 +18,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Stores documents and chunks in the {@code retrieval} schema, which only this module reads and writes. The chunks
- * are stored without vector: the embeddings story completes them. Blocking JDBC runs through {@link BlockingCalls}.
+ * are stored without vector and the document is left pending: the embeddings step (specs/LAB-21) completes them.
+ * Blocking JDBC runs through {@link BlockingCalls}.
  */
 @Component
 @DependsOn("moduleSchemaMigrator")
@@ -30,7 +31,8 @@ public class JdbcKnowledgeBaseAdapter implements KnowledgeBasePort {
             INSERT INTO retrieval.document (source, title, metadata)
             VALUES (?, ?, jsonb_build_object('format', ?::text))
             ON CONFLICT (source) DO UPDATE
-            SET title = EXCLUDED.title, metadata = EXCLUDED.metadata, updated_at = now()
+            SET title = EXCLUDED.title, metadata = EXCLUDED.metadata, updated_at = now(),
+                index_status = 'PENDING', index_error = NULL, indexed_at = NULL
             RETURNING id
             """;
     private static final String DELETE_CHUNKS = "DELETE FROM retrieval.chunk WHERE document_id = ?";
