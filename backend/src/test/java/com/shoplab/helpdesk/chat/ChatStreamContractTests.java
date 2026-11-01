@@ -31,7 +31,8 @@ import org.springframework.test.context.DynamicPropertySource;
  * recorded golden file. With {@code -Dgolden.record=true} the test records the golden file and the metrics baseline
  * instead of comparing, which is how both were captured before the migration to WebFlux.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
 @Import(EmptyKnowledgeContextConfig.class)
 class ChatStreamContractTests {

@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.chat.config;
 
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
+import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -12,10 +13,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxContextCharacters most characters of context handed to the model (at least 500)
  * @param contextTemplate      user message with context; it has the query and context markers
  * @param emptyContextTemplate user message when there is no context; it has the query marker
+ * @param noContextMode        what to do without useful context: {@code FIXED_MESSAGE} (default) or {@code MODEL}
+ * @param noContextMessage     the answer in {@code FIXED_MESSAGE} mode
  */
 @ConfigurationProperties("shoplab.chat.rag")
 public record RagProperties(Integer topK, Double similarityThreshold, Integer maxContextCharacters,
-        String contextTemplate, String emptyContextTemplate) {
+        String contextTemplate, String emptyContextTemplate, NoContextMode noContextMode, String noContextMessage) {
 
     public static final int MAX_TOP_K = 20;
 
@@ -32,6 +35,9 @@ public record RagProperties(Integer topK, Double similarityThreshold, Integer ma
                 ? ChatConstants.DEFAULT_CONTEXT_TEMPLATE : contextTemplate;
         emptyContextTemplate = emptyContextTemplate == null || emptyContextTemplate.isBlank()
                 ? ChatConstants.DEFAULT_EMPTY_CONTEXT_TEMPLATE : emptyContextTemplate;
+        noContextMode = noContextMode == null ? NoContextMode.FIXED_MESSAGE : noContextMode;
+        noContextMessage = noContextMessage == null || noContextMessage.isBlank()
+                ? ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE : noContextMessage;
         if (topK < 1 || topK > MAX_TOP_K) {
             throw new IllegalArgumentException("shoplab.chat.rag.top-k must be between 1 and " + MAX_TOP_K
                     + " but was " + topK);

@@ -33,6 +33,8 @@ shoplab:
       top-k: ${SHOPLAB_CHAT_RAG_TOP_K:4}
       similarity-threshold: ${SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD:0.6}
       max-context-characters: ${SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS:8000}
+      # fixed-message answers a configured text without calling the model; model lets the model answer by itself.
+      no-context-mode: ${SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE:fixed-message}
   retrieval:
     ingest:
       base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}

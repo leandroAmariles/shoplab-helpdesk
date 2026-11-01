@@ -49,3 +49,9 @@ hallazgos).
 
 SC-001 y SC-004 se cumplen. SC-002 se cumple solo con un umbral de similitud mayor que 0 (con el valor anterior, 0, falla
 2 de 5). Decisión tomada: el valor por defecto del umbral pasó a 0,6. Pendiente: subir a 8Gi el límite de memoria del pod de Ollama (rama `fix/LAB-22-ollama-memory-limit` de `shoplab-infra`).
+
+## Seguimiento: mensaje fijo sin contexto
+
+Tras estos resultados se añadió `shoplab.chat.rag.no-context-mode` (`fixed-message` por defecto). Sin fragmentos
+útiles el caso de uso responde `no-context-message` sin llamar al modelo, lo que cierra los fallos de contexto vacío
+observados (la pregunta mixta contestada con «París», el poema, el saludo con datos de privacidad con umbral 0). Cubierto por pruebas automáticas; no se repitió la tanda manual con Ollama.

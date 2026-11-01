@@ -59,7 +59,13 @@ exponer el dominio de `retrieval` y mantiene la costura para extraer el módulo 
 El presupuesto y el umbral se aplican en el caso de uso, no en el adaptador de `retrieval`, porque son política del chat
 (la búsqueda de LAB-21 solo conoce `limit`).
 
-## D-4 — Contexto vacío: responder con el modelo, no cortocircuitar
+## D-4 — Contexto vacío: mensaje fijo por defecto (revisada tras la validación manual)
+
+**Revisión**: la decisión original (llamar al modelo con la plantilla de contexto vacío) falló en la validación manual
+(`validation.md`): el modelo de 3 B contestó con conocimiento general («La capital de Francia es París»). Ahora el modo por
+defecto es `fixed-message`: el caso de uso responde `shoplab.chat.rag.no-context-message` sin llamar al modelo; `no-context-mode=model` conserva el comportamiento original. Lo que sigue es el razonamiento original.
+
+### Decisión original: responder con el modelo, no cortocircuitar
 
 **Decisión**: sin fragmentos útiles se llama igualmente al modelo con la plantilla de contexto vacío («no hay información
 sobre el tema; dilo y no uses conocimiento general»). No se devuelve una cadena fija.

@@ -12,7 +12,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /** Ollama is not running at all: the connection is refused before any answer starts (specs/LAB-12, US3). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
 @Import(EmptyKnowledgeContextConfig.class)
 class ChatModelDownIntegrationTests {

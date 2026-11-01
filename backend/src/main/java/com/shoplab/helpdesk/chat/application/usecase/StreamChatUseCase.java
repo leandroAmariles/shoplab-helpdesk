@@ -15,6 +15,7 @@ import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -62,7 +63,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean firstTokenSeen = new AtomicBoolean();
             AtomicBoolean responseRecorded = new AtomicBoolean();
             return retrieveContext(command)
-                    .flatMapMany(context -> chatModel.streamAnswer(command.message(), context))
+                    .flatMapMany(context -> answer(command, context))
                     .doOnNext(content -> {
                         if (firstTokenSeen.compareAndSet(false, true)) {
                             metrics.recordFirstToken(elapsedSince(startedAt));
@@ -80,6 +81,14 @@ public class StreamChatUseCase implements StreamChatServicePort {
                         return failed(command, error, firstTokenSeen.get());
                     });
         });
+    }
+
+    /** Without useful context the answer may be the configured message, and then the model is not called at all. */
+    private Flux<String> answer(StreamChatCommand command, List<ContextFragment> context) {
+        if (context.isEmpty() && ragProperties.noContextMode() == NoContextMode.FIXED_MESSAGE) {
+            return Flux.just(ragProperties.noContextMessage());
+        }
+        return chatModel.streamAnswer(command.message(), context);
     }
 
     private void validate(StreamChatCommand command) {

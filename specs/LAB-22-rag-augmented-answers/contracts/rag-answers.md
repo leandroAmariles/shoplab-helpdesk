@@ -61,6 +61,8 @@ shoplab:
       top-k: ${SHOPLAB_CHAT_RAG_TOP_K:4}                  # 1..20
       similarity-threshold: ${SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD:0.6}   # 0..1, 0 = desactivado
       max-context-characters: ${SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS:8000}   # >= 500
+      no-context-mode: ${SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE:fixed-message}     # fixed-message | model
+      # no-context-message: texto que se responde en modo fixed-message (hay uno por defecto en español)
 spring:
   ai:
     ollama:

@@ -19,7 +19,9 @@ import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.exception.KnowledgeRetrievalException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
+import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
@@ -58,7 +60,12 @@ class StreamChatUseCaseTests {
     }
 
     private StreamChatUseCase newUseCase(ChatModelPort model) {
-        return newUseCase(model, new RagProperties(null, null, null, null, null));
+        return newUseCase(model, rag(null, null));
+    }
+
+    /** The generic tests are about streaming, so without context the model still answers (mode MODEL). */
+    private static RagProperties rag(Integer topK, Double threshold) {
+        return new RagProperties(topK, threshold, null, null, null, NoContextMode.MODEL, null);
     }
 
     private StreamChatUseCase newUseCase(ChatModelPort model, RagProperties rag) {
@@ -328,7 +335,7 @@ class StreamChatUseCaseTests {
         ContextFragment close = fragment("Close fragment.", 0.8);
         when(knowledge.retrieve("q", 2)).thenReturn(Mono.just(List.of(close, fragment("Far fragment.", 0.3))));
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
-        StreamChatUseCase useCase = newUseCase(model, new RagProperties(2, 0.6, null, null, null));
+        StreamChatUseCase useCase = newUseCase(model, rag(2, 0.6));
 
         StepVerifier.create(useCase.stream(command("q"))).expectNextCount(2).verifyComplete();
 
@@ -354,7 +361,7 @@ class StreamChatUseCaseTests {
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("Weak match.", 0.2))));
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
 
-        StepVerifier.create(newUseCase(model, new RagProperties(null, 0.6, null, null, null)).stream(command("q")))
+        StepVerifier.create(newUseCase(model, rag(null, 0.6)).stream(command("q")))
                 .expectNextCount(2)
                 .verifyComplete();
 
@@ -403,5 +410,76 @@ class StreamChatUseCaseTests {
 
         assertThat(output.getOut()).contains("req-9").doesNotContain("secret-customer-question")
                 .doesNotContain("secret-policy-text");
+    }
+
+    // --- fixed message without context ---
+
+    private static RagProperties fixedMessage(String message) {
+        return new RagProperties(null, null, null, null, null, NoContextMode.FIXED_MESSAGE, message);
+    }
+
+    @Test
+    void withoutContextAndTheFixedMessageModeTheAnswerIsTheMessageAndTheModelIsNotCalled() {
+        ChatModelPort model = mock(ChatModelPort.class);
+
+        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("¿Y esto?")))
+                .expectNext(new TokenEvent("Sin información."), new DoneEvent(1))
+                .verifyComplete();
+
+        verifyNoInteractions(model);
+        verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
+        verify(metrics).recordFirstToken(any(Duration.class));
+        verify(metrics).recordResponse(eq(ChatOutcome.COMPLETED), any(Duration.class));
+    }
+
+    @Test
+    void theFixedMessageModeIsTheDefaultAndItsMessageHasADefault() {
+        ChatModelPort model = mock(ChatModelPort.class);
+
+        StepVerifier.create(newUseCase(model, new RagProperties(null, null, null, null, null, null, null))
+                        .stream(command("¿Y esto?")))
+                .expectNext(new TokenEvent(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE), new DoneEvent(1))
+                .verifyComplete();
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void withContextTheModelAnswersEvenInFixedMessageMode() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        List<ContextFragment> candidates = List.of(fragment("Seven days to return.", 0.9));
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(candidates));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+
+        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("q")))
+                .expectNext(new TokenEvent("ok"), new DoneEvent(1))
+                .verifyComplete();
+
+        verify(model).streamAnswer("q", candidates);
+    }
+
+    @Test
+    void whenTheThresholdLeavesNothingTheFixedMessageIsTheAnswer() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("Weak match.", 0.2))));
+        RagProperties properties = new RagProperties(null, 0.6, null, null, null, NoContextMode.FIXED_MESSAGE,
+                "Sin información.");
+
+        StepVerifier.create(newUseCase(model, properties).stream(command("q")))
+                .expectNext(new TokenEvent("Sin información."), new DoneEvent(1))
+                .verifyComplete();
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void aRetrievalFailureIsStillAnErrorAndNeverTheFixedMessage() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve(any(), anyInt()))
+                .thenReturn(Mono.error(new KnowledgeRetrievalException(new IllegalStateException("db down"))));
+
+        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("q")))
+                .expectError(KnowledgeRetrievalException.class)
+                .verify();
     }
 }

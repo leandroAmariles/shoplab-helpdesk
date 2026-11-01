@@ -12,6 +12,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.retrieval.application.port.in.IndexDocumentsServicePort;
 import com.shoplab.helpdesk.retrieval.application.port.in.IngestDocumentServicePort;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
@@ -150,31 +151,28 @@ class RagAnsweringIntegrationTests {
     }
 
     @Test
-    void withNothingIndexedTheModelIsToldThereIsNoInformation() {
+    void withNothingIndexedTheAnswerIsTheFixedMessageAndOllamaIsNotCalled() {
         ChatTestClient.Result result = client().post("{\"message\":\"¿Venden el modelo X999?\"}");
 
         assertThat(result.status()).isEqualTo(200);
+        assertThat(result.text()).isEqualTo(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE);
         assertThat(result.last().name()).isEqualTo("done");
-        ollama.verify(exactly(1), postRequestedFor(urlEqualTo("/api/chat"))
-                .withRequestBody(matchingJsonPath("$.messages[1].content",
-                        containing("No hay información de la tienda sobre este tema")))
-                .withRequestBody(matchingJsonPath("$.messages[1].content",
-                        containing("Pregunta del cliente: ¿Venden el modelo X999?"))));
+        assertThat(result.last().data()).isEqualTo("{\"fragments\":1}");
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
         assertThat(prometheus()).containsPattern(
                 "shoplab_chat_context_retrieval_seconds_count\\{[^}]*outcome=\"no_context\"[^}]*} [1-9]");
     }
 
     @Test
-    void chunksIndexedWithAnotherModelAreNotSentToTheModelOfThisRequest() {
+    void chunksIndexedWithAnotherModelAreNotUsedAndTheAnswerIsTheFixedMessage() {
         indexTheDocument();
         embedding.useModel("another-rag-model");
 
         ChatTestClient.Result result = client().post(QUESTION_JSON);
 
         assertThat(result.status()).isEqualTo(200);
-        ollama.verify(exactly(1), postRequestedFor(urlEqualTo("/api/chat"))
-                .withRequestBody(matchingJsonPath("$.messages[1].content",
-                        containing("No hay información de la tienda sobre este tema"))));
+        assertThat(result.text()).isEqualTo(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE);
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.shoplab.helpdesk.chat.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -22,6 +23,15 @@ class RagConfigurationBindingTests {
             assertThat(rag.similarityThreshold()).isEqualTo(0.6);
             assertThat(rag.maxContextCharacters()).isEqualTo(8000);
         });
+    }
+
+    @Test
+    void theNoContextModeIsBoundFromItsKebabCaseName() {
+        runner.withPropertyValues("shoplab.chat.rag.no-context-mode=model").run(context ->
+                assertThat(context.getBean(RagProperties.class).noContextMode())
+                        .isEqualTo(NoContextMode.MODEL));
+        runner.run(context -> assertThat(context.getBean(RagProperties.class).noContextMode())
+                .isEqualTo(NoContextMode.FIXED_MESSAGE));
     }
 
     @Test

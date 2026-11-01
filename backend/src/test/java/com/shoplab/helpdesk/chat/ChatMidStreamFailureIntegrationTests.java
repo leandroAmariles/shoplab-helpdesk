@@ -19,7 +19,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import reactor.test.StepVerifier;
 
 /** Ollama answers two fragments and then drops the connection (specs/LAB-12, US3 scenario 4). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
 @Import(EmptyKnowledgeContextConfig.class)
 class ChatMidStreamFailureIntegrationTests {

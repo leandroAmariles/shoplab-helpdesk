@@ -36,7 +36,8 @@ import org.springframework.test.context.DynamicPropertySource;
  * The chat endpoint end to end (specs/LAB-12): a real HTTP client against the running backend, with Ollama
  * simulated by WireMock so the suite is deterministic.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "shoplab.chat.rag.no-context-mode=model")
 @PostgresTest
 @Import(EmptyKnowledgeContextConfig.class)
 class ChatStreamingIntegrationTests {

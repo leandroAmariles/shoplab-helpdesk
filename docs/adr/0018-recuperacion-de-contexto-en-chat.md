@@ -27,8 +27,7 @@ no usarlo aquí:
   texto fijo; aplica la plantilla de contexto vacío conservando la pregunta.
 - **`retrieval` publica su búsqueda** en `retrieval.api` (`KnowledgeSearchApi`, `KnowledgeChunk`); `chat` la consume en un
   adaptador de salida y la traduce a su propio `ContextFragment`. Ningún módulo toca tablas ajenas (ADR-0015).
-- **Sin contexto útil el modelo se llama igual**, con la plantilla de contexto vacío, para conservar saludos y cortesías y un
-  solo camino de streaming. No se cortocircuita con una cadena fija.
+- **Sin contexto útil, mensaje fijo por defecto.** El caso de uso responde `no-context-message` como un único fragmento (`token` + `done`) sin llamar al modelo; así «no tengo esa información» es determinista y no depende de que un modelo de 3 B obedezca el prompt. `no-context-mode=model` conserva el camino anterior (el modelo recibe la plantilla de contexto vacío, útil para saludos y cortesías). La validación manual mostró que con el modelo local el contexto vacío a veces se contesta con conocimiento general.
 - **Un fallo de la recuperación es un error propio** (`SLHD_CHAT_00004`, 503, distinto de `SLHD_CHAT_00002`) antes del
   primer token; nunca se responde sin contexto como si lo hubiera.
 - **Todo es configuración** bajo `shoplab.chat.rag.*`: `top-k` (1–20, por defecto 4), `similarity-threshold` (0–1, por
@@ -41,8 +40,7 @@ no usarlo aquí:
 - Se cumple la intención del criterio (recuperar con top-k configurable y obligar a responder solo con el contexto) sin
   el advisor literal; es una desviación declarada en el PR.
 - Dependencia nueva: `spring-ai-rag`, gestionada por el BOM de Spring AI.
-- La calidad de «no tengo esa información» depende del modelo local (`llama3.2:3b`) y se comprueba a mano hasta que
-  exista la evaluación automática de F2 (RAGAS / DeepEval); si no basta se estudiará un modo de mensaje fijo.
+- Con el mensaje fijo, un saludo o una cortesía sin contexto recibe también ese mensaje (el umbral 0,6 deja sin contexto a «Hola»). Si se prefiere que el modelo los conteste, `no-context-mode=model`. Cuando existan herramientas de agente (tool calling) habrá que revisar este modo, porque sin contexto no se llamaría al modelo y no podría usarlas.
 - Las respuestas fundamentadas todavía no citan sus fuentes (principio V de la constitución). Los fragmentos conservan
   documento, sección y posición para que la historia de citas no toque la recuperación; mientras tanto la funcionalidad solo
   se despliega en `dev`.

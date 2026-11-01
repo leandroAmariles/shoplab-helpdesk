@@ -134,8 +134,9 @@ respuesta inventada) y que el fallo queda registrado; con búsqueda normal, comp
   llamar al modelo de embeddings.
 - **Pregunta ambigua o muy corta** («devolución»): se recupera igualmente; si el contexto es insuficiente el bot lo dice o
   pide aclarar, no inventa.
-- **Pregunta fuera de tema o conversación de cortesía** («hola», «gracias»): el bot puede saludar y despedirse, pero
-  cualquier dato de la tienda que afirme debe proceder del contexto; ante un saludo no se rechaza la conversación.
+- **Pregunta fuera de tema o conversación de cortesía** («hola», «gracias»): cualquier dato de la tienda que el bot afirme
+  debe proceder del contexto. Con el modo por defecto (mensaje fijo) un saludo sin contexto recibe el mensaje de «no hay
+  información»; con `no-context-mode=model` el modelo puede saludar y despedirse con normalidad.
 - **Contexto que supera la ventana del modelo**: el contexto entregado (top-k × tamaño de fragmento) se limita para caber
   en la ventana del modelo de chat; si hiciera falta recortar, se descartan los fragmentos menos relevantes, nunca se
   trunca uno a la mitad.
@@ -255,9 +256,9 @@ respuesta inventada) y que el fallo queda registrado; con búsqueda normal, comp
   exigido aquí es el mismo con cualquier mecanismo equivalente.
 - **Valores por defecto**: top-k por defecto de 4 y máximo permitido de 20, y umbral de similitud de 0,6 (ver `validation.md`); son un punto
   de partida que la evaluación de F2 (golden dataset, Constitución V) calibrará. El plan los fijará y documentará.
-- **Mensaje de «sin información»**: lo redacta el modelo siguiendo el prompt de sistema (en español, breve y amable, que
-  invita a contactar con la tienda); no se fija una cadena literal. Si el plan decide cortocircuitar la generación cuando no
-  hay contexto, el texto sale de configuración.
+- **Mensaje de «sin información»**: por defecto es un texto de configuración (`shoplab.chat.rag.no-context-message`) que se
+  responde sin llamar al modelo; la validación manual mostró que dejar que el modelo local lo redacte a veces usa
+  conocimiento general. `no-context-mode=model` restablece que lo redacte el modelo.
 - **Sin citas**: las citas a fuentes son una historia posterior de F1; aquí solo se garantiza que los metadatos de origen
   viajan con los fragmentos. La Constitución V exige citas para respuestas ancladas en la base, de modo que esta historia
   no debe fusionarse a producción sin ellas; se despliega en `dev` como paso intermedio.

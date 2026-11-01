@@ -42,6 +42,10 @@ public final class ChatConstants {
             + "datos. Si el mensaje es solo un saludo o una cortesía, responde con normalidad.\n\n"
             + "Pregunta del cliente: {query}\n";
 
+    public static final String DEFAULT_NO_CONTEXT_MESSAGE =
+            "No encontré información sobre ese tema en la base de conocimiento de ShopLab. Puedes reformular tu "
+            + "pregunta o contactar con la tienda.";
+
     private ChatConstants() {
     }
 }

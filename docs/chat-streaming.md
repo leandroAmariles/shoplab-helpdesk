@@ -60,6 +60,7 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 | `SHOPLAB_CHAT_RAG_TOP_K` / `shoplab.chat.rag.top-k` | `4` | Fragmentos que se piden a la búsqueda por pregunta. Rango 1–20; fuera de rango el arranque falla |
 | `SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD` / `shoplab.chat.rag.similarity-threshold` | `0.6` | Similitud mínima (0–1) de un fragmento; `0` no descarta nada. Con `0` la búsqueda entrega siempre `top-k` fragmentos aunque no se parezcan a la pregunta y el bot responde con contexto de otro tema |
 | `SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS` / `shoplab.chat.rag.max-context-characters` | `8000` | Máximo de caracteres de contexto que recibe el modelo (mínimo 500); los fragmentos van completos o no van |
+| `SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE` / `shoplab.chat.rag.no-context-mode` | `fixed-message` | Qué hacer si no hay fragmentos útiles: `fixed-message` responde el texto de `shoplab.chat.rag.no-context-message` sin llamar al modelo (determinista, no inventa); `model` deja que el modelo conteste con la plantilla de contexto vacío (conserva saludos y cortesías, pero el modelo local puede usar conocimiento general) |
 | `shoplab.chat.rag.context-template` / `empty-context-template` | plantillas en español | Mensaje de usuario con y sin contexto; llevan los marcadores `{query}` y `{context}` (la segunda, solo `{query}`) |
 | `OLLAMA_NUM_CTX` | `8192` | Ventana de contexto que se pide a Ollama (`num-ctx`); con la de por defecto el servidor podría recortar el contexto |
 
@@ -86,8 +87,9 @@ La respuesta lleva `Cache-Control: no-cache` y `X-Accel-Buffering: no`. Si el pr
 Antes de generar cada respuesta, el chat busca en la base de conocimiento los fragmentos más cercanos a la pregunta
 (`retrieval`, por su API publicada), descarta los que no alcanzan la similitud mínima o repiten texto, se queda con los que
 caben en el presupuesto de caracteres y se los entrega al modelo como contexto. El prompt de sistema le obliga a responder
-**solo** con ese contexto y a reconocer cuando no contiene la respuesta; si no se encontró nada, el modelo recibe una
-plantilla que le dice que no hay información (sigue contestando saludos y cortesías con normalidad). El contrato de eventos
+**solo** con ese contexto y a reconocer cuando no contiene la respuesta; si no se encontró nada, el bot responde un
+mensaje fijo (`no-context-message`) sin llamar al modelo; con `no-context-mode=model` el modelo recibe en cambio una
+plantilla que le dice que no hay información (y contesta saludos y cortesías con normalidad). El contrato de eventos
 SSE no cambia. Decisiones: [ADR-0018](adr/0018-recuperacion-de-contexto-en-chat.md); especificación en
 `specs/LAB-22-rag-augmented-answers/`.
 
