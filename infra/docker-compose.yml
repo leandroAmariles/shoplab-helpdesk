@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   ollama:
-    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.8}
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.12}
     entrypoint: ["sh", "/entrypoint.sh"]
     environment:
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.15.0}
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.15.1}
     profiles: [observability]
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
@@ -106,7 +106,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: ${GRAFANA_IMAGE:-grafana/grafana:13.2.4}
+    image: ${GRAFANA_IMAGE:-grafana/grafana:13.3.0}
     profiles: [observability]
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-only}

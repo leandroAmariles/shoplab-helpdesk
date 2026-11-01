@@ -4,6 +4,7 @@ import com.shoplab.helpdesk.retrieval.application.port.in.IngestDocumentServiceP
 import com.shoplab.helpdesk.retrieval.application.port.out.DocumentParserPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.IngestMetricsPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.KnowledgeBasePort;
+import com.shoplab.helpdesk.retrieval.domain.model.DocumentIngestedEvent;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestedDocument;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.IngestOutcome;
@@ -13,6 +14,7 @@ import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -24,12 +26,14 @@ public class IngestDocumentUseCase implements IngestDocumentServicePort {
     private final DocumentParserPort parser;
     private final KnowledgeBasePort knowledgeBase;
     private final IngestMetricsPort metrics;
+    private final ApplicationEventPublisher events;
 
     public IngestDocumentUseCase(DocumentParserPort parser, KnowledgeBasePort knowledgeBase,
-            IngestMetricsPort metrics) {
+            IngestMetricsPort metrics, ApplicationEventPublisher events) {
         this.parser = parser;
         this.knowledgeBase = knowledgeBase;
         this.metrics = metrics;
+        this.events = events;
     }
 
     @Override
@@ -41,8 +45,11 @@ public class IngestDocumentUseCase implements IngestDocumentServicePort {
                     .doOnSuccess(parsed -> metrics.recordParse(IngestOutcome.OK, elapsedSince(startedAt)))
                     .doOnError(error -> metrics.recordParse(outcomeOf(error), elapsedSince(startedAt)))
                     .flatMap(knowledgeBase::replaceDocument)
-                    .doOnNext(stored -> LOG.info("Document ingested: source={}, documentId={}, chunks={}",
-                            stored.source(), stored.documentId(), stored.chunkCount()));
+                    .doOnNext(stored -> {
+                        LOG.info("Document ingested: source={}, documentId={}, chunks={}", stored.source(),
+                                stored.documentId(), stored.chunkCount());
+                        events.publishEvent(new DocumentIngestedEvent(stored.documentId(), stored.source()));
+                    });
         });
     }
 
