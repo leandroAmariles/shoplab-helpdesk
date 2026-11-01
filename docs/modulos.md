@@ -65,6 +65,16 @@ sus chunks) y una por chunk en `chunk`. Los chunks se guardan **sin vector**: `V
 opcionales `embedding` y `embedding_model` (siempre los dos a la vez) y la historia de embeddings (LAB-21) los completa;
 mientras tanto no participan en la búsqueda, que filtra `embedding IS NOT NULL`.
 
+**Embeddings (LAB-21, ADR-0017).** `retrieval` es el único que calcula embeddings, con el `EmbeddingModel` de Spring AI
+detrás de `EmbeddingPort`; `ingest` no conoce ningún modelo. `V4__document_index_status.sql` añade a `document` el
+estado de indexado (`PENDING`, `INDEXED`, `ERROR` con `index_error`). Tras una ingesta el documento queda `PENDING` y
+`IndexDocumentsServicePort.indexPending(retryFailed)` calcula los vectores por lotes y los guarda por documento, todo o
+nada, con el nombre del modelo (`spring.ai.ollama.embedding.options.model` / `OLLAMA_EMBED_MODEL`). Para cambiar de
+modelo se cambia esa variable y se arranca con `shoplab.retrieval.embedding.reindex-on-startup=true` (o `force`), o se
+llama a `ReindexDocumentsServicePort.reindex(force)`; no se vuelve a llamar a `ingest`. `SearchChunksServicePort`
+calcula el embedding de la consulta y busca solo entre chunks con vector del modelo configurado. Ajustes en
+`shoplab.retrieval.embedding.*` (`batch-size`, `search-limit`, `auto-index`, `reindex-on-startup`).
+
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.

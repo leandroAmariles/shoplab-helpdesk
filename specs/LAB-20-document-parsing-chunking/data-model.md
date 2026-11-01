@@ -73,3 +73,6 @@ en esta historia (una ingesta fallida no deja filas); su representación la deci
 | `DOCUMENT_INVALID` | `SLHD_RETR_00003` | 422 | `EMPTY_DOCUMENT`, `NO_EXTRACTABLE_TEXT`, `INVALID_DOCUMENT`, `INVALID_CHUNKING_CONFIG` |
 | `INGEST_SERVICE_UNAVAILABLE` | `SLHD_RETR_00004` | 503 | sin conexión o tiempo de espera |
 | `INGEST_SERVICE_FAILED` | `SLHD_RETR_00005` | 502 | 5xx o respuesta ilegible de `ingest` |
+
+> Nota (LAB-21): los chunks sin vector los completa `retrieval` con su modelo de embeddings; el estado del documento
+> (`PENDING`, `INDEXED`, `ERROR`) se añade en `V4` (ver `specs/LAB-21-retrieval-embeddings/data-model.md` y ADR-0017).
