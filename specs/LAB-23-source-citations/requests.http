@@ -1,0 +1,68 @@
+### LAB-23 - Citas a la fuente en cada respuesta
+#
+# Requisitos: backend en marcha (puerto 8080), PostgreSQL y Ollama arriba, y la base de conocimiento
+# (data/kb) ingerida e indexada (documentos en estado INDEXED).
+# Las respuestas llegan como SSE. Con contexto el primer evento es `sources`, luego `token`* y `done`.
+#
+# Not covered here (no se alcanzan por HTTP; los cubren las pruebas automáticas y el quickstart):
+#   - US2 y US3: las citas como botones, la lista «Fuentes» / «Fuentes consultadas» y el diálogo con el fragmento
+#     (message-bubble.spec.ts, source-list.spec.ts, source-preview.spec.ts; quickstart.md §3).
+#   - US4: citas fuera de rango y respuestas sin citas con un modelo simulado (CitationTrackerTests,
+#     markdown-renderer.spec.ts, message-bubble.spec.ts).
+#   - US5: métricas shoplab_chat_citations_total en GET /actuator/prometheus (quickstart.md §5).
+#   - FR-006/FR-007: qué marcas del texto se presentan como citas (solo el cliente decide; ver message-bubble.spec.ts).
+
+@baseUrl = http://localhost:8080
+
+### US1 / Scenario "Respuesta con citas numeradas" - expects 200; primer evento `sources` con title "Política de devoluciones" y number 1; luego tokens con alguna marca [n] y done
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuántos días tengo para devolver un producto?" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US1.3 / Scenario "La cita remite a un fragmento entregado" - expects 200; los number del evento `sources` van de 1 a k (k <= 4) sin saltos; el texto no cita un número mayor que k
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Puedo pagar en cuotas y qué pasa con los intereses?" }
+
+### US1.2 / Scenario "Respuesta apoyada en dos documentos" - expects 200; `sources` con fuentes de al menos dos documentos (devoluciones y reembolsos); ambas numeradas
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el reembolso cuando devuelvo un producto?" }
+
+### US1.5 / Scenario "Cada respuesta numera sus fuentes desde 1" - expects 200; `sources` empieza otra vez en number 1 aunque la pregunta anterior tuviera más fuentes
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cómo se trata mi información personal?" }
+
+### Edge "Sin contexto" - expects 200 y el mensaje de «sin información»; NO hay evento `sources` (ni citas)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuál es la capital de Francia?" }
+
+### Edge "Saludo" - expects 200 y el mensaje de «sin información» (modo fixed-message); NO hay evento `sources`
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola" }
+
+### FR-005 / Scenario "El contrato existente no cambia: mensaje vacío" - expects 400 SLHD_CHAT_00001 (JSON, sin flujo ni `sources`)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "   " }
+
+> {% client.test("400", function () { client.assert(response.status === 400, "status"); }); %}
