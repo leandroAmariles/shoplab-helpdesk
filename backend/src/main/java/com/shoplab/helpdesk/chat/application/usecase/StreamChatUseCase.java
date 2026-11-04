@@ -24,6 +24,7 @@ import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -88,8 +89,8 @@ public class StreamChatUseCase implements StreamChatServicePort {
      */
     private Flux<ChatEvent> events(StreamChatCommand command, List<ContextFragment> context, long startedAt,
             AtomicInteger fragments, AtomicBoolean firstTokenSeen, AtomicBoolean fixedMessageAnswer) {
-        SourcesEvent sources = sourcesOf(context);
-        AtomicBoolean sourcesPending = new AtomicBoolean(sources != null);
+        Optional<SourcesEvent> sources = sourcesOf(context);
+        AtomicBoolean sourcesPending = new AtomicBoolean(sources.isPresent());
         CitationTracker citations = new CitationTracker();
         return answer(command, context)
                 .doOnNext(citations::append)
@@ -103,9 +104,12 @@ public class StreamChatUseCase implements StreamChatServicePort {
                 .concatMapIterable(content -> {
                     fragments.incrementAndGet();
                     ChatEvent token = new TokenEvent(content);
-                    return sourcesPending.compareAndSet(true, false) ? List.of(sources, token) : List.of(token);
+                    if (sourcesPending.compareAndSet(true, false) && sources.isPresent()) {
+                        return List.of(sources.get(), token);
+                    }
+                    return List.of(token);
                 })
-                .doOnComplete(() -> recordCitations(command, sources, citations));
+                .doOnComplete(() -> sources.ifPresent(event -> recordCitations(command, event, citations)));
     }
 
     /**
@@ -113,7 +117,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
      * judged. The log carries counts, never the question, the answer or the fragments.
      */
     private void recordCitations(StreamChatCommand command, SourcesEvent sources, CitationTracker citations) {
-        if (sources == null || citations.isEmpty()) {
+        if (citations.isEmpty()) {
             return;
         }
         CitationTracker.Summary summary = citations.summarize(sources.sources().size());
@@ -125,13 +129,13 @@ public class StreamChatUseCase implements StreamChatServicePort {
     }
 
     /** What a citation {@code [n]} points at: the fragments handed to the model, numbered in that order. */
-    private static SourcesEvent sourcesOf(List<ContextFragment> context) {
+    private static Optional<SourcesEvent> sourcesOf(List<ContextFragment> context) {
         if (context.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
-        return new SourcesEvent(IntStream.range(0, context.size())
+        return Optional.of(new SourcesEvent(IntStream.range(0, context.size())
                 .mapToObj(index -> AnswerSource.of(index, context.get(index)))
-                .toList());
+                .toList()));
     }
 
     /** Without useful context the answer may be the configured message, and then the model is not called at all. */
