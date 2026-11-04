@@ -29,6 +29,10 @@ Cada evento tiene nombre (`event:`) y una línea de datos JSON (`data:`):
 | `token` | `{"content":"Hola"}` | Un fragmento de la respuesta, en orden. Concatenar los `content` da el texto completo |
 | `done` | `{"fragments":42}` | La respuesta terminó bien. Es el último evento; el servidor cierra la conexión |
 | `error` | `{"code":"SLHD_CHAT_00003","message":"..."}` | El modelo falló **después** de empezar. Es el último evento, sin `done` |
+| `sources` | `{"sources":[{"number":1,"title":"Política de devoluciones","section":"Plazos","text":"..."}]}` | Los fragmentos de los que sale la respuesta, numerados desde 1. Solo si hay contexto; se envía **una vez, justo antes del primer `token`**. No cuenta en `done.fragments` |
+
+Un cliente que no conozca `sources` lo ignora: recibe el texto con las marcas `[n]` como texto plano. Contrato de las
+citas: [`contracts/sources-event.md`](../specs/LAB-23-source-citations/contracts/sources-event.md).
 
 Contrato completo: [`contracts/chat-stream.md`](../specs/LAB-12-chat-streaming-sse/contracts/chat-stream.md) y
 [`contracts/openapi.yaml`](../specs/LAB-12-chat-streaming-sse/contracts/openapi.yaml).
@@ -93,7 +97,21 @@ plantilla que le dice que no hay información (y contesta saludos y cortesías c
 SSE no cambia. Decisiones: [ADR-0018](adr/0018-recuperacion-de-contexto-en-chat.md); especificación en
 `specs/LAB-22-rag-augmented-answers/`.
 
+## Citas a la fuente (LAB-23)
+
+El bot numera los fragmentos que recibe como contexto (`[1]`, `[2]`…) y se le pide terminar cada afirmación con el número
+de su fragmento. El evento `sources` lleva, para cada número, el título legible del documento, su sección y el texto del
+fragmento. En la pantalla de chat las marcas `[n]` que apuntan a una fuente recibida se pintan como botones; bajo la
+respuesta aparece «Fuentes» con las citadas (o «Fuentes consultadas» si el modelo no citó ninguna), y activar una cita o una
+fuente abre el fragmento. Una marca que no apunta a ninguna fuente se queda como texto. Decisiones:
+[ADR-0019](adr/0019-citas-a-la-fuente-en-el-chat.md).
+
+La regla de citas está en el prompt de sistema y en la plantilla de contexto por defecto: quien defina su propio
+`SHOPLAB_CHAT_SYSTEM_PROMPT` debe incluirla. `/actuator/prometheus` publica `shoplab_chat_citations_total` con la etiqueta
+`outcome` = `valid` (cita solo fuentes que tiene), `invalid` (alguna cita sin fuente) o `none` (no cita), una vez por respuesta
+completada con contexto; sin texto de preguntas, respuestas ni fragmentos.
+
 ## Alcance actual
 
-Cada petición es independiente: no hay historial ni identificador de conversación, ni autenticación. Las respuestas
-todavía no citan las fuentes. Llegan en historias posteriores.
+Cada petición es independiente: no hay historial ni identificador de conversación, ni autenticación. Las fuentes viajan con
+la respuesta y no se guardan. Llegan en historias posteriores.

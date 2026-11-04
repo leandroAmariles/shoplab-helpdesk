@@ -329,4 +329,71 @@ describe('ChatStore', () => {
       expect(store.messages()).toHaveLength(2);
     });
   });
+
+  describe('sources', () => {
+    const sources = [
+      { number: 1, title: 'Política de devoluciones', section: 'Plazos', text: 'Tienes 30 días.' },
+      { number: 2, title: 'Reembolsos', section: '', text: 'Diez días.' },
+    ];
+
+    it('starts every message without sources', () => {
+      send('hola');
+
+      expect(store.messages().map((message) => message.sources)).toEqual([[], []]);
+    });
+
+    it('keeps the sources in the assistant message without ending or failing the answer', () => {
+      send('hola');
+      client.last.events.next({ type: 'sources', sources });
+
+      expect(assistant()).toMatchObject({ status: 'streaming', sources });
+      expect(store.isStreaming()).toBe(true);
+
+      client.last.events.next({ type: 'token', content: 'Plazo [1]' });
+      client.last.events.next({ type: 'done', fragments: 1 });
+      frames.run();
+
+      expect(assistant()).toMatchObject({ content: 'Plazo [1]', status: 'complete', sources });
+    });
+
+    it('gives every answer its own sources', () => {
+      send('uno');
+      client.last.events.next({ type: 'sources', sources });
+      client.last.events.next({ type: 'done', fragments: 0 });
+      send('dos');
+      client.last.events.next({ type: 'sources', sources: [sources[1]] });
+
+      const bots = store.messages().filter((message) => message.author === 'assistant');
+      expect(bots[0].sources).toEqual(sources);
+      expect(bots[1].sources).toEqual([sources[1]]);
+    });
+
+    it('lets the last sources event win', () => {
+      send('hola');
+      client.last.events.next({ type: 'sources', sources });
+      client.last.events.next({ type: 'sources', sources: [sources[1]] });
+
+      expect(assistant().sources).toEqual([sources[1]]);
+    });
+
+    it('starts a retry without the sources of the failed answer', () => {
+      send('hola');
+      client.last.events.next({ type: 'sources', sources });
+      client.last.events.next({ type: 'error', code: 'SLHD_CHAT_00003', message: 'x' });
+
+      store.retry();
+
+      expect(assistant()).toMatchObject({ status: 'streaming', sources: [] });
+    });
+
+    it('ignores the sources of a request that was already stopped', () => {
+      send('hola');
+      const first = client.last;
+      store.stop();
+
+      first.events.next({ type: 'sources', sources });
+
+      expect(assistant().sources).toEqual([]);
+    });
+  });
 });

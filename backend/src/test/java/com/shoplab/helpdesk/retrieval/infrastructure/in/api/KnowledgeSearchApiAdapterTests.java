@@ -25,12 +25,13 @@ class KnowledgeSearchApiAdapterTests {
     @Test
     void mapsEachResultToAPublicChunkWithoutInternalIdentifiers() {
         SearchResult result = new SearchResult(UUID.randomUUID(), UUID.randomUUID(), "returns.md",
-                "Returns > Deadlines", 3, "Seven days.", 0.82);
+                "Return policy", "Returns > Deadlines", 3, "Seven days.", 0.82);
         when(search.search("returns", 4)).thenReturn(Mono.just(List.of(result)));
 
         StepVerifier.create(adapter.search("returns", 4))
                 .assertNext(chunks -> assertThat(chunks).containsExactly(
-                        new KnowledgeChunk("returns.md", "Returns > Deadlines", 3, "Seven days.", 0.82)))
+                        new KnowledgeChunk("returns.md", "Return policy", "Returns > Deadlines", 3,
+                                "Seven days.", 0.82)))
                 .verifyComplete();
         verify(search).search("returns", 4);
     }

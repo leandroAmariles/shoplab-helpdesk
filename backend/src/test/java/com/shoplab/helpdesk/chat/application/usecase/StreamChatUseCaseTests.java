@@ -19,12 +19,15 @@ import com.shoplab.helpdesk.chat.config.ChatProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.exception.KnowledgeRetrievalException;
+import com.shoplab.helpdesk.chat.domain.model.AnswerSource;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
+import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
+import com.shoplab.helpdesk.chat.domain.model.ChatEvent.SourcesEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
@@ -80,7 +83,7 @@ class StreamChatUseCaseTests {
     }
 
     private static ContextFragment fragment(String text, double score) {
-        return new ContextFragment("returns.md", "Returns", 0, text, score);
+        return new ContextFragment("returns.md", "Title of returns.md", "Returns", 0, text, score);
     }
 
     private StreamChatCommand command(String message) {
@@ -306,6 +309,7 @@ class StreamChatUseCaseTests {
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(useCaseWith(model).stream(command("¿Devoluciones?")))
+                .expectNextCount(1)
                 .expectNext(new TokenEvent("ok"), new DoneEvent(1))
                 .verifyComplete();
 
@@ -338,7 +342,7 @@ class StreamChatUseCaseTests {
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
         StreamChatUseCase useCase = newUseCase(model, rag(2, 0.6));
 
-        StepVerifier.create(useCase.stream(command("q"))).expectNextCount(2).verifyComplete();
+        StepVerifier.create(useCase.stream(command("q"))).expectNextCount(3).verifyComplete();
 
         verify(model).streamAnswer("q", List.of(close));
     }
@@ -406,11 +410,209 @@ class StreamChatUseCaseTests {
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model).stream(new StreamChatCommand("secret-customer-question", "req-9")))
-                .expectNextCount(2)
+                .expectNextCount(3)
                 .verifyComplete();
 
         assertThat(output.getOut()).contains("req-9").doesNotContain("secret-customer-question")
                 .doesNotContain("secret-policy-text");
+    }
+
+    // --- sources of the answer (LAB-23) ---
+
+    private static RagProperties withThreshold(double threshold) {
+        return new RagProperties(null, threshold, null, null, null, NoContextMode.MODEL, null);
+    }
+
+    @Test
+    void withContextTheSourcesComeJustBeforeTheFirstTokenNumberedFromOne() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("¿Devoluciones?", 4)).thenReturn(Mono.just(List.of(
+                fragment("Seven days to return.", 0.9), fragment("Refunds take ten days.", 0.8))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("Plazo [1]", " y reembolso [2]"));
+
+        StepVerifier.create(newUseCase(model).stream(command("¿Devoluciones?")))
+                .expectNext(new SourcesEvent(List.of(
+                        new AnswerSource(1, "Title of returns.md", "Returns", "Seven days to return."),
+                        new AnswerSource(2, "Title of returns.md", "Returns", "Refunds take ten days."))))
+                .expectNext(new TokenEvent("Plazo [1]"), new TokenEvent(" y reembolso [2]"), new DoneEvent(2))
+                .verifyComplete();
+    }
+
+    @Test
+    void theNumbersFollowTheFragmentsHandedToTheModelNotTheCandidates() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(
+                fragment("First.", 0.9), fragment("Too far.", 0.2), fragment("Third.", 0.8))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+
+        StepVerifier.create(newUseCase(model, withThreshold(0.6)).stream(command("q")))
+                .assertNext(event -> assertThat(event).isInstanceOfSatisfying(SourcesEvent.class,
+                        sources -> assertThat(sources.sources()).extracting(AnswerSource::number,
+                                AnswerSource::text).containsExactly(
+                                org.assertj.core.groups.Tuple.tuple(1, "First."),
+                                org.assertj.core.groups.Tuple.tuple(2, "Third."))))
+                .expectNextCount(2)
+                .verifyComplete();
+    }
+
+    @Test
+    void theSourcesCarryTheSameFragmentsTheModelReceives() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9), fragment("B.", 0.8))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+
+        StepVerifier.create(newUseCase(model).stream(command("q"))).expectNextCount(3).verifyComplete();
+
+        org.mockito.ArgumentCaptor<List<ContextFragment>> handed = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(model).streamAnswer(eq("q"), handed.capture());
+        assertThat(handed.getValue()).extracting(ContextFragment::text).containsExactly("A.", "B.");
+    }
+
+    @Test
+    void withoutContextThereAreNoSourcesInEitherMode() {
+        ChatModelPort model = (message, context) -> Flux.just("hola");
+
+        StepVerifier.create(newUseCase(model).stream(command("Hola")))
+                .expectNext(new TokenEvent("hola"), new DoneEvent(1))
+                .verifyComplete();
+        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("Hola")))
+                .expectNext(new TokenEvent("Sin información."), new DoneEvent(1))
+                .verifyComplete();
+    }
+
+    @Test
+    void theSourcesAreNotTokensSoTheyDoNotChangeTheCountNorTheFirstTokenMetric() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("a", "b"));
+
+        StepVerifier.create(newUseCase(model).stream(command("q")))
+                .expectNextCount(1)
+                .expectNext(new TokenEvent("a"), new TokenEvent("b"), new DoneEvent(2))
+                .verifyComplete();
+
+        verify(metrics, times(1)).recordFirstToken(any(Duration.class));
+    }
+
+    @Test
+    void aModelThatFailsBeforeItsFirstTokenStillEndsInAnErrorWithoutSources() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.error(new ChatModelException(null)));
+
+        StepVerifier.create(newUseCase(model).stream(command("q")))
+                .expectError(ChatModelException.class)
+                .verify();
+    }
+
+    @Test
+    void aModelThatAnswersNothingSendsNoSources() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
+        when(model.streamAnswer(any(), any())).thenReturn(Flux.empty());
+
+        StepVerifier.create(newUseCase(model).stream(command("q")))
+                .expectNext(new DoneEvent(0))
+                .verifyComplete();
+    }
+
+    @Test
+    void aFailedRetrievalSendsNoSources() {
+        ChatModelPort model = mock(ChatModelPort.class);
+        when(knowledge.retrieve("q", 4)).thenReturn(Mono.error(new KnowledgeRetrievalException(null)));
+
+        StepVerifier.create(newUseCase(model).stream(command("q")))
+                .expectError(KnowledgeRetrievalException.class)
+                .verify();
+        verifyNoInteractions(model);
+    }
+
+    // --- quality of the citations (LAB-23) ---
+
+    private StreamChatUseCase answeringWithContext(Flux<String> answer) {
+        when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of(
+                fragment("Seven days.", 0.9), fragment("Ten days.", 0.8))));
+        ChatModelPort model = (message, context) -> answer;
+        return newUseCase(model);
+    }
+
+    @Test
+    void anAnswerThatCitesOnlyItsSourcesIsRecordedAsValid() {
+        StepVerifier.create(answeringWithContext(Flux.just("Siete días ", "[1] y diez ", "[2].")).stream(command("q")))
+                .expectNextCount(5)
+                .verifyComplete();
+
+        verify(metrics).recordCitations(CitationOutcome.VALID);
+        verify(metrics, times(1)).recordCitations(any());
+    }
+
+    @Test
+    void aCitationOfASourceThatDoesNotExistIsRecordedAsInvalidAndLoggedWithoutText(CapturedOutput output) {
+        StepVerifier.create(answeringWithContext(Flux.just("Dato secreto-del-bot [9].")).stream(
+                        new StreamChatCommand("secret-customer-question", "req-31")))
+                .expectNextCount(3)
+                .verifyComplete();
+
+        verify(metrics).recordCitations(CitationOutcome.INVALID);
+        assertThat(output.getOut()).contains("req-31").contains("invalid=1")
+                .doesNotContain("secret-customer-question").doesNotContain("secreto-del-bot")
+                .doesNotContain("Seven days");
+    }
+
+    @Test
+    void anAnswerWithContextThatCitesNothingIsRecordedAsNone() {
+        StepVerifier.create(answeringWithContext(Flux.just("Sin citas.")).stream(command("q")))
+                .expectNextCount(3)
+                .verifyComplete();
+
+        verify(metrics).recordCitations(CitationOutcome.NONE);
+    }
+
+    @Test
+    void aMarkerSplitBetweenTokensCountsOnceItIsComplete() {
+        StepVerifier.create(answeringWithContext(Flux.just("Dato [", "1", "].")).stream(command("q")))
+                .expectNextCount(5)
+                .verifyComplete();
+
+        verify(metrics).recordCitations(CitationOutcome.VALID);
+    }
+
+    @Test
+    void answersWithoutContextAreNotJudgedOnCitations() {
+        StepVerifier.create(useCaseAnswering(Flux.just("Hola [1].")).stream(command("Hola")))
+                .expectNextCount(2)
+                .verifyComplete();
+        StepVerifier.create(newUseCase(mock(ChatModelPort.class), fixedMessage("Sin información."))
+                        .stream(command("Hola")))
+                .expectNextCount(2)
+                .verifyComplete();
+
+        verify(metrics, never()).recordCitations(any());
+    }
+
+    @Test
+    void anEmptyAnswerWithContextIsNotJudgedEither() {
+        StepVerifier.create(answeringWithContext(Flux.empty()).stream(command("q")))
+                .expectNext(new DoneEvent(0))
+                .verifyComplete();
+
+        verify(metrics, never()).recordCitations(any());
+    }
+
+    @Test
+    void cancelledOrFailedAnswersAreNotJudged() {
+        StepVerifier.create(answeringWithContext(Flux.concat(Flux.just("Dato [1]"),
+                        Flux.error(new ChatModelException(null)))).stream(command("q")))
+                .expectNextCount(3)
+                .verifyComplete();
+        Sinks.Many<String> source = Sinks.many().unicast().onBackpressureBuffer();
+        StepVerifier.create(answeringWithContext(source.asFlux()).stream(command("q")))
+                .then(() -> source.tryEmitNext("Dato [1]"))
+                .expectNextCount(2)
+                .thenCancel()
+                .verify();
+
+        verify(metrics, never()).recordCitations(any());
     }
 
     // --- fixed message without context ---
@@ -453,6 +655,7 @@ class StreamChatUseCaseTests {
         when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("q")))
+                .expectNextCount(1)
                 .expectNext(new TokenEvent("ok"), new DoneEvent(1))
                 .verifyComplete();
 

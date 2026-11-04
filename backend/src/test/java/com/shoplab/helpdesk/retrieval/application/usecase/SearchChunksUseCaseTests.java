@@ -31,7 +31,7 @@ class SearchChunksUseCaseTests {
 
     private static final String MODEL = "bge-m3";
     private static final SearchResult RESULT = new SearchResult(UUID.randomUUID(), UUID.randomUUID(), "politica.md",
-            "Politica > Plazos", 1, "Treinta dias.", 0.93);
+            "Politica", "Politica > Plazos", 1, "Treinta dias.", 0.93);
 
     private final EmbeddingStorePort store = mock(EmbeddingStorePort.class);
     private final EmbeddingMetricsPort metrics = mock(EmbeddingMetricsPort.class);

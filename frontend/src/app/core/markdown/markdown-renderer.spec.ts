@@ -1,7 +1,8 @@
 import { SecurityContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DomSanitizer } from '@angular/platform-browser';
-import { MarkdownRenderer } from './markdown-renderer';
+import { ChatSource } from '../../features/chat/chat-message';
+import { MarkdownRenderer, RenderOptions } from './markdown-renderer';
 
 describe('MarkdownRenderer', () => {
   let renderer: MarkdownRenderer;
@@ -13,8 +14,8 @@ describe('MarkdownRenderer', () => {
   });
 
   /** Renders and mounts the result so the tests inspect elements and attributes, not strings. */
-  function mount(markdown: string): HTMLElement {
-    const html = sanitizer.sanitize(SecurityContext.HTML, renderer.render(markdown)) ?? '';
+  function mount(markdown: string, options?: RenderOptions): HTMLElement {
+    const html = sanitizer.sanitize(SecurityContext.HTML, renderer.render(markdown, options)) ?? '';
     const container = document.createElement('div');
     container.innerHTML = html;
     return container;
@@ -196,6 +197,140 @@ describe('MarkdownRenderer', () => {
       mount(text.slice(0, 20));
 
       expect(mount(text).innerHTML).toBe(mount(text).innerHTML);
+    });
+  });
+
+  describe('citations', () => {
+    const sources: ChatSource[] = [
+      { number: 1, title: 'Política de devoluciones', section: 'Plazos', text: 'Tienes 30 días.' },
+      { number: 2, title: 'Reembolsos', section: '', text: 'Diez días.' },
+      { number: 3, title: 'Envíos', section: '', text: 'Cinco días.' },
+      { number: 4, title: 'Garantía', section: '', text: 'Un año.' },
+    ];
+
+    function buttons(dom: HTMLElement): HTMLButtonElement[] {
+      return [...dom.querySelectorAll<HTMLButtonElement>('button.citation')];
+    }
+
+    it('turns a valid marker into an accessible button', () => {
+      const [button] = buttons(mount('Tienes 30 días [1].', { sources }));
+
+      expect(button.type).toBe('button');
+      expect(button.dataset['source']).toBe('1');
+      expect(button.textContent).toBe('[1]');
+      expect(button.getAttribute('aria-label')).toBe('Fuente 1: Política de devoluciones');
+    });
+
+    it('leaves the text around the marker alone', () => {
+      const dom = mount('Tienes 30 días [1].', { sources });
+
+      expect(dom.textContent?.trim()).toBe('Tienes 30 días [1].');
+    });
+
+    it('makes one button per number of a list or a range', () => {
+      expect(buttons(mount('A [1, 2]', { sources })).map((b) => b.dataset['source'])).toEqual(['1', '2']);
+      expect(buttons(mount('A [1-3]', { sources })).map((b) => b.dataset['source'])).toEqual(['1', '2', '3']);
+      expect(buttons(mount('A [1][2]', { sources })).map((b) => b.dataset['source'])).toEqual(['1', '2']);
+    });
+
+    it('keeps a number without a source as plain text', () => {
+      const dom = mount('Dato [7].', { sources });
+
+      expect(buttons(dom)).toEqual([]);
+      expect(dom.textContent?.trim()).toBe('Dato [7].');
+    });
+
+    it('turns only the valid numbers of a mixed list into buttons', () => {
+      const dom = mount('Dato [1, 9].', { sources });
+
+      expect(buttons(dom).map((b) => b.dataset['source'])).toEqual(['1']);
+      expect(dom.textContent).toContain('[9]');
+    });
+
+    it.each(['[0]', '[]', '[abc]', '[1a]', '[2024]', '(1)', '【1】', '[opcional]', '[3-1]'])(
+      'leaves %s as text',
+      (marker) => {
+        const dom = mount(`Dato ${marker}.`, { sources });
+
+        expect(buttons(dom)).toEqual([]);
+        expect(dom.textContent?.trim()).toBe(`Dato ${marker}.`);
+      },
+    );
+
+    it('does nothing without sources', () => {
+      expect(buttons(mount('Dato [1].'))).toEqual([]);
+      expect(buttons(mount('Dato [1].', { sources: [] }))).toEqual([]);
+    });
+
+    it('does not turn markers inside code into buttons', () => {
+      const dom = mount('En línea `[1]` y\n\n```\n[2]\n```', { sources });
+
+      expect(buttons(dom)).toEqual([]);
+      expect(dom.querySelector('code')?.textContent).toBe('[1]');
+    });
+
+    it('does not put a button inside a link', () => {
+      const dom = mount('[ver [1]](https://example.com/a)', { sources });
+
+      expect(buttons(dom)).toEqual([]);
+      expect(dom.querySelector('a')?.getAttribute('href')).toBe('https://example.com/a');
+    });
+
+    it('keeps [1](url) as an ordinary link', () => {
+      const dom = mount('[1](https://example.com/a)', { sources });
+
+      expect(buttons(dom)).toEqual([]);
+      expect(dom.querySelector('a')?.textContent).toBe('1');
+    });
+
+    it('works inside emphasis, lists and tables', () => {
+      expect(buttons(mount('**dato [1]**', { sources })).length).toBe(1);
+      expect(buttons(mount('- uno [1]\n- dos [2]', { sources })).length).toBe(2);
+      expect(buttons(mount('| a |\n|---|\n| x [3] |', { sources })).length).toBe(1);
+    });
+
+    it('escapes the title in the accessible name', () => {
+      const hostile: ChatSource[] = [
+        { number: 1, title: '"><img src=x onerror=alert(1)>', section: '', text: 'x' },
+      ];
+
+      const dom = mount('Dato [1]', { sources: hostile });
+
+      expect(dom.querySelector('img')).toBeNull();
+      expect(buttons(dom)[0].getAttribute('aria-label')).toBe('Fuente 1: "><img src=x onerror=alert(1)>');
+    });
+
+    it('removes buttons written by the model, even if they imitate a citation', () => {
+      const dom = mount('<button class="citation" data-source="1" onclick="alert(1)">falsa</button> y <button>x</button>', {
+        sources,
+      });
+
+      expect(dom.querySelector('button')).toBeNull();
+      expect(dom.hasAttribute('onclick')).toBe(false);
+    });
+
+    it('does not leave internal attributes on the buttons', () => {
+      const [button] = buttons(mount('Dato [1]', { sources }));
+
+      expect(button.getAttributeNames().sort()).toEqual(['aria-label', 'class', 'data-source', 'type']);
+    });
+
+    it.each(['Dato [', 'Dato [1', 'Dato [1,', 'Dato [1-', 'Dato [1, 2'])(
+      'hides the unfinished marker %j while the answer is streaming',
+      (text) => {
+        const dom = mount(text, { sources, streaming: true });
+
+        expect(dom.textContent?.trim()).toBe('Dato');
+      },
+    );
+
+    it('shows the same text as a normal answer once it is not streaming', () => {
+      expect(mount('Dato [1', { sources, streaming: false }).textContent?.trim()).toBe('Dato [1');
+    });
+
+    it('does not hide ordinary brackets that are already closed or are not digits', () => {
+      expect(mount('Dato [ver', { sources, streaming: true }).textContent?.trim()).toBe('Dato [ver');
+      expect(buttons(mount('Dato [1]', { sources, streaming: true })).length).toBe(1);
     });
   });
 });

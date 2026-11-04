@@ -100,7 +100,9 @@ export class ChatStore {
     if (requestId !== this.requestId) {
       return;
     }
-    if (event.type === 'token') {
+    if (event.type === 'sources') {
+      this.updateAssistant({ sources: event.sources });
+    } else if (event.type === 'token') {
       this.pendingText += event.content;
       this.cancelFrame ??= this.schedule(() => {
         this.cancelFrame = undefined;
@@ -159,6 +161,6 @@ export class ChatStore {
     content: string,
     status: ChatMessage['status'],
   ): ChatMessage {
-    return { id: `message-${++this.nextMessageId}`, author, content, status };
+    return { id: `message-${++this.nextMessageId}`, author, content, status, sources: [] };
   }
 }

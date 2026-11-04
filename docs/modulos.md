@@ -80,6 +80,10 @@ por similitud entre los chunks del modelo configurado. `chat` es el único consu
 `KnowledgeSearchAdapter` y la traduce a su propio `ContextFragment`; no accede a las tablas ni a clases internas de
 `retrieval`.
 
+**Citas (LAB-23, ADR-0019).** `KnowledgeChunk` lleva también `title`, el título legible del documento (columna
+`document.title`, sin migración); `chat` lo entrega al cliente en el evento `sources` junto a la sección y el texto del
+fragmento.
+
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.

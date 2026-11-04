@@ -498,7 +498,7 @@ changed. Never leave the work on the default branch.
 The "Optional Command" column above is this kit's own static naming (from `<AI_ROOT>/prompts/`),
 accurate until you run `install-ai-package.sh --openspec <agents> <repo>`. That command replaces it
 with the real `openspec` CLI's own generated commands, whose exact syntax differs per agent and is
-not guaranteed to stay `/opsx-<name>` (confirmed: Cursor keeps `/opsx-<name>`, Claude Code namespaces
+not guaranteed to stay `/opsx-<name>` (confirmed: Cursor and Antigravity keep `/opsx-<name>`, Claude Code namespaces
 it as `/opsx:<name>`, and Windsurf — listed by the CLI as "Devin Desktop (formerly Windsurf)" — uses
 `/openspec-<name>`). When in doubt, prefer natural language or the skill name itself
 (`openspec-propose`, ...), both of which stay correct regardless of which command syntax is current.

@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.chat.application.port.out;
 
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import java.time.Duration;
 
@@ -12,4 +13,7 @@ public interface ChatMetricsPort {
 
     /** Retrieving and selecting the context of one answer: how it ended, fragments handed over, time taken. */
     void recordContext(ContextOutcome outcome, int fragments, Duration elapsed);
+
+    /** How well one answer given with context cites its sources: counted once per completed answer. */
+    void recordCitations(CitationOutcome outcome);
 }

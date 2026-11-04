@@ -110,7 +110,7 @@ class RagConfigurationIntegrationTests {
 
         assertThat(result.status()).isEqualTo(200);
         String requestBody = ollama.findAll(postRequestedFor(urlEqualTo("/api/chat"))).get(0).getBodyAsString();
-        Matcher fragments = Pattern.compile("\\[" + Pattern.quote(SOURCE) + " › [A-E]]").matcher(requestBody);
+        Matcher fragments = Pattern.compile("\\[\\d+] Politica › [A-E]\\b").matcher(requestBody);
         int count = 0;
         while (fragments.find()) {
             count++;

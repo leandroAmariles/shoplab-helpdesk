@@ -283,4 +283,65 @@ describe('ChatStreamClient', () => {
       { type: 'done', fragments: 1 },
     ]);
   });
+
+  describe('sources event', () => {
+    const sources = [
+      { number: 1, title: 'Política de devoluciones', section: 'Plazos', text: 'Tienes 30 días.' },
+      { number: 2, title: 'Reembolsos', section: '', text: 'El reembolso se hace en 10 días.' },
+    ];
+
+    it('emits the sources first and keeps streaming the tokens after them', async () => {
+      const body = sse(
+        ['sources', { sources }],
+        ['token', { content: 'Hola [1]' }],
+        ['done', { fragments: 1 }],
+      );
+      fetchMock.mockResolvedValue(okResponse(bytesStream(body)));
+
+      const outcome = await collect(client.stream('Hola'));
+
+      expect(outcome.events).toEqual([
+        { type: 'sources', sources },
+        { type: 'token', content: 'Hola [1]' },
+        { type: 'done', fragments: 1 },
+      ]);
+      expect(outcome.completed).toBe(true);
+    });
+
+    it.each([
+      ['a number that is not a positive integer', [{ ...sources[0], number: 0 }]],
+      ['a fractional number', [{ ...sources[0], number: 1.5 }]],
+      ['an empty title', [{ ...sources[0], title: '' }]],
+      ['an empty text', [{ ...sources[0], text: '' }]],
+      ['a section that is not a string', [{ ...sources[0], section: null }]],
+      ['an empty list', []],
+    ])('ignores a sources event with %s, without logging its content', async (_name, invalid) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const body = sse(
+        ['sources', { sources: invalid }],
+        ['token', { content: 'ok' }],
+        ['done', { fragments: 1 }],
+      );
+      fetchMock.mockResolvedValue(okResponse(bytesStream(body)));
+
+      const outcome = await collect(client.stream('Hola'));
+
+      expect(outcome.events).toEqual([
+        { type: 'token', content: 'ok' },
+        { type: 'done', fragments: 1 },
+      ]);
+      expect(warn).toHaveBeenCalled();
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('Tienes 30 días');
+    });
+
+    it('ignores a sources event whose payload is not a list', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const body = sse(['sources', { sources: 'x' }], ['done', { fragments: 0 }]);
+      fetchMock.mockResolvedValue(okResponse(bytesStream(body)));
+
+      const outcome = await collect(client.stream('Hola'));
+
+      expect(outcome.events).toEqual([{ type: 'done', fragments: 0 }]);
+    });
+  });
 });

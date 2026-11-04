@@ -7,13 +7,16 @@ import com.shoplab.helpdesk.chat.application.port.out.KnowledgeContextPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
+import com.shoplab.helpdesk.chat.domain.model.AnswerSource;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
+import com.shoplab.helpdesk.chat.domain.model.ChatEvent.SourcesEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
@@ -21,8 +24,10 @@ import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -66,18 +71,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
             return retrieveContext(command)
                     .flatMapMany(context -> {
                         fixedMessageAnswer.set(answersWithFixedMessage(context));
-                        return answer(command, context);
-                    })
-                    .doOnNext(content -> {
-                        // The configured message is not a model token: timing it would mix ~0 ms replies into the
-                        // model's first-token latency. It is still counted by the context and response metrics.
-                        if (firstTokenSeen.compareAndSet(false, true) && !fixedMessageAnswer.get()) {
-                            metrics.recordFirstToken(elapsedSince(startedAt));
-                        }
-                    })
-                    .map(content -> {
-                        fragments.incrementAndGet();
-                        return (ChatEvent) new TokenEvent(content);
+                        return events(command, context, startedAt, fragments, firstTokenSeen, fixedMessageAnswer);
                     })
                     .concatWith(Mono.fromSupplier(() -> new DoneEvent(fragments.get())))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
@@ -87,6 +81,61 @@ public class StreamChatUseCase implements StreamChatServicePort {
                         return failed(command, error, firstTokenSeen.get());
                     });
         });
+    }
+
+    /**
+     * The tokens of the answer and, just before the first one, the sources it is generated from. Sending them with the
+     * first token and not earlier keeps a model that fails before answering a plain error response, as in LAB-12.
+     */
+    private Flux<ChatEvent> events(StreamChatCommand command, List<ContextFragment> context, long startedAt,
+            AtomicInteger fragments, AtomicBoolean firstTokenSeen, AtomicBoolean fixedMessageAnswer) {
+        Optional<SourcesEvent> sources = sourcesOf(context);
+        AtomicBoolean sourcesPending = new AtomicBoolean(sources.isPresent());
+        CitationTracker citations = new CitationTracker();
+        return answer(command, context)
+                .doOnNext(citations::append)
+                .doOnNext(content -> {
+                    // The configured message is not a model token: timing it would mix ~0 ms replies into the
+                    // model's first-token latency. It is still counted by the context and response metrics.
+                    if (firstTokenSeen.compareAndSet(false, true) && !fixedMessageAnswer.get()) {
+                        metrics.recordFirstToken(elapsedSince(startedAt));
+                    }
+                })
+                .concatMapIterable(content -> {
+                    fragments.incrementAndGet();
+                    ChatEvent token = new TokenEvent(content);
+                    if (sourcesPending.compareAndSet(true, false) && sources.isPresent()) {
+                        return List.of(sources.get(), token);
+                    }
+                    return List.of(token);
+                })
+                .doOnComplete(() -> sources.ifPresent(event -> recordCitations(command, event, citations)));
+    }
+
+    /**
+     * Whether the answer cites the sources it was given. Only a completed answer with context and some text is
+     * judged. The log carries counts, never the question, the answer or the fragments.
+     */
+    private void recordCitations(StreamChatCommand command, SourcesEvent sources, CitationTracker citations) {
+        if (citations.isEmpty()) {
+            return;
+        }
+        CitationTracker.Summary summary = citations.summarize(sources.sources().size());
+        metrics.recordCitations(summary.outcome());
+        if (summary.outcome() == CitationOutcome.INVALID) {
+            LOG.warn("The answer cites sources it was not given: requestId={}, valid={}, invalid={}, sources={}",
+                    command.requestId(), summary.valid(), summary.invalid(), sources.sources().size());
+        }
+    }
+
+    /** What a citation {@code [n]} points at: the fragments handed to the model, numbered in that order. */
+    private static Optional<SourcesEvent> sourcesOf(List<ContextFragment> context) {
+        if (context.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new SourcesEvent(IntStream.range(0, context.size())
+                .mapToObj(index -> AnswerSource.of(index, context.get(index)))
+                .toList()));
     }
 
     /** Without useful context the answer may be the configured message, and then the model is not called at all. */
