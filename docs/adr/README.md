@@ -26,6 +26,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0016 | [Troceado por encabezados en `ingest` y contrato síncrono con `retrieval`](0016-troceado-por-encabezados-e-ingesta-sincrona.md) | aceptado |
 | 0017 | [Embeddings calculados solo en `retrieval`](0017-embeddings-solo-en-retrieval.md) | aceptado |
 | 0018 | [Recuperación del contexto en el caso de uso del chat](0018-recuperacion-de-contexto-en-chat.md) | aceptado |
+| 0019 | [Citas a la fuente en el chat](0019-citas-a-la-fuente-en-el-chat.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
