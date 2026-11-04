@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.12.0...v0.13.0) (2026-11-04)
+
+
+### Features
+
+* **chat:** [LAB-23] citas a la fuente en cada respuesta ([#96](https://github.com/leandroAmariles/shoplab-helpdesk/issues/96)) ([bfde385](https://github.com/leandroAmariles/shoplab-helpdesk/commit/bfde385fa47f9dd0862cad57884299ce31270683))
+
 ## [0.12.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.11.0...v0.12.0) (2026-11-01)
 
 
