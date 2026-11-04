@@ -145,7 +145,7 @@ class RagAnsweringIntegrationTests {
                 .withRequestBody(matchingJsonPath("$.messages[0].content",
                         containing("solo con la información de la sección CONTEXTO")))
                 .withRequestBody(matchingJsonPath("$.messages[1].content",
-                        matching("(?s).*\\[" + SOURCE + " › Politica > Plazos]\\s+Plazos\\s+Treinta dias\\..*")))
+                        matching("(?s).*\\[1] Politica › Politica > Plazos\\s+Plazos\\s+Treinta dias\\..*")))
                 .withRequestBody(matchingJsonPath("$.messages[1].content",
                         matching("(?s).*Pregunta del cliente: Plazos\\s+Treinta dias\\..*"))));
     }

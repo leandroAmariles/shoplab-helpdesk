@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class KnowledgeChunkMapper {
 
     public KnowledgeChunk toChunk(SearchResult result) {
-        return new KnowledgeChunk(result.source(), result.section(), result.position(), result.text(),
-                result.score());
+        return new KnowledgeChunk(result.source(), result.title(), result.section(), result.position(),
+                result.text(), result.score());
     }
 }

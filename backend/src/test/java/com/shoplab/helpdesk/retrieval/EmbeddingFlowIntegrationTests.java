@@ -171,6 +171,7 @@ class EmbeddingFlowIntegrationTests {
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).documentId()).isEqualTo(stored.documentId());
         assertThat(results.get(0).source()).isEqualTo(SOURCE);
+        assertThat(results.get(0).title()).isEqualTo("Politica");
         assertThat(results.get(0).section()).isEqualTo("Politica > Plazos");
         assertThat(results.get(0).position()).isEqualTo(1);
     }

@@ -13,7 +13,7 @@ class ContextSelectorTests {
     private final ContextSelector selector = new ContextSelector();
 
     private static ContextFragment fragment(String text, double score) {
-        return new ContextFragment("policy.md", "Policy", 0, text, score);
+        return new ContextFragment("policy.md", "Title of policy.md", "Policy", 0, text, score);
     }
 
     @Test
@@ -53,7 +53,7 @@ class ContextSelectorTests {
     @Test
     void repeatedTextIsHandedOverOnceIgnoringCaseAndWhitespace() {
         ContextFragment original = fragment("Seven days   to return.", 0.9);
-        ContextFragment copy = new ContextFragment("copy.md", "", 4, "seven days to return.\n", 0.7);
+        ContextFragment copy = new ContextFragment("copy.md", "Title of copy.md", "", 4, "seven days to return.\n", 0.7);
 
         assertThat(selector.select(List.of(original, fragment("Other text.", 0.8), copy), 0.0, BUDGET))
                 .extracting(ContextFragment::text)
@@ -63,7 +63,7 @@ class ContextSelectorTests {
     @Test
     void ofTwoCopiesTheBetterScoredIsKept() {
         ContextFragment worse = fragment("same text", 0.5);
-        ContextFragment better = new ContextFragment("other.md", "", 1, "Same text", 0.9);
+        ContextFragment better = new ContextFragment("other.md", "Title of other.md", "", 1, "Same text", 0.9);
 
         assertThat(selector.select(List.of(worse, better), 0.0, BUDGET)).containsExactly(better);
     }

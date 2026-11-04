@@ -3,7 +3,9 @@ package com.shoplab.helpdesk.chat.infrastructure.out.metrics;
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -55,5 +57,14 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
         if (outcome != ContextOutcome.FAILED) {
             contextFragments.record(fragments);
         }
+    }
+
+    @Override
+    public void recordCitations(CitationOutcome outcome) {
+        Counter.builder(ChatConstants.CITATIONS_METRIC)
+                .description("Answers given with context, by the quality of their citations")
+                .tag(ChatConstants.OUTCOME_TAG, outcome.tagValue())
+                .register(registry)
+                .increment();
     }
 }

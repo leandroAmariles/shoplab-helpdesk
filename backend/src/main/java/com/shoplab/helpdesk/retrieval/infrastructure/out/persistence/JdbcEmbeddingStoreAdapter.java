@@ -63,8 +63,8 @@ public class JdbcEmbeddingStoreAdapter implements EmbeddingStorePort {
             WHERE id = ? AND updated_at = ?
             """;
     private static final String SEARCH = """
-            SELECT c.id, c.document_id, d.source, COALESCE(c.metadata ->> 'section', '') AS section, c.chunk_index,
-                   c.content, 1 - (c.embedding <=> ?::public.vector) AS score
+            SELECT c.id, c.document_id, d.source, d.title, COALESCE(c.metadata ->> 'section', '') AS section,
+                   c.chunk_index, c.content, 1 - (c.embedding <=> ?::public.vector) AS score
             FROM retrieval.chunk c
             JOIN retrieval.document d ON d.id = c.document_id
             WHERE c.embedding IS NOT NULL AND c.embedding_model = ?
@@ -118,8 +118,8 @@ public class JdbcEmbeddingStoreAdapter implements EmbeddingStorePort {
         return BlockingCalls.call(() -> {
             String literal = VectorLiteral.of(query);
             return jdbc.query(SEARCH, (rs, row) -> new SearchResult(rs.getObject("id", UUID.class),
-                    rs.getObject("document_id", UUID.class), rs.getString("source"), rs.getString("section"),
-                    rs.getInt("chunk_index"), rs.getString("content"), rs.getDouble("score")),
+                    rs.getObject("document_id", UUID.class), rs.getString("source"), rs.getString("title"),
+                    rs.getString("section"), rs.getInt("chunk_index"), rs.getString("content"), rs.getDouble("score")),
                     literal, model, literal, limit);
         }).onErrorMap(JdbcEmbeddingStoreAdapter::isDatabaseFailure, JdbcEmbeddingStoreAdapter::unavailable);
     }

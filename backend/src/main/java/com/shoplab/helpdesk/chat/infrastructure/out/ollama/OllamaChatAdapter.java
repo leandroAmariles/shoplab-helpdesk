@@ -10,6 +10,7 @@ import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -39,7 +40,8 @@ import reactor.core.publisher.Flux;
 @Component
 public class OllamaChatAdapter implements ChatModelPort {
 
-    private static final String SOURCE_KEY = "source";
+    private static final String TITLE_KEY = "title";
+    private static final String NUMBER_KEY = "number";
     private static final String SECTION_KEY = "section";
     private static final String SECTION_SEPARATOR = " › ";
     private static final String FRAGMENT_SEPARATOR = "\n\n";
@@ -87,19 +89,24 @@ public class OllamaChatAdapter implements ChatModelPort {
         if (context.isEmpty()) {
             return emptyContextTemplate.replace(ChatConstants.QUERY_PLACEHOLDER, message);
         }
-        List<Document> documents = context.stream().map(OllamaChatAdapter::toDocument).toList();
+        List<Document> documents = IntStream.range(0, context.size())
+                .mapToObj(index -> toDocument(index + 1, context.get(index)))
+                .toList();
         return augmenter.augment(new Query(message), documents).text();
     }
 
-    private static Document toDocument(ContextFragment fragment) {
+    private static Document toDocument(int number, ContextFragment fragment) {
         return Document.builder()
                 .text(fragment.text())
-                .metadata(Map.of(SOURCE_KEY, fragment.source(), SECTION_KEY, fragment.section()))
+                .metadata(Map.of(NUMBER_KEY, number, TITLE_KEY, fragment.title(), SECTION_KEY, fragment.section()))
                 .score(fragment.score())
                 .build();
     }
 
-    /** Each fragment goes under its origin, {@code [source › section]}, so the model can tell them apart. */
+    /**
+     * Each fragment goes under its number and origin, {@code [n] Title › section}: the number is what the model cites
+     * as {@code [n]} and what the customer sees next to the source (LAB-23).
+     */
     private static String formatDocuments(List<Document> documents) {
         return documents.stream()
                 .map(document -> origin(document) + "\n" + document.getText())
@@ -107,10 +114,10 @@ public class OllamaChatAdapter implements ChatModelPort {
     }
 
     private static String origin(Document document) {
-        Object source = document.getMetadata().get(SOURCE_KEY);
         Object section = document.getMetadata().get(SECTION_KEY);
         boolean hasSection = section != null && !section.toString().isBlank();
-        return "[" + source + (hasSection ? SECTION_SEPARATOR + section : "") + "]";
+        return "[" + document.getMetadata().get(NUMBER_KEY) + "] " + document.getMetadata().get(TITLE_KEY)
+                + (hasSection ? SECTION_SEPARATOR + section : "");
     }
 
     /** Per-request options replace the defaults instead of merging, so the tools go on a copy of the defaults. */

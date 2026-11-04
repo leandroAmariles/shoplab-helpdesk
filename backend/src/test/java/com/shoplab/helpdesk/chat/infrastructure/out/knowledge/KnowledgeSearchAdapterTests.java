@@ -14,6 +14,8 @@ import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import reactor.core.publisher.Mono;
@@ -28,12 +30,12 @@ class KnowledgeSearchAdapterTests {
     @Test
     void mapsTheChunksToFragmentsKeepingTheOrder() {
         when(search.search("returns", 4)).thenReturn(Mono.just(List.of(
-                new KnowledgeChunk("a.md", "Returns", 1, "Seven days.", 0.9),
-                new KnowledgeChunk("b.md", "", 0, "Refund in ten days.", 0.7))));
+                new KnowledgeChunk("a.md", "Title of a.md", "Returns", 1, "Seven days.", 0.9),
+                new KnowledgeChunk("b.md", "Title of b.md", "", 0, "Refund in ten days.", 0.7))));
 
         StepVerifier.create(adapter.retrieve("returns", 4))
-                .expectNext(List.of(new ContextFragment("a.md", "Returns", 1, "Seven days.", 0.9),
-                        new ContextFragment("b.md", "", 0, "Refund in ten days.", 0.7)))
+                .expectNext(List.of(new ContextFragment("a.md", "Title of a.md", "Returns", 1, "Seven days.", 0.9),
+                        new ContextFragment("b.md", "Title of b.md", "", 0, "Refund in ten days.", 0.7)))
                 .verifyComplete();
         verify(search).search("returns", 4);
     }
@@ -46,8 +48,43 @@ class KnowledgeSearchAdapterTests {
     }
 
     @Test
+    void theTitleOfTheDocumentTravelsWithTheFragment() {
+        when(search.search("x", 1)).thenReturn(Mono.just(List.of(
+                new KnowledgeChunk("returns-01-return-policy.md", "Return policy", "S", 0, "t", 0.5))));
+
+        StepVerifier.create(adapter.retrieve("x", 1))
+                .assertNext(fragments -> assertThat(fragments.get(0).title()).isEqualTo("Return policy"))
+                .verifyComplete();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "returns-01-return-policy.md|Returns 01 return policy",
+            "faq_payments.PDF|Faq payments",
+            "notes|Notes"})
+    void aMissingTitleIsDerivedFromTheFileName(String source, String expected) {
+        when(search.search("x", 1)).thenReturn(Mono.just(List.of(
+                new KnowledgeChunk(source, " ", "S", 0, "t", 0.5))));
+
+        StepVerifier.create(adapter.retrieve("x", 1))
+                .assertNext(fragments -> assertThat(fragments.get(0).title()).isEqualTo(expected))
+                .verifyComplete();
+    }
+
+    @Test
+    void aNullTitleIsDerivedToo() {
+        when(search.search("x", 1)).thenReturn(Mono.just(List.of(
+                new KnowledgeChunk("a.md", null, "S", 0, "t", 0.5))));
+
+        StepVerifier.create(adapter.retrieve("x", 1))
+                .assertNext(fragments -> assertThat(fragments.get(0).title()).isEqualTo("A"))
+                .verifyComplete();
+    }
+
+    @Test
     void aNullSectionBecomesEmpty() {
-        when(search.search("x", 1)).thenReturn(Mono.just(List.of(new KnowledgeChunk("a.md", null, 0, "t", 0.5))));
+        when(search.search("x", 1)).thenReturn(Mono.just(List.of(
+                new KnowledgeChunk("a.md", "Title of a.md", null, 0, "t", 0.5))));
 
         StepVerifier.create(adapter.retrieve("x", 1))
                 .assertNext(fragments -> assertThat(fragments.get(0).section()).isEmpty())
@@ -57,8 +94,8 @@ class KnowledgeSearchAdapterTests {
     @Test
     void aChunkWithoutTextIsDroppedAndTheLogDoesNotSayWhatItHeld(CapturedOutput output) {
         when(search.search("x", 4)).thenReturn(Mono.just(List.of(
-                new KnowledgeChunk("a.md", "S", 3, "   ", 0.9),
-                new KnowledgeChunk("a.md", "S", 4, "Useful.", 0.8))));
+                new KnowledgeChunk("a.md", "Title of a.md", "S", 3, "   ", 0.9),
+                new KnowledgeChunk("a.md", "Title of a.md", "S", 4, "Useful.", 0.8))));
 
         StepVerifier.create(adapter.retrieve("x", 4))
                 .assertNext(fragments -> assertThat(fragments).extracting(ContextFragment::text)

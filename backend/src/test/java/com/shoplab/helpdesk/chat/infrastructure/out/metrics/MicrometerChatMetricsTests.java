@@ -3,6 +3,7 @@ package com.shoplab.helpdesk.chat.infrastructure.out.metrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -52,6 +53,21 @@ class MicrometerChatMetricsTests {
         // a failed retrieval delivered nothing and is not a sample of "fragments per answer"
         assertThat(registry.get("shoplab.chat.context.fragments").summary().count()).isEqualTo(3);
         assertThat(registry.get("shoplab.chat.context.fragments").summary().totalAmount()).isEqualTo(4.0);
+    }
+
+    @Test
+    void countsTheAnswersByTheQualityOfTheirCitations() {
+        metrics.recordCitations(CitationOutcome.VALID);
+        metrics.recordCitations(CitationOutcome.VALID);
+        metrics.recordCitations(CitationOutcome.INVALID);
+        metrics.recordCitations(CitationOutcome.NONE);
+
+        assertThat(registry.get("shoplab.chat.citations").tag("outcome", "valid").counter().count()).isEqualTo(2.0);
+        assertThat(registry.get("shoplab.chat.citations").tag("outcome", "invalid").counter().count())
+                .isEqualTo(1.0);
+        assertThat(registry.get("shoplab.chat.citations").tag("outcome", "none").counter().count()).isEqualTo(1.0);
+        assertThat(registry.find("shoplab.chat.citations").meters())
+                .allSatisfy(meter -> assertThat(meter.getId().getTags()).hasSize(1));
     }
 
     @Test
