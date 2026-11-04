@@ -6,9 +6,15 @@
     <p class="text">{{ message().content }}</p>
   } @else {
     @if (message().content) {
-      <div class="markdown" [innerHTML]="html()"></div>
+      <!-- Delegation: the buttons inside are the focusable, keyboard-operable elements; their clicks bubble here. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+      <div class="markdown" [innerHTML]="html()" (click)="onMarkdownClick($event)"></div>
     } @else if (message().status === 'complete') {
       <p class="note">Sin respuesta</p>
+    }
+
+    @if (listing().sources.length > 0) {
+      <app-source-list [sources]="listing().sources" [label]="listing().label" (open)="openSource($event)" />
     }
 
     @switch (message().status) {

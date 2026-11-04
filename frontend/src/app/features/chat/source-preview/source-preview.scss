@@ -1,0 +1,53 @@
+.section {
+  margin: 0 0 8px;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+// The text is injected as HTML, so Angular's style encapsulation does not reach it.
+.markdown ::ng-deep {
+  overflow-wrap: anywhere;
+
+  p,
+  ul,
+  ol,
+  blockquote {
+    margin: 6px 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 12px 0 4px;
+    font-size: 1.1em;
+  }
+
+  code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background-color: var(--mat-sys-surface-container-highest);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  pre {
+    overflow-x: auto;
+  }
+
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 4px 10px;
+    border: 1px solid var(--mat-sys-outline-variant);
+  }
+}

@@ -1,13 +1,45 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subscriber } from 'rxjs';
 import { ChatErrorKind, ChatStreamError } from './chat-error';
-import { ChatStreamEvent } from './chat-message';
+import { ChatSource, ChatStreamEvent } from './chat-message';
 import { createSseParser, SseEvent } from './sse-parser';
 
 const CHAT_URL = '/api/chat';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value !== '';
+}
+
+/** The sources of the `sources` event; `null` when the list is empty or any entry breaks the contract (LAB-23). */
+function toSources(value: unknown): ChatSource[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const sources: ChatSource[] = [];
+  for (const entry of value as unknown[]) {
+    if (
+      !isRecord(entry) ||
+      typeof entry['number'] !== 'number' ||
+      !Number.isInteger(entry['number']) ||
+      entry['number'] < 1 ||
+      !isNonEmptyString(entry['title']) ||
+      typeof entry['section'] !== 'string' ||
+      !isNonEmptyString(entry['text'])
+    ) {
+      return null;
+    }
+    sources.push({
+      number: entry['number'],
+      title: entry['title'],
+      section: entry['section'],
+      text: entry['text'],
+    });
+  }
+  return sources;
 }
 
 /** Turns a raw SSE event into a typed one; `null` for anything outside the LAB-12 contract. */
@@ -21,6 +53,12 @@ function toChatEvent(raw: SseEvent): ChatStreamEvent | null {
     return null;
   }
   if (isRecord(payload)) {
+    if (raw.event === 'sources') {
+      const sources = toSources(payload['sources']);
+      if (sources !== null) {
+        return { type: 'sources', sources };
+      }
+    }
     if (raw.event === 'token' && typeof payload['content'] === 'string') {
       return { type: 'token', content: payload['content'] };
     }
@@ -145,7 +183,8 @@ export class ChatStreamClient {
           continue;
         }
         subscriber.next(event);
-        if (event.type !== 'token') {
+        // `sources` and `token` keep the stream open; only `done` and `error` end it.
+        if (event.type === 'done' || event.type === 'error') {
           subscriber.complete();
           return true;
         }
