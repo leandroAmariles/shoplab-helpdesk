@@ -42,7 +42,7 @@ public class JdbcConversationMemoryAdapter implements ConversationMemoryPort {
 
     @Override
     public Mono<List<ConversationTurn>> recent(ConversationId id, int limit) {
-        return BlockingCalls.<List<ConversationTurn>>call(() -> read(id, limit))
+        return BlockingCalls.call(() -> read(id, limit))
                 .onErrorMap(DataAccessException.class, error -> new ConversationMemoryException(
                         MemoryOperation.READ, error));
     }

@@ -75,14 +75,16 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean responseRecorded = new AtomicBoolean();
             AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
             StringBuilder answerText = new StringBuilder();
-            return loadHistory(command, conversation)
+            return conversation.map(id -> history.load(id, command.requestId()))
+                    .orElseGet(() -> Mono.just(HistorySelection.empty()))
                     .flatMapMany(selection -> retrieveContext(command, selection)
                             .flatMapMany(context -> {
                                 fixedMessageAnswer.set(answersWithFixedMessage(context));
                                 return events(command, selection.turns(), context, startedAt, fragments,
                                         firstTokenSeen, fixedMessageAnswer, answerText);
                             }))
-                    .concatWith(Mono.defer(() -> finish(command, conversation, answerText, fragments)))
+                    .concatWith(Mono.defer(() -> finish(command, conversation.orElse(null), answerText,
+                            fragments)))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
                     .doOnCancel(() -> record(responseRecorded, ChatOutcome.CANCELLED, startedAt))
                     .onErrorResume(error -> {
@@ -159,25 +161,20 @@ public class StreamChatUseCase implements StreamChatServicePort {
         return chatModel.streamAnswer(command.message(), turns, context);
     }
 
-    /** The turns of the conversation that go to the model; a request without conversation has none. */
-    private Mono<HistorySelection> loadHistory(StreamChatCommand command, Optional<ConversationId> conversation) {
-        return conversation.map(id -> history.load(id, command.requestId()))
-                .orElseGet(() -> Mono.just(HistorySelection.empty()));
-    }
-
     /**
      * The last event. A finished answer is stored before {@code done} is sent, so the follow-up the customer writes
      * after seeing {@code done} always finds this turn. A failed or cancelled answer never gets here, and an answer
      * with no text is not a turn.
+     *
+     * @param conversation the conversation of the request, or {@code null} when it has none (no memory)
      */
-    private Mono<ChatEvent> finish(StreamChatCommand command, Optional<ConversationId> conversation,
-            StringBuilder answerText, AtomicInteger fragments) {
+    private Mono<ChatEvent> finish(StreamChatCommand command, ConversationId conversation, StringBuilder answerText,
+            AtomicInteger fragments) {
         Mono<ChatEvent> done = Mono.fromSupplier(() -> new DoneEvent(fragments.get()));
-        if (conversation.isEmpty() || answerText.toString().isBlank()) {
+        if (conversation == null || answerText.toString().isBlank()) {
             return done;
         }
-        return history.save(conversation.get(), command.requestId(), command.message(), answerText.toString())
-                .then(done);
+        return history.save(conversation, command.requestId(), command.message(), answerText.toString()).then(done);
     }
 
     private boolean answersWithFixedMessage(List<ContextFragment> context) {
