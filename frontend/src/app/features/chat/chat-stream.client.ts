@@ -112,12 +112,12 @@ export class ChatStreamClient {
    * Cold observable: the request starts on subscribe and is cancelled on unsubscribe, which
    * makes the backend stop generating. A cancellation by the caller is never an error.
    */
-  stream(message: string): Observable<ChatStreamEvent> {
+  stream(message: string, conversationId?: string): Observable<ChatStreamEvent> {
     return new Observable<ChatStreamEvent>((subscriber) => {
       const controller = new AbortController();
       const reader: { current?: ReadableStreamDefaultReader<Uint8Array> } = {};
 
-      void this.run(message, controller.signal, subscriber, reader);
+      void this.run(message, conversationId, controller.signal, subscriber, reader);
 
       return () => {
         controller.abort();
@@ -128,12 +128,13 @@ export class ChatStreamClient {
 
   private async run(
     message: string,
+    conversationId: string | undefined,
     signal: AbortSignal,
     subscriber: Subscriber<ChatStreamEvent>,
     reader: { current?: ReadableStreamDefaultReader<Uint8Array> },
   ): Promise<void> {
     try {
-      const response = await this.send(message, signal);
+      const response = await this.send(message, conversationId, signal);
       if (!response.ok) {
         throw await toHttpError(response);
       }
@@ -152,12 +153,16 @@ export class ChatStreamClient {
     }
   }
 
-  private async send(message: string, signal: AbortSignal): Promise<Response> {
+  private async send(
+    message: string,
+    conversationId: string | undefined,
+    signal: AbortSignal,
+  ): Promise<Response> {
     try {
       return await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(conversationId === undefined ? { message } : { message, conversationId }),
         signal,
       });
     } catch {

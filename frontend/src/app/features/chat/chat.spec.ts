@@ -9,14 +9,17 @@ import { ChatStreamClient } from './chat-stream.client';
 class FakeRequest {
   readonly events = new Subject<ChatStreamEvent>();
   unsubscribed = false;
-  constructor(readonly message: string) {}
+  constructor(
+    readonly message: string,
+    readonly conversationId?: string,
+  ) {}
 }
 
 class FakeClient {
   readonly requests: FakeRequest[] = [];
 
-  stream(message: string): Observable<ChatStreamEvent> {
-    const request = new FakeRequest(message);
+  stream(message: string, conversationId?: string): Observable<ChatStreamEvent> {
+    const request = new FakeRequest(message, conversationId);
     this.requests.push(request);
     return new Observable<ChatStreamEvent>((subscriber) => {
       const inner = request.events.subscribe(subscriber);
@@ -98,6 +101,70 @@ describe('Chat', () => {
       expect(bubbles()).toHaveLength(0);
       expect(textarea()).not.toBeNull();
       expect(button('Enviar mensaje')?.disabled).toBe(true);
+    });
+  });
+
+  describe('new conversation', () => {
+    const newConversation = () => button('Nueva conversación');
+
+    it('is offered but disabled while the conversation is empty', () => {
+      expect(newConversation()).not.toBeNull();
+      expect(newConversation()?.disabled).toBe(true);
+      expect(newConversation()?.textContent).toContain('Nueva conversación');
+    });
+
+    it('empties the screen, uses another conversation id and returns the focus to the field', async () => {
+      await send('Hola');
+      await emit({ type: 'done', fragments: 0 });
+      expect(newConversation()?.disabled).toBe(false);
+
+      newConversation()?.click();
+      await fixture.whenStable();
+
+      expect(bubbles()).toHaveLength(0);
+      expect(dom.querySelector('.empty')).not.toBeNull();
+      expect(newConversation()?.disabled).toBe(true);
+      expect(document.activeElement).toBe(textarea());
+      await send('¿y si es internacional?');
+      expect(client.requests[1].conversationId).toBeDefined();
+      expect(client.requests[1].conversationId).not.toBe(client.requests[0].conversationId);
+    });
+
+    it('cancels the answer in progress and does not mix its late text into the new one', async () => {
+      await send('Hola');
+      const old = client.last;
+
+      newConversation()?.click();
+      await fixture.whenStable();
+      old.events.next({ type: 'token', content: 'tarde' });
+      pendingFrames.splice(0).forEach((callback) => callback());
+      await fixture.whenStable();
+
+      expect(old.unsubscribed).toBe(true);
+      expect(bubbles()).toHaveLength(0);
+    });
+
+    it('does not lose what the customer was typing', async () => {
+      await send('Hola');
+      await emit({ type: 'done', fragments: 0 });
+      await type('algo a medio escribir');
+
+      newConversation()?.click();
+      await fixture.whenStable();
+
+      expect(textarea().value).toBe('algo a medio escribir');
+    });
+
+    it('is operable with the keyboard like any button', async () => {
+      await send('Hola');
+      await emit({ type: 'done', fragments: 0 });
+      const control = newConversation() as HTMLButtonElement;
+
+      control.focus();
+
+      expect(document.activeElement).toBe(control);
+      expect(control.tagName).toBe('BUTTON');
+      expect(control.type).toBe('button');
     });
   });
 

@@ -2,6 +2,9 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.domain.exception.ConversationMemoryException;
+import com.shoplab.helpdesk.chat.domain.model.ConversationId;
+import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.exception.TechnicalException;
@@ -39,6 +42,22 @@ class GlobalExceptionHandlerTests {
         webTestClient.get().uri("/probe/technical").exchange()
                 .expectStatus().isEqualTo(503)
                 .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
+    }
+
+    @Test
+    void anInvalidConversationIdIsABadRequestWithoutTheValue() {
+        webTestClient.get().uri("/probe/conversation-id").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_CHAT_00005").doesNotContain("not-a-uuid"));
+    }
+
+    @Test
+    void aMemoryFailureIsServiceUnavailableWithoutLeakingItsCause() {
+        webTestClient.get().uri("/probe/memory").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_CHAT_00006").doesNotContain("secret memory detail"));
     }
 
     @Test
@@ -91,6 +110,17 @@ class GlobalExceptionHandlerTests {
         @GetMapping(path = "/probe/stream-technical", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
         String streamTechnical() {
             throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
+        }
+
+        @GetMapping("/probe/conversation-id")
+        String conversationId() {
+            return ConversationId.optional("not-a-uuid").orElseThrow().value();
+        }
+
+        @GetMapping("/probe/memory")
+        String memory() {
+            throw new ConversationMemoryException(MemoryOperation.READ,
+                    new IllegalStateException("secret memory detail"));
         }
 
         @GetMapping("/probe/unexpected")

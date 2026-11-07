@@ -35,6 +35,12 @@ shoplab:
       max-context-characters: ${SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS:8000}
       # fixed-message answers a configured text without calling the model; model lets the model answer by itself.
       no-context-mode: ${SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE:fixed-message}
+    memory:
+      # Most recent turns (question + answer) handed to the model; 0 turns the memory off.
+      max-turns: ${SHOPLAB_CHAT_MEMORY_MAX_TURNS:5}
+      max-history-characters: ${SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS:4000}
+      # Previous questions added to the search of context so a follow-up finds the topic; 0 uses the message alone.
+      retrieval-turns: ${SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS:1}
   retrieval:
     ingest:
       base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}

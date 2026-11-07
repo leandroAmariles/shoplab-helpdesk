@@ -44,9 +44,11 @@ Si el fallo ocurre antes del primer evento no hay flujo: la respuesta es JSON `{
 | Estado | Código | Cuándo |
 | --- | --- | --- |
 | 400 | `SLHD_CHAT_00001` | Mensaje ausente, vacío, solo espacios o de más de 4000 caracteres |
+| 400 | `SLHD_CHAT_00005` | `conversationId` presente pero que no es un UUID en texto canónico (también con la memoria desactivada) |
 | 400 | `SLHD_GENE_00002` | Cuerpo que no es JSON válido |
 | 503 | `SLHD_CHAT_00002` | Ollama no responde o el modelo no existe |
 | 503 | `SLHD_CHAT_00004` | No se pudo recuperar el contexto de la base de conocimiento (servicio de embeddings o base de datos caídos). El bot no responde sin contexto |
+| 503 | `SLHD_CHAT_00006` | No se pudo leer la memoria de la conversación (base de datos caída). El bot no responde como si no hubiera historial |
 | 500 | `SLHD_GENE_00001` | Error inesperado |
 
 Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce `text/event-stream`. `curl` sin
@@ -66,6 +68,9 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 | `SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS` / `shoplab.chat.rag.max-context-characters` | `8000` | Máximo de caracteres de contexto que recibe el modelo (mínimo 500); cuenta solo el texto de los fragmentos, no sus cabeceras `[origen › sección]` ni la plantilla (unos cientos de caracteres más); los fragmentos van completos o no van |
 | `SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE` / `shoplab.chat.rag.no-context-mode` | `fixed-message` | Qué hacer si no hay fragmentos útiles: `fixed-message` responde el texto de `shoplab.chat.rag.no-context-message` sin llamar al modelo (determinista, no inventa); `model` deja que el modelo conteste con la plantilla de contexto vacío (conserva saludos y cortesías, pero el modelo local puede usar conocimiento general) |
 | `shoplab.chat.rag.context-template` / `empty-context-template` | plantillas en español | Mensaje de usuario con y sin contexto; llevan los marcadores `{query}` y `{context}` (la segunda, solo `{query}`). La de contexto no puede llevar otras llaves `{...}` (Spring AI las lee como variables): el arranque falla si no se puede renderizar |
+| `SHOPLAB_CHAT_MEMORY_MAX_TURNS` / `shoplab.chat.memory.max-turns` | `5` | Turnos recientes (pregunta + respuesta) que recibe el modelo. Rango 0–50; `0` apaga la memoria aunque llegue `conversationId` (el identificador se sigue validando) |
+| `SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS` / `shoplab.chat.memory.max-history-characters` | `4000` | Máximo de caracteres de historial (preguntas y respuestas), mínimo 200; se descarta el turno más antiguo entero, nunca se recorta un texto |
+| `SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS` / `shoplab.chat.memory.retrieval-turns` | `1` | Preguntas anteriores que se anteponen a la consulta de búsqueda para que un seguimiento encuentre su tema (0–50); `0` busca solo con el mensaje. Nunca más que `max-turns` |
 | `OLLAMA_NUM_CTX` | `8192` | Ventana de contexto que se pide a Ollama (`num-ctx`); con la de por defecto el servidor podría recortar el contexto |
 
 ## Observabilidad
@@ -111,7 +116,36 @@ La regla de citas está en el prompt de sistema y en la plantilla de contexto po
 `outcome` = `valid` (cita solo fuentes que tiene), `invalid` (alguna cita sin fuente) o `none` (no cita), una vez por respuesta
 completada con contexto; sin texto de preguntas, respuestas ni fragmentos.
 
+## Memoria de la conversación (LAB-24)
+
+La petición acepta un `conversationId` opcional, un UUID en texto canónico que genera la pantalla de chat
+(`crypto.randomUUID()`):
+
+```json
+{ "message": "¿y si es internacional?", "conversationId": "3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11" }
+```
+
+Sin `conversationId` el mensaje se responde por sí solo, como antes. Con él, el bot recuerda los turnos anteriores de esa
+conversación: se los entrega al modelo como mensajes previos, y la búsqueda de contexto antepone la pregunta anterior para
+que «¿y si es internacional?» encuentre el documento de envíos. Los turnos viven en la tabla `chat.conversation_turn`
+(esquema del módulo `chat`), sobreviven al reinicio del servicio y no se mezclan entre conversaciones. Decisiones:
+[ADR-0020](adr/0020-memoria-de-conversacion-en-tabla-propia.md).
+
+- **`done` solo se emite después de guardar el turno**, así que el cliente puede enviar su siguiente mensaje al recibirlo.
+  Una respuesta fallida o cancelada no guarda nada. Si el guardado falla, el último evento es `error` con
+  `SLHD_CHAT_00006` en lugar de `done`.
+- El historial se acota por turnos y por caracteres; las marcas `[n]` de las respuestas anteriores no se reenvían al
+  modelo, y las citas de cada respuesta siguen numerándose desde 1.
+- La pantalla ofrece «Nueva conversación»: cancela la respuesta en curso, vacía la pantalla y usa un identificador nuevo.
+  Recargar la página también empieza una conversación nueva.
+- `/actuator/prometheus` publica `shoplab_chat_history_messages` (mensajes de historial entregados al modelo),
+  `shoplab_chat_history_trimmed_total` (respuestas en las que se recortó historial) y
+  `shoplab_chat_memory_failures_total{operation="read|write"}`. Ni los registros ni las métricas llevan el texto de los
+  mensajes ni el identificador de la conversación.
+
 ## Alcance actual
 
-Cada petición es independiente: no hay historial ni identificador de conversación, ni autenticación. Las fuentes viajan con
-la respuesta y no se guardan. Llegan en historias posteriores.
+Hay memoria de la conversación en el servidor, pero no hay caducidad ni borrado del historial, ni listado o recuperación
+de conversaciones, ni autenticación: quien conoce el `conversationId` es quien accede a esa conversación. La conversación
+visible en la pantalla no se restaura al recargar. Las fuentes viajan con la respuesta y no se guardan. Llegan en
+historias posteriores.

@@ -1,0 +1,112 @@
+### LAB-24 - Memoria de la conversación
+#
+# Requisitos: backend en marcha (puerto 8080), PostgreSQL y Ollama arriba, y la base de conocimiento (data/kb) ingerida
+# e indexada (documentos en estado INDEXED).
+# Las respuestas llegan como SSE. Con contexto el primer evento es `sources`, luego `token`* y `done`; el turno ya está
+# guardado cuando llega `done`.
+# Los casos van en orden: los de la misma conversación comparten `conversationId`. Cambia el valor de la variable para
+# empezar una conversación nueva (el servidor la recuerda aunque reinicies el servicio).
+#
+# Not covered here (no se alcanzan por HTTP; los cubren las pruebas automáticas y el quickstart):
+#   - US2.6 / FR-007: respuesta fallida o cancelada que no guarda nada (StreamChatUseCaseMemoryTests,
+#     ChatMemoryIntegrationTests).
+#   - FR-010: memoria caída al leer (503 SLHD_CHAT_00006) o al guardar (evento `error`) (ChatMemoryDownIntegrationTests).
+#   - US3: límite de turnos y de caracteres del historial (StreamChatUseCaseMemoryTests, HistoryWindowTests,
+#     ChatMemoryIntegrationTests).
+#   - US4: botón «Nueva conversación» y envío del identificador desde la pantalla (chat.spec.ts, chat-store.spec.ts).
+#   - US5: métricas shoplab_chat_history_* y shoplab_chat_memory_failures_total en GET /actuator/prometheus
+#     (quickstart.md §6) y registros sin texto.
+
+@baseUrl = http://localhost:8080
+@conversationId = 3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11
+@otherConversationId = 9a7d1f40-2b6c-4e8d-8c31-5f0e7a6b1d22
+
+### US1 / Setup "Primera pregunta de una conversación" - expects 200; `sources` del documento de envíos; el turno queda guardado
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el envío estándar?", "conversationId": "{{conversationId}}" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US1.1 / Scenario "Una pregunta de seguimiento se entiende" - expects 200; la respuesta habla de envíos internacionales sin pedir aclaración y `sources` es del documento de envíos
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿y si es internacional?", "conversationId": "{{conversationId}}" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US2.1 / Scenario "Otra conversación no ve la anterior" - expects 200; el mismo seguimiento con otro identificador NO se entiende (mensaje de «sin información», sin `sources`)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿y si es internacional?", "conversationId": "{{otherConversationId}}" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US2.4 / Scenario "Sin identificador se atiende como antes" - expects 200; igual que antes de LAB-24: la pregunta suelta no se entiende y no se guarda nada
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿y si es internacional?" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US2.4 / Edge "conversationId null equivale a ausente" - expects 200; sin memoria
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el envío estándar?", "conversationId": null }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US2 / Edge "El mismo identificador en mayúsculas es la misma conversación" - expects 200; el seguimiento sigue entendiéndose con el historial de la primera pregunta
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿y si es internacional?", "conversationId": "3F1B6C52-8D0E-4C1A-9A53-7B2A0C9D4E11" }
+
+> {% client.test("200 SSE", function () { client.assert(response.status === 200, "status"); }); %}
+
+### US2.5 / Scenario "Identificador con formato no válido" - expects 400 SLHD_CHAT_00005; el cuerpo no repite el valor y no se llama al modelo
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola", "conversationId": "no-es-un-uuid" }
+
+> {% client.test("400", function () { client.assert(response.status === 400, "status"); }); %}
+
+### US2.5 / Edge "Identificador vacío" - expects 400 SLHD_CHAT_00005
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola", "conversationId": "" }
+
+> {% client.test("400", function () { client.assert(response.status === 400, "status"); }); %}
+
+### US2.5 / Edge "Identificador de 35 caracteres" - expects 400 SLHD_CHAT_00005
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "Hola", "conversationId": "3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e1" }
+
+> {% client.test("400", function () { client.assert(response.status === 400, "status"); }); %}
+
+### Contrato sin cambios / Edge "Mensaje vacío con identificador válido" - expects 400 SLHD_CHAT_00001 (el mensaje se valida primero)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "", "conversationId": "{{conversationId}}" }
+
+> {% client.test("400", function () { client.assert(response.status === 400, "status"); }); %}

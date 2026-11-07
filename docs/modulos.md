@@ -80,6 +80,10 @@ por similitud entre los chunks del modelo configurado. `chat` es el único consu
 `KnowledgeSearchAdapter` y la traduce a su propio `ContextFragment`; no accede a las tablas ni a clases internas de
 `retrieval`.
 
+**Memoria de la conversación (LAB-24, ADR-0020).** El esquema `chat` tiene la tabla `conversation_turn` (una fila por turno:
+pregunta y respuesta completa, por `conversation_id`), que solo lee y escribe `chat` a través de `ConversationMemoryPort`.
+Contiene texto libre del cliente: no se registra ni se mide, y todavía no tiene caducidad ni borrado.
+
 **Citas (LAB-23, ADR-0019).** `KnowledgeChunk` lleva también `title`, el título legible del documento (columna
 `document.title`, sin migración); `chat` lo entrega al cliente en el evento `sources` junto a la sección y el texto del
 fragmento.
