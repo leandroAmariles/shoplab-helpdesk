@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.13.0...v0.14.0) (2026-11-07)
+
+
+### Features
+
+* **chat:** [LAB-24] memoria de la conversación ([#107](https://github.com/leandroAmariles/shoplab-helpdesk/issues/107)) ([24a3cd3](https://github.com/leandroAmariles/shoplab-helpdesk/commit/24a3cd3862702d0545382b266a757a59ac103bbf))
+
 ## [0.13.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.12.0...v0.13.0) (2026-11-04)
 
 
