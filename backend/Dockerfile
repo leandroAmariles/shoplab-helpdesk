@@ -15,6 +15,12 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests package \
     && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 FROM eclipse-temurin:21-jre@sha256:0b99b3376fbb50dbf9c0af8535fdd5b8eb0d3fdfc8b1e4967f383b6919f6901a
+# CVE-2026-109518 (HIGH, remote code execution via hard link reuse in apt) is fixed in apt and libapt-pkg7.0
+# 3.2.1ubuntu0.1, but not in the pinned base digest yet (the latest published one);
+# remove this upgrade once a Dependabot bump of the base image includes the fix.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg7.0 \
+    && rm -rf /var/lib/apt/lists/*
 # /usr/bin/pebble (ACME test server written in Go) ships in the base image, is unused by the app and
 # carries Go stdlib CVEs; drop it instead of suppressing the findings.
 RUN rm -f /usr/bin/pebble \

@@ -21,7 +21,7 @@
         <spring-modulith.version>2.1.2</spring-modulith.version>
         <jacoco.version>0.8.16</jacoco.version>
         <jacoco.minimum.coverage>0.80</jacoco.minimum.coverage>
-        <checkstyle.version>14.3.0</checkstyle.version>
+        <checkstyle.version>14.4.0</checkstyle.version>
         <pmd.version>3.28.0</pmd.version>
         <blockhound.version>1.0.18.RELEASE</blockhound.version>
         <argLine/>
