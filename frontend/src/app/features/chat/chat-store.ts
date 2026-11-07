@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { ChatErrorKind, ChatStreamError } from './chat-error';
 import { ChatMessage, ChatStreamEvent, MAX_MESSAGE_LENGTH } from './chat-message';
 import { ChatStreamClient } from './chat-stream.client';
+import { newConversationId } from './conversation-id';
 
 /** Runs a callback on the next animation frame; returns a function that cancels it. */
 export type FrameScheduler = (callback: () => void) => () => void;
@@ -33,6 +34,9 @@ export class ChatStore {
     () => this.messages().filter((message) => message.author === 'user').at(-1)?.content ?? '',
   );
 
+  /** A conversation can be started anew once there is something to leave behind. */
+  readonly canStartNewConversation = computed(() => this.messages().length > 0);
+
   readonly canSend = computed(() => {
     const draft = this.draft();
     return draft.trim().length > 0 && draft.length <= MAX_MESSAGE_LENGTH && !this.isStreaming();
@@ -44,6 +48,8 @@ export class ChatStore {
   private currentAssistantId = '';
   private requestId = 0;
   private nextMessageId = 0;
+  /** Identifies the conversation for the backend, which remembers it; it never leaves the app but in requests. */
+  private conversationId = newConversationId();
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -72,6 +78,20 @@ export class ChatStore {
     this.start(text);
   }
 
+  /**
+   * Starts a new conversation: the answer in progress is cancelled (and whatever it still sends is ignored), the
+   * messages are cleared and the bot will not remember what was said. What the customer is typing is kept.
+   */
+  newConversation(): void {
+    this.requestId++;
+    this.cancelFrame?.();
+    this.cancelFrame = undefined;
+    this.pendingText = '';
+    this.subscription?.unsubscribe();
+    this.messages.set([]);
+    this.conversationId = newConversationId();
+  }
+
   /** Stops the answer in progress keeping the text received so far. */
   stop(): void {
     if (!this.isStreaming()) {
@@ -90,7 +110,7 @@ export class ChatStore {
     this.pendingText = '';
     this.messages.update((messages) => [...messages, assistant]);
 
-    this.subscription = this.client.stream(text).subscribe({
+    this.subscription = this.client.stream(text, this.conversationId).subscribe({
       next: (event) => this.onEvent(requestId, event),
       error: (error: unknown) => this.onError(requestId, error),
     });

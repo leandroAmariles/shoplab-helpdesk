@@ -48,7 +48,8 @@ class ToolCompositionIntegrationTests {
     void aToolPublishedByAnotherModuleIsOfferedToTheModel() {
         OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
 
-        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of())).expectNext("ok").verifyComplete();
+        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of(), java.util.List.of()))
+                .expectNext("ok").verifyComplete();
 
         ollama.verify(postRequestedFor(urlEqualTo("/api/chat"))
                 .withRequestBody(matchingJsonPath("$.tools[0].function.name", equalTo("lookupSomething"))));

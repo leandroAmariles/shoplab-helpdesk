@@ -48,7 +48,7 @@ class ChatMidStreamFailureIntegrationTests {
 
     @Test
     void theAdapterSignalsAModelExceptionAfterTheFragmentsAlreadyEmitted() {
-        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of()))
+        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of(), java.util.List.of()))
                 .expectNext("uno ", "dos")
                 .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class))
                 .verify();

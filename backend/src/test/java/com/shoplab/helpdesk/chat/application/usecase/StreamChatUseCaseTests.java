@@ -14,8 +14,10 @@ import static org.mockito.Mockito.when;
 
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
+import com.shoplab.helpdesk.chat.application.port.out.ConversationMemoryPort;
 import com.shoplab.helpdesk.chat.application.port.out.KnowledgeContextPort;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.config.MemoryProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.exception.KnowledgeRetrievalException;
@@ -63,6 +65,12 @@ class StreamChatUseCaseTests {
         when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of()));
     }
 
+    private final ConversationMemoryPort memory = mock(ConversationMemoryPort.class);
+
+    private ConversationHistory history(MemoryProperties properties) {
+        return new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(), properties, metrics);
+    }
+
     private StreamChatUseCase newUseCase(ChatModelPort model) {
         return newUseCase(model, rag(null, null));
     }
@@ -73,12 +81,12 @@ class StreamChatUseCaseTests {
     }
 
     private StreamChatUseCase newUseCase(ChatModelPort model, RagProperties rag) {
-        return new StreamChatUseCase(model, knowledge, new ContextSelector(), metrics,
-                new ChatProperties(MAX_LENGTH, "system"), rag);
+        return new StreamChatUseCase(model, knowledge, new ContextSelector(),
+                history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH, "system"), rag);
     }
 
     private StreamChatUseCase useCaseAnswering(Flux<String> answer) {
-        ChatModelPort model = (message, context) -> answer;
+        ChatModelPort model = (message, history, context) -> answer;
         return newUseCase(model);
     }
 
@@ -245,7 +253,7 @@ class StreamChatUseCaseTests {
     @Test
     void logsCarryTheRequestIdButNeverTheCustomerText(CapturedOutput output) {
         ChatModelPort model = mock(ChatModelPort.class);
-        when(model.streamAnswer(any(), any()))
+        when(model.streamAnswer(any(), any(), any()))
                 .thenReturn(Flux.concat(Flux.just("x"), Flux.error(new IllegalStateException())));
         StreamChatUseCase useCase = newUseCase(model);
 
@@ -306,14 +314,14 @@ class StreamChatUseCaseTests {
         List<ContextFragment> candidates = List.of(fragment("Seven days to return.", 0.9),
                 fragment("Refunds take ten days.", 0.8));
         when(knowledge.retrieve("¿Devoluciones?", 4)).thenReturn(Mono.just(candidates));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(useCaseWith(model).stream(command("¿Devoluciones?")))
                 .expectNextCount(1)
                 .expectNext(new TokenEvent("ok"), new DoneEvent(1))
                 .verifyComplete();
 
-        verify(model).streamAnswer("¿Devoluciones?", candidates);
+        verify(model).streamAnswer("¿Devoluciones?", List.of(), candidates);
         verify(metrics).recordContext(eq(ContextOutcome.WITH_CONTEXT), eq(2), any(Duration.class));
     }
 
@@ -324,7 +332,7 @@ class StreamChatUseCaseTests {
     @Test
     void eachQuestionRetrievesItsOwnContextFromItsOwnText() {
         ChatModelPort model = mock(ChatModelPort.class);
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
         StreamChatUseCase useCase = newUseCase(model);
 
         StepVerifier.create(useCase.stream(command("first question"))).expectNextCount(2).verifyComplete();
@@ -339,24 +347,24 @@ class StreamChatUseCaseTests {
         ChatModelPort model = mock(ChatModelPort.class);
         ContextFragment close = fragment("Close fragment.", 0.8);
         when(knowledge.retrieve("q", 2)).thenReturn(Mono.just(List.of(close, fragment("Far fragment.", 0.3))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
         StreamChatUseCase useCase = newUseCase(model, rag(2, 0.6));
 
         StepVerifier.create(useCase.stream(command("q"))).expectNextCount(3).verifyComplete();
 
-        verify(model).streamAnswer("q", List.of(close));
+        verify(model).streamAnswer("q", List.of(), List.of(close));
     }
 
     @Test
     void withoutCandidatesTheModelIsStillCalledWithEmptyContext() {
         ChatModelPort model = mock(ChatModelPort.class);
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("no info"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("no info"));
 
         StepVerifier.create(newUseCase(model).stream(command("¿Y esto?")))
                 .expectNext(new TokenEvent("no info"), new DoneEvent(1))
                 .verifyComplete();
 
-        verify(model).streamAnswer("¿Y esto?", List.of());
+        verify(model).streamAnswer("¿Y esto?", List.of(), List.of());
         verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
     }
 
@@ -364,13 +372,13 @@ class StreamChatUseCaseTests {
     void whenNoFragmentReachesTheThresholdTheContextIsEmpty() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("Weak match.", 0.2))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model, rag(null, 0.6)).stream(command("q")))
                 .expectNextCount(2)
                 .verifyComplete();
 
-        verify(model).streamAnswer("q", List.of());
+        verify(model).streamAnswer("q", List.of(), List.of());
         verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
     }
 
@@ -407,7 +415,7 @@ class StreamChatUseCaseTests {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve(any(), anyInt()))
                 .thenReturn(Mono.just(List.of(fragment("secret-policy-text", 0.9))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model).stream(new StreamChatCommand("secret-customer-question", "req-9")))
                 .expectNextCount(3)
@@ -428,7 +436,7 @@ class StreamChatUseCaseTests {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("¿Devoluciones?", 4)).thenReturn(Mono.just(List.of(
                 fragment("Seven days to return.", 0.9), fragment("Refunds take ten days.", 0.8))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("Plazo [1]", " y reembolso [2]"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("Plazo [1]", " y reembolso [2]"));
 
         StepVerifier.create(newUseCase(model).stream(command("¿Devoluciones?")))
                 .expectNext(new SourcesEvent(List.of(
@@ -443,7 +451,7 @@ class StreamChatUseCaseTests {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(
                 fragment("First.", 0.9), fragment("Too far.", 0.2), fragment("Third.", 0.8))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model, withThreshold(0.6)).stream(command("q")))
                 .assertNext(event -> assertThat(event).isInstanceOfSatisfying(SourcesEvent.class,
@@ -459,18 +467,18 @@ class StreamChatUseCaseTests {
     void theSourcesCarryTheSameFragmentsTheModelReceives() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9), fragment("B.", 0.8))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model).stream(command("q"))).expectNextCount(3).verifyComplete();
 
         org.mockito.ArgumentCaptor<List<ContextFragment>> handed = org.mockito.ArgumentCaptor.forClass(List.class);
-        verify(model).streamAnswer(eq("q"), handed.capture());
+        verify(model).streamAnswer(eq("q"), any(), handed.capture());
         assertThat(handed.getValue()).extracting(ContextFragment::text).containsExactly("A.", "B.");
     }
 
     @Test
     void withoutContextThereAreNoSourcesInEitherMode() {
-        ChatModelPort model = (message, context) -> Flux.just("hola");
+        ChatModelPort model = (message, history, context) -> Flux.just("hola");
 
         StepVerifier.create(newUseCase(model).stream(command("Hola")))
                 .expectNext(new TokenEvent("hola"), new DoneEvent(1))
@@ -484,7 +492,7 @@ class StreamChatUseCaseTests {
     void theSourcesAreNotTokensSoTheyDoNotChangeTheCountNorTheFirstTokenMetric() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("a", "b"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("a", "b"));
 
         StepVerifier.create(newUseCase(model).stream(command("q")))
                 .expectNextCount(1)
@@ -498,7 +506,7 @@ class StreamChatUseCaseTests {
     void aModelThatFailsBeforeItsFirstTokenStillEndsInAnErrorWithoutSources() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.error(new ChatModelException(null)));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.error(new ChatModelException(null)));
 
         StepVerifier.create(newUseCase(model).stream(command("q")))
                 .expectError(ChatModelException.class)
@@ -509,7 +517,7 @@ class StreamChatUseCaseTests {
     void aModelThatAnswersNothingSendsNoSources() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("A.", 0.9))));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.empty());
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.empty());
 
         StepVerifier.create(newUseCase(model).stream(command("q")))
                 .expectNext(new DoneEvent(0))
@@ -532,7 +540,7 @@ class StreamChatUseCaseTests {
     private StreamChatUseCase answeringWithContext(Flux<String> answer) {
         when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of(
                 fragment("Seven days.", 0.9), fragment("Ten days.", 0.8))));
-        ChatModelPort model = (message, context) -> answer;
+        ChatModelPort model = (message, history, context) -> answer;
         return newUseCase(model);
     }
 
@@ -652,14 +660,14 @@ class StreamChatUseCaseTests {
         ChatModelPort model = mock(ChatModelPort.class);
         List<ContextFragment> candidates = List.of(fragment("Seven days to return.", 0.9));
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(candidates));
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("q")))
                 .expectNextCount(1)
                 .expectNext(new TokenEvent("ok"), new DoneEvent(1))
                 .verifyComplete();
 
-        verify(model).streamAnswer("q", candidates);
+        verify(model).streamAnswer("q", List.of(), candidates);
         verify(metrics).recordFirstToken(any(Duration.class));
     }
 
@@ -694,13 +702,13 @@ class StreamChatUseCaseTests {
     void aSearchThatCompletesWithoutAValueIsTreatedAsNoContext() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.empty());
-        when(model.streamAnswer(any(), any())).thenReturn(Flux.just("ok"));
+        when(model.streamAnswer(any(), any(), any())).thenReturn(Flux.just("ok"));
 
         StepVerifier.create(newUseCase(model).stream(command("q")))
                 .expectNext(new TokenEvent("ok"), new DoneEvent(1))
                 .verifyComplete();
 
-        verify(model).streamAnswer("q", List.of());
+        verify(model).streamAnswer("q", List.of(), List.of());
         verify(metrics).recordContext(eq(ContextOutcome.NO_CONTEXT), eq(0), any(Duration.class));
     }
 
@@ -710,7 +718,8 @@ class StreamChatUseCaseTests {
         ContextSelector selector = mock(ContextSelector.class);
         when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of(fragment("Text.", 0.9))));
         when(selector.select(any(), anyDouble(), anyInt())).thenThrow(new IllegalStateException("bug"));
-        StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector, metrics,
+        StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector,
+                history(new MemoryProperties(null, null, null)), metrics,
                 new ChatProperties(MAX_LENGTH, "system"), rag(null, null));
 
         StepVerifier.create(useCase.stream(command("q"))).expectError(IllegalStateException.class).verify();

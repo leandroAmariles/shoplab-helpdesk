@@ -29,7 +29,7 @@ public class ChatController {
     public ResponseEntity<Flux<ServerSentEvent<Object>>> chat(@RequestBody ChatRequest request,
             @RequestAttribute(name = RequestIdFilter.REQUEST_ATTRIBUTE, required = false) String requestId) {
         StreamChatCommand command = new StreamChatCommand(request.message(),
-                requestId == null ? RequestIdFilter.newRequestId() : requestId);
+                requestId == null ? RequestIdFilter.newRequestId() : requestId, request.conversationId());
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-cache")
                 .header("X-Accel-Buffering", "no")

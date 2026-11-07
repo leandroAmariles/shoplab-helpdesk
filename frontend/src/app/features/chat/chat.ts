@@ -54,6 +54,12 @@ export class Chat {
     this.input().focus();
   }
 
+  protected onNewConversation(): void {
+    this.store.newConversation();
+    this.following.set(true);
+    this.input().focus();
+  }
+
   protected onScroll(): void {
     const element = this.history().nativeElement;
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight;

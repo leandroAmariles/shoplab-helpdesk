@@ -1,3 +1,4 @@
+import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
 import { ChatStreamError } from './chat-error';
@@ -9,14 +10,17 @@ import { ChatStreamClient } from './chat-stream.client';
 class FakeRequest {
   readonly events = new Subject<ChatStreamEvent>();
   unsubscribed = false;
-  constructor(readonly message: string) {}
+  constructor(
+    readonly message: string,
+    readonly conversationId?: string,
+  ) {}
 }
 
 class FakeClient {
   readonly requests: FakeRequest[] = [];
 
-  stream(message: string): Observable<ChatStreamEvent> {
-    const request = new FakeRequest(message);
+  stream(message: string, conversationId?: string): Observable<ChatStreamEvent> {
+    const request = new FakeRequest(message, conversationId);
     this.requests.push(request);
     return new Observable<ChatStreamEvent>((subscriber) => {
       const inner = request.events.subscribe(subscriber);
@@ -112,6 +116,95 @@ describe('ChatStore', () => {
       send('  hola   mundo\n');
 
       expect(client.last.message).toBe('  hola   mundo\n');
+    });
+  });
+
+  describe('conversation memory', () => {
+    const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+    it('sends a canonical UUID with the first message and the same one with the next', () => {
+      send('¿cuánto tarda el envío?');
+      client.last.events.next({ type: 'done', fragments: 0 });
+      send('¿y si es internacional?');
+
+      const [first, second] = client.requests;
+      expect(first.conversationId).toMatch(CANONICAL_UUID);
+      expect(second.conversationId).toBe(first.conversationId);
+    });
+
+    it('keeps the conversation id when an answer is retried', () => {
+      send('hola');
+      client.last.events.error(new ChatStreamError('network'));
+      store.retry();
+
+      expect(client.requests[1].conversationId).toBe(client.requests[0].conversationId);
+    });
+
+    it('starts a different conversation in every new screen (a page reload)', () => {
+      send('hola');
+      const other = runInInjectionContext(TestBed.inject(EnvironmentInjector), () => new ChatStore());
+      other.draft.set('hola');
+      other.send();
+
+      expect(client.requests[1].conversationId).toMatch(CANONICAL_UUID);
+      expect(client.requests[1].conversationId).not.toBe(client.requests[0].conversationId);
+    });
+
+    it('can only start a new conversation once there is something to leave behind', () => {
+      expect(store.canStartNewConversation()).toBe(false);
+
+      send('hola');
+
+      expect(store.canStartNewConversation()).toBe(true);
+    });
+
+    it('clears the messages and uses a new id after "new conversation"', () => {
+      send('hola');
+      client.last.events.next({ type: 'done', fragments: 0 });
+      store.newConversation();
+      send('¿y si es internacional?');
+
+      expect(store.messages().map((message) => message.content)).toEqual(['¿y si es internacional?', '']);
+      expect(client.requests[1].conversationId).toMatch(CANONICAL_UUID);
+      expect(client.requests[1].conversationId).not.toBe(client.requests[0].conversationId);
+    });
+
+    it('cancels the answer in progress and ignores whatever it still sends', () => {
+      send('hola');
+      const old = client.last;
+      old.events.next({ type: 'token', content: 'Ho' });
+      store.newConversation();
+
+      expect(old.unsubscribed).toBe(true);
+      expect(frames.pending).toBe(0);
+      old.events.next({ type: 'token', content: 'la' });
+      old.events.next({ type: 'done', fragments: 2 });
+      frames.run();
+      expect(store.messages()).toEqual([]);
+      expect(store.isStreaming()).toBe(false);
+    });
+
+    it('keeps what the customer is typing', () => {
+      send('hola');
+      store.draft.set('algo a medio escribir');
+
+      store.newConversation();
+
+      expect(store.draft()).toBe('algo a medio escribir');
+    });
+  });
+
+  describe('a turn that could not be stored', () => {
+    it('keeps the text already received and marks the answer as failed', () => {
+      send('hola');
+      client.last.events.next({ type: 'token', content: 'Tarda tres días.' });
+      client.last.events.next({ type: 'error', code: 'SLHD_CHAT_00006', message: 'unavailable' });
+
+      expect(assistant()).toMatchObject({
+        content: 'Tarda tres días.',
+        status: 'failed',
+        error: 'stream',
+      });
     });
   });
 

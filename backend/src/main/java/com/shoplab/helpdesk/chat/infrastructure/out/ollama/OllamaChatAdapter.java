@@ -5,12 +5,15 @@ import com.shoplab.helpdesk.chat.config.ChatProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
+import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -67,10 +70,9 @@ public class OllamaChatAdapter implements ChatModelPort {
 
     /** Any failure of the model is a {@link ChatModelException}; the use case decides what it means for the stream. */
     @Override
-    public Flux<String> streamAnswer(String message, List<ContextFragment> context) {
+    public Flux<String> streamAnswer(String message, List<ConversationTurn> history, List<ContextFragment> context) {
         return Flux.defer(() -> {
-            List<Message> messages = List.of(new SystemMessage(systemPrompt),
-                    new UserMessage(userText(message, context)));
+            List<Message> messages = messages(message, history, context);
             List<ToolCallback> callbacks = tools.compose();
             Prompt prompt = callbacks.isEmpty() ? new Prompt(messages) : new Prompt(messages, withTools(callbacks));
             return chatModel.stream(prompt)
@@ -79,6 +81,21 @@ public class OllamaChatAdapter implements ChatModelPort {
                     .filter(fragment -> !fragment.isEmpty())
                     .onErrorMap(error -> !(error instanceof HelpdeskException), ChatModelException::new);
         });
+    }
+
+    /**
+     * The system prompt, the earlier turns as the customer's and the assistant's own messages (never as system text,
+     * so nothing said before can replace the rules), and the current question with its context.
+     */
+    private List<Message> messages(String message, List<ConversationTurn> history, List<ContextFragment> context) {
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(systemPrompt));
+        for (ConversationTurn turn : history) {
+            messages.add(new UserMessage(turn.question()));
+            messages.add(new AssistantMessage(turn.answer()));
+        }
+        messages.add(new UserMessage(userText(message, context)));
+        return messages;
     }
 
     /**
