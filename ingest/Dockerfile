@@ -19,6 +19,13 @@ ARG APP_MODULE=app.main:app
 ENV APP_MODULE=${APP_MODULE} \
     PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1
+# CVE-2026-109518 (HIGH, remote code execution via hard link reuse in apt) is fixed in apt and libapt-pkg7.0 3.0.4,
+# and CVE-2026-76844 and CVE-2026-85091 (HIGH, zlib) in zlib1g 1:1.3.dfsg+really1.3.1-1+deb13u1, but none is in the
+# pinned base digest yet (the latest published one);
+# remove this upgrade once a Dependabot bump of the base image includes the fixes.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg7.0 zlib1g \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid 10001 --no-create-home app
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /app /app
