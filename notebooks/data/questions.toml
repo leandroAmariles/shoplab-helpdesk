@@ -1,0 +1,156 @@
+# Las 20 preguntas de prueba del notebook de chunking (LAB-26): cuatro por tema.
+# Formato y reglas: specs/LAB-26-chunking-strategies-notebook/contracts/questions-format.md
+#
+# `passage` es texto literal del documento esperado, en una sola línea. Cada pasaje aparece solo en ese documento.
+# Para cada pregunta se eligió un dato que no se repite en las FAQs ni en otros documentos, de modo que acertar el
+# documento correcto sea posible sin ambigüedad.
+
+# --- payments --------------------------------------------------------------------------------------------------------
+
+[[question]]
+id = "Q01"
+topic = "payments"
+question = "Si mi compra es de R$ 120, ¿puedo pagarla en 5 cuotas?"
+document = "payments-02-installments"
+passage = 'Ejemplo: una compra de R$ 120,00 puede pagarse en hasta 4 cuotas de R$ 30,00, que respetan la cuota mínima; en 5 cuotas, cada una sería de R$ 24,00 y no está permitido.'
+
+[[question]]
+id = "Q02"
+topic = "payments"
+question = "Mi boleto venció sin que lo pagara, ¿qué puedo hacer?"
+document = "payments-03-boleto-and-vouchers"
+passage = 'Si el boleto vence sin pago, puedes volver a hacer el pedido y elegir otro método.'
+
+[[question]]
+id = "Q03"
+topic = "payments"
+question = "Ya intenté pagar tres veces el mismo pedido y no pasa, ¿qué hago?"
+document = "payments-04-payment-issues"
+passage = 'Si superas los 3 intentos en 24 horas, espera o elige otro método de pago.'
+
+[[question]]
+id = "Q04"
+topic = "payments"
+question = "Veo un cobro de ShopLab que no reconozco, ¿qué datos tengo que dar a soporte?"
+document = "payments-04-payment-issues"
+passage = 'Si ves un cobro de ShopLab que no reconoces, contacta con soporte cuanto antes con el importe y la fecha; el equipo lo revisa contigo.'
+
+# --- privacy ---------------------------------------------------------------------------------------------------------
+
+[[question]]
+id = "Q05"
+topic = "privacy"
+question = "¿Cómo borro las cookies que el sitio ya guardó en mi navegador?"
+document = "privacy-04-cookies"
+passage = 'También puedes borrar las cookies desde la configuración de tu navegador.'
+
+[[question]]
+id = "Q06"
+topic = "privacy"
+question = "¿Puedo darle mi contraseña al asistente para que revise mi cuenta?"
+document = "privacy-02-data-collection-and-use"
+passage = 'No compartas datos que no sean necesarios, como contraseñas o el número completo de una tarjeta.'
+
+[[question]]
+id = "Q07"
+topic = "privacy"
+question = "¿Qué información debo incluir en el correo para ejercer un derecho sobre mis datos?"
+document = "privacy-03-data-rights"
+passage = 'Para ejercer cualquiera de ellos, escribe a privacidad@shoplab.example indicando qué derecho quieres ejercer y el correo de tu cuenta.'
+
+[[question]]
+id = "Q08"
+topic = "privacy"
+question = "¿Con quién comparte ShopLab mis datos personales?"
+document = "privacy-01-privacy-policy"
+passage = 'Solo los comparte con quienes intervienen en tu pedido, como el transportista o el procesador de pagos, y únicamente en la medida necesaria.'
+
+# --- returns ---------------------------------------------------------------------------------------------------------
+
+[[question]]
+id = "Q09"
+topic = "returns"
+question = "¿Qué tengo que indicar al pedir la devolución de un producto?"
+document = "returns-02-return-process"
+passage = 'por el formulario de contacto del sitio o por correo a soporte@shoplab.example, indicando el número de pedido, el producto y el motivo.'
+
+[[question]]
+id = "Q10"
+topic = "returns"
+question = "¿Qué pasa si devuelvo un producto sin sus accesorios?"
+document = "returns-02-return-process"
+passage = 'Si el producto llega con señales de uso indebido o sin accesorios, la inspección puede rechazar la devolución.'
+
+[[question]]
+id = "Q11"
+topic = "returns"
+question = "Pasó el plazo y el reembolso de mi devolución no llega, ¿qué hago?"
+document = "returns-03-refunds"
+passage = 'Si el reembolso no llega dentro del plazo, escribe a soporte con el número de pedido.'
+
+[[question]]
+id = "Q12"
+topic = "returns"
+question = "Si quiero cambiar un producto por otro y no hay stock, ¿qué ocurre?"
+document = "returns-04-exchanges-and-cancellations"
+passage = 'El cambio está sujeto a stock; si el producto que quieres no está disponible, se hace el reembolso.'
+
+# --- shipping --------------------------------------------------------------------------------------------------------
+
+[[question]]
+id = "Q13"
+topic = "shipping"
+question = "Para el envío gratis, ¿el costo del envío cuenta dentro del importe mínimo de la compra?"
+document = "shipping-02-shipping-costs"
+passage = 'El importe mínimo para el envío gratis se calcula sobre el valor de los productos, sin contar el costo de envío.'
+
+[[question]]
+id = "Q14"
+topic = "shipping"
+question = "Compré productos de varios vendedores, ¿llegará todo junto?"
+document = "shipping-01-delivery-times"
+passage = 'Los pedidos con productos de varios vendedores pueden llegar en envíos separados, cada uno con su propio plazo.'
+
+[[question]]
+id = "Q15"
+topic = "shipping"
+question = "Mi pedido figura como entregado pero yo no lo recibí, ¿qué hago?"
+document = "shipping-04-delivery-issues"
+passage = 'Si el pedido figura como `delivered` pero no lo recibiste, abre un caso igualmente: se tratará como extravío.'
+
+[[question]]
+id = "Q16"
+topic = "shipping"
+question = "El estado de mi pedido no cambia desde hace días, ¿cómo sé si es normal?"
+document = "shipping-03-order-tracking"
+passage = 'Si el estado no cambia durante varios días, consulta el documento "Plazos de entrega" para saber si sigue dentro del plazo.'
+
+# --- warranty --------------------------------------------------------------------------------------------------------
+
+[[question]]
+id = "Q17"
+topic = "warranty"
+question = "¿Cuánto costaría la garantía extendida de un producto de R$ 500?"
+document = "warranty-02-extended-warranty"
+passage = 'Ejemplo: para un producto de R$ 500,00, la garantía extendida cuesta R$ 50,00.'
+
+[[question]]
+id = "Q18"
+topic = "warranty"
+question = "Si el diagnóstico dice que el daño no está cubierto, ¿me devuelven el producto?"
+document = "warranty-03-warranty-claims"
+passage = 'Si el diagnóstico determina que el daño no está cubierto (mal uso, caídas, líquidos, reparaciones de terceros o desgaste normal), ShopLab te lo explica y te devuelve el producto.'
+
+[[question]]
+id = "Q19"
+topic = "warranty"
+question = "¿Qué debo preparar antes de reclamar la garantía de un producto?"
+document = "warranty-03-warranty-claims"
+passage = 'Reúne el número de pedido y una descripción del defecto, con fotos o un vídeo si es posible.'
+
+[[question]]
+id = "Q20"
+topic = "warranty"
+question = "¿La garantía extendida cubre los daños por caídas?"
+document = "warranty-02-extended-warranty"
+passage = 'Aplican las mismas exclusiones que la garantía legal: mal uso, caídas, líquidos, reparaciones de terceros y desgaste normal.'
