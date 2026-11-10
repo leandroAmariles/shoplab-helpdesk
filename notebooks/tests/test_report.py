@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from chunking_lab.config import ExperimentConfig
+from chunking_lab.corpus import Document
 from chunking_lab.questions import Question
 from chunking_lab.report import (
     build_results,
@@ -17,12 +18,15 @@ from chunking_lab.report import (
     results_digest,
     results_table,
     retrieval_rows,
+    sensitivity_chunk_size,
+    sensitivity_percentile,
     size_summary,
     validate_results,
     write_results,
 )
 from chunking_lab.retrieval import Hit, Retrieval
 from chunking_lab.strategies import Chunk, Strategy
+from helpers import FakeEmbedder
 
 
 def chunk(strategy: Strategy, position: int, text: str, document: str = "returns-01-x") -> Chunk:
@@ -245,3 +249,34 @@ def test_retrieval_rows_mark_the_correct_chunk_and_keep_the_order():
     assert [(r["place"], r["correct"]) for r in rows] == [(1, False), (2, True)]
     assert rows[0]["score"] == 0.9
     assert rows[1]["text"] == "p" * 40
+
+
+# --- Part 4: sensitivity (optional, US3) ----------------------------------------------------------------------------
+
+def tiny_corpus() -> tuple[list[Document], list[Question]]:
+    sentences = (f"Frase número {i} del documento de prueba con bastante texto para ocupar espacio." for i in range(30))
+    body = " ".join(sentences)
+    documents = [Document(id=f"returns-0{n}-x", topic="returns", raw=body, body=body) for n in (1, 2)]
+    passage = "Frase número 3 del documento de prueba con bastante texto para ocupar espacio."
+    return documents, [Question(id="Q01", topic="returns", question="¿frase 3?", document="returns-01-x",
+                                passage=passage)]
+
+
+def test_sensitivity_percentile_returns_one_row_per_value_for_the_semantic_strategy():
+    documents, qs = tiny_corpus()
+    table = sensitivity_percentile(documents, qs, ExperimentConfig(), FakeEmbedder(), values=(60, 80, 95))
+    assert list(table.columns) == ["percentil", "chunks", "hit rate", "MRR"]
+    assert table["percentil"].tolist() == [60, 80, 95]
+    assert table["chunks"].is_monotonic_decreasing
+    assert table["hit rate"].between(0, 1).all()
+    assert table["MRR"].between(0, 1).all()
+
+
+def test_sensitivity_chunk_size_covers_every_strategy_and_size():
+    documents, qs = tiny_corpus()
+    table = sensitivity_chunk_size(documents, qs, ExperimentConfig(), FakeEmbedder(), values=(400, 1000))
+    assert list(table.columns) == ["chunk_size", "estrategia", "chunks", "hit rate", "MRR"]
+    assert len(table) == 2 * 3
+    assert table["estrategia"].tolist()[:3] == ["Tamaño fijo", "Por encabezados", "Semántica"]
+    fixed = table[table["estrategia"] == "Tamaño fijo"]
+    assert fixed["chunks"].tolist()[0] > fixed["chunks"].tolist()[1]  # smaller size, more chunks

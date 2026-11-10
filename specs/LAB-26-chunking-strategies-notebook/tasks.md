@@ -281,11 +281,11 @@ relaciona al menos dos preguntas de la tabla (por `id`) con una causa de acierto
 
 ### Sensibilidad (opcional, P3 — solo si lo anterior está terminado)
 
-- [ ] T042 [P] [US3] `nb/tests/test_report.py` (parte 4): `sensitivity` repite la medición variando un parámetro
+- [X] T042 [P] [US3] `nb/tests/test_report.py` (parte 4): `sensitivity` repite la medición variando un parámetro
   (percentil 60/80/95 de la semántica y `chunk_size` 400/700/1000 para las tres) y devuelve una fila por valor con hit
   rate y MRR; reutiliza las unidades ya embebidas (comprobar con un `FakeEmbedder` que cuenta llamadas que no se vuelven a
   embeber las unidades)
-- [ ] T043 [US3] Implementar `sensitivity` en `nb/src/chunking_lab/report.py` y añadir al notebook la sección opcional
+- [X] T043 [US3] Implementar `sensitivity` en `nb/src/chunking_lab/report.py` y añadir al notebook la sección opcional
   «¿Cambia la conclusión si cambio el umbral o el tamaño?» con las dos tablas y una frase de lectura (R11). Depende de
   T042
 
@@ -349,18 +349,18 @@ guardada en el repositorio (quickstart §2 y §4); sin Ollama, falla en la segun
 - [X] T051 [P] `README.md` de la raíz: actualizar la fila de `notebooks/` de la tabla de carpetas (enlazar a
   `notebooks/README.md` y decir que contiene el notebook comparativo de chunking) y la frase de CI (≈ línea 177) para
   incluir `notebooks/` entre los componentes que se construyen por separado
-- [ ] T052 Verificación completa del proyecto: `cd notebooks && uv sync --frozen && uv run ruff check . && uv run pytest`
+- [X] T052 Verificación completa del proyecto: `cd notebooks && uv sync --frozen && uv run ruff check . && uv run pytest`
   (cobertura del paquete ≥ 80 %, líneas ≤ 121); `cd ../ingest && uv run pytest` sigue verde (T001)
-- [ ] T053 Comprobación de alcance (quickstart §6): `git diff --stat main -- ingest backend frontend infra` sin cambios;
+- [X] T053 Comprobación de alcance (quickstart §6): `git diff --stat main -- ingest backend frontend infra` sin cambios;
   `grep -rn "notebooks\|chunking_lab" backend/src ingest/app` sin resultados; solo cambian `notebooks/`, `specs/LAB-26-…`,
   `.github/workflows/ci.yml`, `.gitignore` y `README.md`
-- [ ] T054 Lista previa al commit (`CLAUDE.md` §8): `git status --short` sin `.cache/`, `.ipynb_checkpoints/`, `.tmp/`,
+- [X] T054 Lista previa al commit (`CLAUDE.md` §8): `git status --short` sin `.cache/`, `.ipynb_checkpoints/`, `.tmp/`,
   `*.bak` ni salidas sueltas; `git diff --staged` solo con cambios intencionados; abrir el `.ipynb` y confirmar que no
   hay rutas locales, nombres de usuario ni claves en el código ni en las salidas (FR-023); revisar que el tamaño del
   notebook es razonable (< 1 MB)
-- [ ] T055 Recorrer [quickstart.md](quickstart.md) completo (§1 a §6) y comprobar que cada resultado esperado se cumple;
+- [X] T055 Recorrer [quickstart.md](quickstart.md) completo (§1 a §6) y comprobar que cada resultado esperado se cumple;
   releer la conclusión del notebook contra los números finales de la tabla
-- [ ] T056 Marcar las tareas hechas en este archivo y anotar al final de «Notes» cualquier desvío respecto al plan
+- [X] T056 Marcar las tareas hechas en este archivo y anotar al final de «Notes» cualquier desvío respecto al plan
 
 ---
 
@@ -439,3 +439,17 @@ Task: "nb/src/chunking_lab/report.py (parte 1)"
 - Si T002 revela que la API de Ollama difiere de lo supuesto, actualizar research.md R3 y
   [contracts/results-format.md](contracts/results-format.md) antes de seguir.
 - No modificar `ingest/`: si el adaptador de encabezados necesitara un cambio allí, parar y consultarlo (FR-021, FR-022).
+- Desvíos respecto a lo escrito arriba, sin cambiar el resultado:
+  - La normalización de espacios (`normalize`) vive en `chunking_lab/text.py` y no en `questions.py`, para que `report.py`
+    y `metrics.py` la usen sin depender de `questions.py`. El doble de prueba `FakeEmbedder` está en `tests/helpers.py` (no en
+    `conftest.py`), porque `tests/` no es un paquete y `from tests...` resolvería al `tests/` de `ingest/`.
+  - El umbral de la estrategia semántica es **estricto** (distancia `>` percentil, no `>=`): con distancias todas iguales no
+    hay cortes. Recogido en research.md R6.
+  - T031–T035 se escribieron de una vez en `questions.toml`. Se eligieron hechos que aparecen en un solo documento (las FAQs
+    repiten casi todo); aun así queda un solape semántico (p. ej. Q03 con la FAQ de pagos) que el notebook declara como límite.
+  - La sensibilidad (T042–T043) es la sección 8 del notebook y desplaza a «Conclusiones» (9) y «Reproducibilidad» (10). Además
+    del percentil mide `chunk_size` 400/700/1000: el orden fijo/semántica cambia con el tamaño; encabezados queda último.
+  - El notebook se generó con un script desechable fuera del repositorio y se ejecutó con `nbconvert`. Las verificaciones de
+    T047 se hicieron con `OLLAMA_BASE_URL`/`OLLAMA_EMBED_MODEL` en lugar de parar Docker.
+  - Medido: 112 pruebas, cobertura 98 % del paquete, ejecución en frío del notebook 33 s, 544 textos embebidos, mismas
+    métricas y posiciones en dos ejecuciones; Trivy y pip-audit sin hallazgos en `uv.lock`.

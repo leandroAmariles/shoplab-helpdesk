@@ -58,7 +58,7 @@ Al terminar escribe `results/chunking-results.json` con los parámetros, el resu
 
 Todos están en la **primera celda de código**, con una explicación breve cada uno: `chunk_size` (1 000), `chunk_overlap`
 (100), `top_k` (4, como el chat), `breakpoint_percentile` (80) y `min_chunk_chars` (200). **Si los cambias o cambias el
-corpus, vuelve a leer las conclusiones**: el titular se genera por código, pero la interpretación (secciones 7 y 8) está
+corpus, vuelve a leer las conclusiones**: el titular se genera por código, pero la interpretación (secciones 7 a 9) está
 escrita sobre la ejecución guardada y cita preguntas concretas.
 
 ## Caché de embeddings

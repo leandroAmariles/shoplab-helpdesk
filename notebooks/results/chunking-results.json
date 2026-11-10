@@ -1,7 +1,7 @@
 {
   "meta": {
     "format_version": 1,
-    "generated_at": "2026-11-10T23:27:55Z",
+    "generated_at": "2026-11-10T23:31:44Z",
     "embed_model": "bge-m3",
     "embed_model_digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
     "corpus_documents": 24,

@@ -1,5 +1,6 @@
 """Tables, examples and charts shown by the notebook, and the results file."""
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass
@@ -15,8 +16,8 @@ import pandas as pd  # noqa: E402
 from chunking_lab.config import ExperimentConfig  # noqa: E402
 from chunking_lab.metrics import hit_rate, is_correct, mean_reciprocal_rank  # noqa: E402
 from chunking_lab.questions import EXPECTED_TOTAL, Question  # noqa: E402
-from chunking_lab.retrieval import Retrieval  # noqa: E402
-from chunking_lab.strategies import Chunk, Strategy  # noqa: E402
+from chunking_lab.retrieval import ChunkIndex, Retrieval, run_retrieval  # noqa: E402
+from chunking_lab.strategies import Chunk, Strategy, build_chunks  # noqa: E402
 from chunking_lab.text import normalize  # noqa: E402
 
 PROBE_LENGTH = 20
@@ -259,3 +260,35 @@ def retrieval_rows(retrieval: Retrieval, question: Question) -> list[dict]:
     return [{"place": place, "score": hit.score, "document": hit.chunk.document, "position": hit.chunk.position,
              "section": hit.chunk.section, "correct": is_correct(hit.chunk, question), "text": hit.chunk.text}
             for place, hit in enumerate(retrieval.hits, start=1)]
+
+
+# --- Sensitivity (optional): does the conclusion hold with other thresholds and sizes? ------------------------------
+
+def _measure(strategy: Strategy, documents, questions, config: ExperimentConfig, embedder) -> tuple[int, float, float]:
+    chunks = build_chunks(strategy, documents, config, embedder)
+    retrievals = run_retrieval(ChunkIndex.build(chunks, embedder), questions, embedder, config.top_k)
+    ranks = [r.rank for r in retrievals]
+    return len(chunks), round(hit_rate(ranks), 4), round(mean_reciprocal_rank(ranks), 4)
+
+
+def sensitivity_percentile(documents, questions, config: ExperimentConfig, embedder,
+                           values: tuple[int, ...] = (60, 80, 95)) -> pd.DataFrame:
+    """The semantic strategy measured at several breakpoint percentiles (everything else as in `config`)."""
+    rows = []
+    for value in values:
+        count, hits, mrr = _measure(Strategy.SEMANTIC, documents, questions,
+                                    dataclasses.replace(config, breakpoint_percentile=value), embedder)
+        rows.append([value, count, hits, mrr])
+    return pd.DataFrame(rows, columns=["percentil", "chunks", "hit rate", "MRR"])
+
+
+def sensitivity_chunk_size(documents, questions, config: ExperimentConfig, embedder,
+                           values: tuple[int, ...] = (400, 700, 1000)) -> pd.DataFrame:
+    """The three strategies measured at several chunk sizes (everything else as in `config`)."""
+    rows = []
+    for value in values:
+        sized = dataclasses.replace(config, chunk_size=value)
+        for strategy in Strategy:
+            count, hits, mrr = _measure(strategy, documents, questions, sized, embedder)
+            rows.append([value, STRATEGY_LABELS[strategy], count, hits, mrr])
+    return pd.DataFrame(rows, columns=["chunk_size", "estrategia", "chunks", "hit rate", "MRR"])

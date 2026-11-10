@@ -41,21 +41,26 @@ uv run jupyter nbconvert --to notebook --execute --inplace chunking-strategies.i
    máximo; y un mismo pasaje cortado de las tres maneras.
 3. La validación de las 20 preguntas termina sin errores.
 4. La tabla tiene **20 filas** y, debajo, el resumen con hit rate@4 y MRR de cada estrategia.
-5. La conclusión nombra la estrategia con mejores métricas y cita al menos dos preguntas por `id`.
-6. Se actualiza `results/chunking-results.json`.
+5. La sección de sensibilidad (opcional) muestra el efecto del percentil y del tamaño de chunk.
+6. La conclusión nombra la estrategia con mejores métricas y cita al menos dos preguntas por `id`.
+7. Se actualiza `results/chunking-results.json`.
 
 Con la caché vacía debe tardar menos de 15 minutos sin GPU (SC-003); con la caché llena, segundos.
 
 ## 3. Fallo temprano sin Ollama (SC-007)
 
+No hace falta parar Docker: basta apuntar a una URL sin servidor o a un modelo inexistente, y escribir la salida fuera del
+notebook guardado.
+
 ```bash
-docker compose -f infra/docker-compose.yml stop ollama      # o: OLLAMA_BASE_URL=http://localhost:1 uv run ...
-cd notebooks && uv run jupyter nbconvert --to notebook --execute --output-dir ../.tmp chunking-strategies.ipynb
+cd notebooks
+OLLAMA_BASE_URL=http://localhost:1 uv run jupyter nbconvert --to notebook --execute --output-dir /tmp/nbout chunking-strategies.ipynb
+OLLAMA_EMBED_MODEL=no-existe uv run jupyter nbconvert --to notebook --execute --output-dir /tmp/nbout chunking-strategies.ipynb
 ```
 
-Debe fallar en la **segunda celda de código** con `PreflightError` y un mensaje que indica qué falta y cómo arrancarlo;
-ninguna celda posterior produce resultados. Con el modelo ausente (`OLLAMA_EMBED_MODEL=no-existe`), el mensaje sugiere
-`ollama pull no-existe`. (Se usa `--output-dir` para no sobrescribir el notebook guardado con el error.)
+Debe fallar en la **segunda celda de código** con `PreflightError` y un mensaje que indica qué falta y cómo arrancarlo
+(`docker compose -f infra/docker-compose.yml up -d --wait` en el primer caso, `ollama pull no-existe` en el segundo);
+ninguna celda posterior produce resultados. (Verificado el 2026-11-10.)
 
 ## 4. Reproducibilidad
 
