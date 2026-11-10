@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.15.0...v0.16.0) (2026-11-10)
+
+
+### Features
+
+* **notebooks:** [LAB-26] notebook comparativo de estrategias de chunking ([#112](https://github.com/leandroAmariles/shoplab-helpdesk/issues/112)) ([9b78ecb](https://github.com/leandroAmariles/shoplab-helpdesk/commit/9b78ecb3737758507b9062a4f5533d4662126266))
+
 ## [0.15.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.14.0...v0.15.0) (2026-11-10)
 
 
