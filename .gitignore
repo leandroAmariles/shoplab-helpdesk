@@ -34,3 +34,6 @@ data/raw/
 # Per-spec AI agent token usage (local telemetry written by ~/.claude or ~/.copilot/statusline.py; not source)
 specs/*/.token-usage.json
 /ai-bootstrap.sh
+
+# Cache local de embeddings del notebook (LAB-26)
+notebooks/.cache/
