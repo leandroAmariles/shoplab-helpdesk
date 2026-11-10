@@ -182,7 +182,7 @@ estrategia y un resumen con hit rate y MRR; que `chunking-results.json` cumple
 
 ### Tests for User Story 2 (escribirlos primero; deben fallar)
 
-- [ ] T024 [P] [US2] `nb/tests/test_questions.py`: con un corpus temporal, un caso por cada regla de
+- [X] T024 [P] [US2] `nb/tests/test_questions.py`: con un corpus temporal, un caso por cada regla de
   [contracts/questions-format.md](contracts/questions-format.md) — `Q-COUNT` (exactamente 20), `Q-TOPICS` (exactamente 4
   por cada tema del corpus), `Q-ID` (formato `Q` + dos dígitos, único), `Q-FIELDS` (todas las claves presentes, no vacías,
   claves desconocidas rechazadas), `Q-DOC` (existe y su `topic` coincide), `Q-PASSAGE-MISSING`, `Q-PASSAGE-AMBIGUOUS`
@@ -190,13 +190,13 @@ estrategia y un resumen con hit rate y MRR; que `chunking-results.json` cumple
   de 100); `InvalidQuestionsError` agrega todos los fallos con el `id`; un pasaje que cruza un salto de línea del
   Markdown se encuentra tras colapsar espacios; mayúsculas y tildes se respetan; **prueba contractual**: el
   `nb/data/questions.toml` real valida contra `data/kb`
-- [ ] T025 [P] [US2] `nb/tests/test_retrieval_metrics.py`: el índice por estrategia devuelve los `top_k` chunks de mayor
+- [X] T025 [P] [US2] `nb/tests/test_retrieval_metrics.py`: el índice por estrategia devuelve los `top_k` chunks de mayor
   coseno de **todo el corpus**; desempate determinista por puntuación descendente, luego documento, luego posición; un
   chunk es correcto solo si su `document` es el esperado **y** contiene el pasaje con espacios normalizados (documento
   correcto sin el pasaje ⇒ incorrecto); `rank` es la posición (1 a `top_k`) del primer correcto o `None`; pasaje partido
   entre dos chunks sin solape suficiente ⇒ `None`; `hit_rate` = preguntas con `rank` / 20; `mrr` = media de `1/rank` con 0
   para `None`; misma entrada ⇒ mismo resultado
-- [ ] T026 [P] [US2] `nb/tests/test_report.py` (parte 2, resultados): construir las filas y el resumen a partir de los
+- [X] T026 [P] [US2] `nb/tests/test_report.py` (parte 2, resultados): construir las filas y el resumen a partir de los
   `rank`; `write_results`/`read_results` redondean `hit_rate` y `mrr` a 4 decimales y `size_mean` a 1; claves en el orden
   del contrato y estrategias en el orden `fixed`, `headings`, `semantic`; `validate_results` rechaza si `rows` no tiene
   exactamente 20 filas, `id` repetidos, `rank` fuera de [1, `top_k`], `misses` ≠ número de `null`, `hit_rate` ≠
@@ -204,14 +204,14 @@ estrategia y un resumen con hit rate y MRR; que `chunking-results.json` cumple
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] `nb/src/chunking_lab/questions.py`: `Question` (dataclass inmutable), `load_questions(path)` con
+- [X] T027 [P] [US2] `nb/src/chunking_lab/questions.py`: `Question` (dataclass inmutable), `load_questions(path)` con
   `tomllib` y `validate_questions(questions, documents)` con las reglas y códigos de T024; también la normalización de
   espacios compartida (`normalize`), que usará `metrics.py`
-- [ ] T028 [P] [US2] `nb/src/chunking_lab/retrieval.py`: `ChunkIndex` (embeddings de los chunks de una estrategia) y
+- [X] T028 [P] [US2] `nb/src/chunking_lab/retrieval.py`: `ChunkIndex` (embeddings de los chunks de una estrategia) y
   `search(question_vector, top_k)` por coseno con desempate determinista (R8)
-- [ ] T029 [P] [US2] `nb/src/chunking_lab/metrics.py`: `is_correct(chunk, question)`, `rank_of_first_correct`, `hit_rate`,
+- [X] T029 [P] [US2] `nb/src/chunking_lab/metrics.py`: `is_correct(chunk, question)`, `rank_of_first_correct`, `hit_rate`,
   `mean_reciprocal_rank` (R8)
-- [ ] T030 [US2] `nb/src/chunking_lab/report.py` (parte 2): `results_table` (DataFrame de 20 filas con una columna por
+- [X] T030 [US2] `nb/src/chunking_lab/report.py` (parte 2): `results_table` (DataFrame de 20 filas con una columna por
   estrategia y fila final de resumen), `build_results`, `write_results`, `read_results`, `validate_results`, gráfico de
   barras de hit rate y MRR por estrategia. Depende de T022, T029
 
@@ -226,18 +226,18 @@ un dato en un párrafo, una fila de tabla, un elemento de lista, una pregunta de
 fila de tabla con su contexto), para que el corte por límite de chunk pueda ocurrir de verdad (R7). Se ejecutan en orden
 porque editan el mismo archivo.
 
-- [ ] T031 [US2] Preguntas `Q01`–`Q04`, tema `payments` (`data/kb/payments-*.md`), en `nb/data/questions.toml`
-- [ ] T032 [US2] Preguntas `Q05`–`Q08`, tema `privacy` (`data/kb/privacy-*.md`), en `nb/data/questions.toml`
-- [ ] T033 [US2] Preguntas `Q09`–`Q12`, tema `returns` (`data/kb/returns-*.md`), en `nb/data/questions.toml`
-- [ ] T034 [US2] Preguntas `Q13`–`Q16`, tema `shipping` (`data/kb/shipping-*.md`), en `nb/data/questions.toml`
-- [ ] T035 [US2] Preguntas `Q17`–`Q20`, tema `warranty` (`data/kb/warranty-*.md`), en `nb/data/questions.toml`
-- [ ] T036 [US2] Validar el archivo completo: `cd notebooks && uv run pytest tests/test_questions.py` debe pasar (20
+- [X] T031 [US2] Preguntas `Q01`–`Q04`, tema `payments` (`data/kb/payments-*.md`), en `nb/data/questions.toml`
+- [X] T032 [US2] Preguntas `Q05`–`Q08`, tema `privacy` (`data/kb/privacy-*.md`), en `nb/data/questions.toml`
+- [X] T033 [US2] Preguntas `Q09`–`Q12`, tema `returns` (`data/kb/returns-*.md`), en `nb/data/questions.toml`
+- [X] T034 [US2] Preguntas `Q13`–`Q16`, tema `shipping` (`data/kb/shipping-*.md`), en `nb/data/questions.toml`
+- [X] T035 [US2] Preguntas `Q17`–`Q20`, tema `warranty` (`data/kb/warranty-*.md`), en `nb/data/questions.toml`
+- [X] T036 [US2] Validar el archivo completo: `cd notebooks && uv run pytest tests/test_questions.py` debe pasar (20
   preguntas, 4 por tema, pasajes presentes y únicos, ≥ 5 de más de 100 caracteres); corregir las preguntas hasta que pase.
   Revisar a mano que ninguna pregunta se pueda contestar igual de bien desde otro documento
 
 ### Notebook
 
-- [ ] T037 [US2] Ampliar `nb/chunking-strategies.ipynb` con las secciones 7–8: (7) las 20 preguntas y su validación
+- [X] T037 [US2] Ampliar `nb/chunking-strategies.ipynb` con las secciones 7–8: (7) las 20 preguntas y su validación
   previa (se detiene y lista las afectadas si falla); (8) recuperación de `top_k` para las tres estrategias con las mismas
   preguntas, la tabla de 20 filas con el resumen (hit rate@k y MRR por estrategia), el gráfico y una celda final que
   escribe `nb/results/chunking-results.json`. Ejecutar de arriba abajo con Ollama y dejar las salidas y el JSON

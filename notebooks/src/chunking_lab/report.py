@@ -1,15 +1,22 @@
 """Tables, examples and charts shown by the notebook, and the results file."""
 
+import hashlib
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg", force=False)
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 
-from chunking_lab.strategies import Chunk, Strategy
-from chunking_lab.text import normalize
+from chunking_lab.config import ExperimentConfig  # noqa: E402
+from chunking_lab.metrics import hit_rate, mean_reciprocal_rank  # noqa: E402
+from chunking_lab.questions import EXPECTED_TOTAL, Question  # noqa: E402
+from chunking_lab.strategies import Chunk, Strategy  # noqa: E402
+from chunking_lab.text import normalize  # noqa: E402
 
 PROBE_LENGTH = 20
 
@@ -83,6 +90,117 @@ def plot_distance_curve(distances: np.ndarray, threshold: float, title: str):
     axis.set_xlabel("unidad i (distancia con la i + 1)")
     axis.set_ylabel("distancia coseno")
     axis.set_title(title)
+    axis.legend()
+    figure.tight_layout()
+    return figure
+
+
+# --- Results file and the 20-row table ----------------------------------------------------------------------------
+
+FORMAT_VERSION = 1
+PARAM_KEYS = ("chunk_size", "chunk_overlap", "top_k", "breakpoint_percentile", "min_chunk_chars")
+NOT_FOUND = "no encontrado"
+
+
+def build_results(config: ExperimentConfig, sizes: dict[Strategy, dict],
+                  ranks: dict[Strategy, dict[str, int | None]], questions: list[Question],
+                  model_digest: str, corpus_documents: int, generated_at: str) -> dict:
+    """The structure of results/chunking-results.json (contracts/results-format.md). Scores are not stored."""
+    summary = {}
+    for strategy in Strategy:
+        values = [ranks[strategy][q.id] for q in questions]
+        summary[strategy.value] = {
+            **sizes[strategy],
+            "size_mean": round(sizes[strategy]["size_mean"], 1),
+            "hit_rate": round(hit_rate(values), 4),
+            "mrr": round(mean_reciprocal_rank(values), 4),
+            "misses": sum(1 for r in values if r is None),
+        }
+    return {
+        "meta": {
+            "format_version": FORMAT_VERSION,
+            "generated_at": generated_at,
+            "embed_model": config.embed_model,
+            "embed_model_digest": model_digest,
+            "corpus_documents": corpus_documents,
+            "params": {key: getattr(config, key) for key in PARAM_KEYS},
+        },
+        "summary": summary,
+        "rows": [
+            {"id": q.id, "topic": q.topic, "document": q.document,
+             "rank": {s.value: ranks[s][q.id] for s in Strategy}}
+            for q in questions
+        ],
+    }
+
+
+def write_results(results: dict, path: Path) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Bytes, not write_text: the file must have LF endings on every operating system.
+    path.write_bytes((json.dumps(results, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+
+
+CRLF = bytes([13, 10])
+LF = bytes([10])
+
+
+def results_digest(path: Path) -> str:
+    """sha256 of the results file with CRLF read as LF, so Git's line-ending conversion cannot change it."""
+    return hashlib.sha256(Path(path).read_bytes().replace(CRLF, LF)).hexdigest()
+
+
+def read_results(path: Path) -> dict:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def validate_results(results: dict, expected_rows: int = EXPECTED_TOTAL) -> None:
+    """Raises ValueError if the file breaks the coherence rules of the contract."""
+    rows = results["rows"]
+    top_k = results["meta"]["params"]["top_k"]
+    if len(rows) != expected_rows:
+        raise ValueError(f"rows debe tener exactamente {expected_rows} filas y tiene {len(rows)}")
+    ids = [row["id"] for row in rows]
+    if len(set(ids)) != len(ids):
+        raise ValueError("rows tiene ids repetidos")
+    for strategy in Strategy:
+        values = [row["rank"][strategy.value] for row in rows]
+        for row, value in zip(rows, values, strict=True):
+            if value is not None and not 1 <= value <= top_k:
+                raise ValueError(f"rank de {row['id']} en {strategy.value} fuera de [1, {top_k}]: {value}")
+        summary = results["summary"][strategy.value]
+        misses = sum(1 for v in values if v is None)
+        if summary["misses"] != misses:
+            raise ValueError(f"misses de {strategy.value} es {summary['misses']} y hay {misses} nulos")
+        if summary["hit_rate"] != round(hit_rate(values), 4):
+            raise ValueError(f"hit_rate de {strategy.value} no coincide con las filas")
+        if summary["mrr"] != round(mean_reciprocal_rank(values), 4):
+            raise ValueError(f"mrr de {strategy.value} no coincide con las filas")
+
+
+def results_table(results: dict) -> pd.DataFrame:
+    """One row per question with the rank of each strategy, plus the hit rate and MRR rows."""
+    top_k = results["meta"]["params"]["top_k"]
+    labels = [STRATEGY_LABELS[s] for s in Strategy]
+    rows = []
+    for row in results["rows"]:
+        rows.append([row["id"], row["topic"], row["document"],
+                     *(NOT_FOUND if row["rank"][s.value] is None else str(row["rank"][s.value]) for s in Strategy)])
+    summary = results["summary"]
+    rows.append([f"hit rate@{top_k}", "", "", *(f"{summary[s.value]['hit_rate'] * 100:.1f}%" for s in Strategy)])
+    rows.append(["MRR", "", "", *(f"{summary[s.value]['mrr']:.3f}" for s in Strategy)])
+    return pd.DataFrame(rows, columns=["pregunta", "tema", "documento esperado", *labels])
+
+
+def plot_metrics(results: dict):
+    """Hit rate@k and MRR per strategy as grouped bars."""
+    strategies = list(Strategy)
+    positions = np.arange(len(strategies))
+    figure, axis = plt.subplots(figsize=(6, 3))
+    axis.bar(positions - 0.2, [results["summary"][s.value]["hit_rate"] for s in strategies], 0.4, label="hit rate@k")
+    axis.bar(positions + 0.2, [results["summary"][s.value]["mrr"] for s in strategies], 0.4, label="MRR")
+    axis.set_xticks(positions, [STRATEGY_LABELS[s] for s in strategies])
+    axis.set_ylim(0, 1.05)
     axis.legend()
     figure.tight_layout()
     return figure
