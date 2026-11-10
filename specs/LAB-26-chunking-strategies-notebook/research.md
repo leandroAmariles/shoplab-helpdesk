@@ -74,8 +74,8 @@ marcados **[verificar]** son supuestos sobre librerías o entorno que se comprue
      encabezado se antepone a la unidad siguiente para que no sea una unidad aislada y ruidosa. Una unidad mayor que el
      tamaño máximo se corta por caracteres como último recurso.
   2. **Distancias**: embedding de cada unidad; distancia coseno entre unidades consecutivas.
-  3. **Cortes**: se corta tras la unidad *i* si su distancia con la siguiente es ≥ el percentil `breakpoint_percentile`
-     (80 por defecto) de las distancias **de ese documento**. Es el esquema habitual del troceado semántico por
+  3. **Cortes**: se corta tras la unidad *i* si su distancia con la siguiente es estrictamente mayor que el percentil `breakpoint_percentile`
+     (80 por defecto) de las distancias **de ese documento** (estricto: si todas las distancias son iguales no hay cortes). Es el esquema habitual del troceado semántico por
      percentil.
   4. **Tope y fusión**: un grupo mayor que `chunk_size` se vuelve a partir en su punto de mayor distancia interna hasta
      caber; un grupo menor que `min_chunk_chars` (200 por defecto) se une al vecino con menor distancia siempre que el

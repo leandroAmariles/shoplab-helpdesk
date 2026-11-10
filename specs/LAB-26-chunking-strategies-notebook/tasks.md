@@ -125,40 +125,40 @@ por estrategia, el número de chunks y su distribución de tamaño, más un mism
 
 ### Tests for User Story 1 (escribirlos primero; deben fallar)
 
-- [ ] T015 [P] [US1] `nb/tests/test_fixed.py`: ventanas con paso `chunk_size − chunk_overlap`; cada chunk después del
+- [X] T015 [P] [US1] `nb/tests/test_fixed.py`: ventanas con paso `chunk_size − chunk_overlap`; cada chunk después del
   primero empieza repitiendo los últimos `chunk_overlap` caracteres del anterior; ningún chunk supera `chunk_size`; la
   última puede ser más corta; nunca hay un chunk vacío o solo de espacios; posiciones consecutivas desde 0; `section`
   vacía; con `chunk_overlap = 0` no hay repetición; usa `body` (sin front matter); corta a mitad de palabra cuando toca
   (no ajusta a fronteras); misma entrada ⇒ mismos chunks
-- [ ] T016 [P] [US1] `nb/tests/test_headings.py`: para los 24 documentos de `data/kb`, los chunks del adaptador coinciden
+- [X] T016 [P] [US1] `nb/tests/test_headings.py`: para los 24 documentos de `data/kb`, los chunks del adaptador coinciden
   (texto, sección y posición) con los de `app.service.ingest_document` de `ingest/` con
   `ChunkingConfig(chunk_size, chunk_overlap)` (FR-004); ningún chunk mezcla dos secciones; un documento sin encabezados
   cae a trocear por tamaño con sección vacía; `ingest/` está al final de `sys.path` y `import tests` sigue resolviendo al
   `tests/` de `notebooks/`
-- [ ] T017 [P] [US1] `nb/tests/test_semantic.py` con `FakeEmbedder` de vectores controlados: corta donde cambia el tema
+- [X] T017 [P] [US1] `nb/tests/test_semantic.py` con `FakeEmbedder` de vectores controlados: corta donde cambia el tema
   (distancia ≥ percentil de ese documento); un bloque que solo es un encabezado se antepone a la unidad siguiente; una
   tabla es una sola unidad; cada elemento de lista es una unidad; los párrafos se parten en frases; un grupo mayor que
   `chunk_size` se vuelve a partir en su mayor distancia interna hasta caber; un grupo menor que `min_chunk_chars` se une
   al vecino de menor distancia si cabe; una unidad mayor que `chunk_size` se corta por caracteres; ningún chunk supera
   `chunk_size`; sin solape; documento de una sola unidad ⇒ un chunk; un percentil mayor produce igual o menos cortes que
   uno menor; posiciones consecutivas; misma entrada ⇒ mismos chunks
-- [ ] T018 [P] [US1] `nb/tests/test_report.py` (parte 1): `size_summary` devuelve por estrategia `chunk_count`, `size_min`,
+- [X] T018 [P] [US1] `nb/tests/test_report.py` (parte 1): `size_summary` devuelve por estrategia `chunk_count`, `size_min`,
   `size_mean` (redondeado a 1 decimal) y `size_max`, siempre en el orden `fixed`, `headings`, `semantic`; `cut_example`
   devuelve, por estrategia, el/los chunks que contienen el inicio de un pasaje dado e indica si el pasaje quedó partido
   (ningún chunk lo contiene entero)
 
 ### Implementation for User Story 1
 
-- [ ] T019 [P] [US1] `nb/src/chunking_lab/strategies/fixed.py`: ventanas de caracteres sobre `Document.body` según R5
-- [ ] T020 [P] [US1] `nb/src/chunking_lab/strategies/headings.py`: adaptador que añade `ingest/` al final de `sys.path`,
+- [X] T019 [P] [US1] `nb/src/chunking_lab/strategies/fixed.py`: ventanas de caracteres sobre `Document.body` según R5
+- [X] T020 [P] [US1] `nb/src/chunking_lab/strategies/headings.py`: adaptador que añade `ingest/` al final de `sys.path`,
   importa `app.parsing.markdown.parse_markdown` y `app.chunking.splitter.split_sections`, construye `ChunkingConfig` y
   convierte los `Chunk` de `ingest` en los del paquete (R2). Sin copiar código de `ingest`
-- [ ] T021 [P] [US1] `nb/src/chunking_lab/strategies/semantic.py`: unidades → embeddings → distancias coseno → cortes por
+- [X] T021 [P] [US1] `nb/src/chunking_lab/strategies/semantic.py`: unidades → embeddings → distancias coseno → cortes por
   `breakpoint_percentile` de ese documento → tope `chunk_size` y fusión `min_chunk_chars`, sin solape, según R6; expone
   `semantic_units(document)` y `adjacent_distances(units, embedder)` para poder dibujarlas en el notebook. Depende de T012
-- [ ] T022 [P] [US1] `nb/src/chunking_lab/report.py` (parte 1): `size_summary(chunks_by_strategy)` y `cut_example(...)`
+- [X] T022 [P] [US1] `nb/src/chunking_lab/report.py` (parte 1): `size_summary(chunks_by_strategy)` y `cut_example(...)`
   según T018, y un gráfico (`matplotlib`) del histograma de tamaños por estrategia
-- [ ] T023 [US1] Crear `nb/chunking-strategies.ipynb` con las secciones 0–6, en español: (0) objetivo, qué se compara y
+- [X] T023 [US1] Crear `nb/chunking-strategies.ipynb` con las secciones 0–6, en español: (0) objetivo, qué se compara y
   cómo leerlo; (1) **una sola celda de parámetros**, etiquetada `parameters`, con `ExperimentConfig` y una línea de
   explicación por parámetro (FR-016); (2) **segunda celda de código = preflight** (FR-018); (3) corpus: 24 documentos y
   tamaños; (4) las tres estrategias, cada una con una explicación breve, y para la semántica la curva de distancias de un
