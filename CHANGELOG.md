@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.14.0...v0.15.0) (2026-11-10)
+
+
+### Features
+
+* **retrieval:** [LAB-25] pantalla de administración de documentos ([#110](https://github.com/leandroAmariles/shoplab-helpdesk/issues/110)) ([27a9dd7](https://github.com/leandroAmariles/shoplab-helpdesk/commit/27a9dd702d016889b1ecf77f2765ac66573825e0))
+
 ## [0.14.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.13.0...v0.14.0) (2026-11-07)
 
 
