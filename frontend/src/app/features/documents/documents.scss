@@ -1,0 +1,110 @@
+:host {
+  display: block;
+}
+
+.documents {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 960px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+h2 {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.intro,
+.hint {
+  margin: 4px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  border: 2px dashed var(--mat-sys-outline-variant);
+  border-radius: 16px;
+  transition: background-color 120ms ease;
+
+  p {
+    margin: 0;
+  }
+
+  mat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 40px;
+    color: var(--mat-sys-primary);
+  }
+
+  &.dragging {
+    border-color: var(--mat-sys-primary);
+    background-color: var(--mat-sys-surface-container);
+  }
+}
+
+.file-input {
+  display: none;
+}
+
+.knowledge-base {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.list-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: var(--mat-sys-surface-container);
+
+  &.error {
+    color: var(--mat-sys-on-error-container);
+    background-color: var(--mat-sys-error-container);
+  }
+
+  span {
+    flex: 1;
+    min-width: 12rem;
+  }
+}
+
+.empty,
+.loading {
+  margin: 0;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.empty mat-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 40px;
+}

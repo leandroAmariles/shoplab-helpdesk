@@ -1,0 +1,40 @@
+@if (uploads().length > 0) {
+  <section class="uploads" aria-labelledby="uploads-title">
+    <h2 id="uploads-title">Subidas</h2>
+    <ul>
+      @for (upload of uploads(); track upload.id) {
+        <li class="upload" [attr.data-state]="upload.state">
+          <div class="summary">
+            <mat-icon aria-hidden="true">{{ icon(upload) }}</mat-icon>
+            <span class="name">{{ upload.name }}</span>
+            <span class="size">{{ formatSize(upload.size) }}</span>
+          </div>
+
+          @if (upload.state === 'sending') {
+            <mat-progress-bar mode="determinate" [value]="upload.percent"
+                              [attr.aria-label]="'Progreso de envío de ' + upload.name" />
+          } @else if (upload.state === 'processing') {
+            <mat-progress-bar mode="indeterminate" [attr.aria-label]="'Procesando ' + upload.name" />
+          }
+
+          <p class="status" role="status">{{ statusText(upload) }}</p>
+
+          <div class="actions">
+            @if (canCancel(upload)) {
+              <button mat-button type="button" [attr.aria-label]="'Cancelar la subida de ' + upload.name"
+                      (click)="cancelUpload.emit(upload.id)">Cancelar</button>
+            }
+            @if (canRetry(upload)) {
+              <button mat-stroked-button type="button" [attr.aria-label]="'Reintentar la subida de ' + upload.name"
+                      (click)="retryUpload.emit(upload.id)">Reintentar</button>
+            }
+            @if (!canCancel(upload)) {
+              <button mat-button type="button" [attr.aria-label]="'Quitar ' + upload.name + ' de la lista de subidas'"
+                      (click)="dismissUpload.emit(upload.id)">Quitar</button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+}

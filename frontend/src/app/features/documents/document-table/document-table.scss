@@ -1,0 +1,112 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+th {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.number {
+  text-align: right;
+}
+
+.name {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.title,
+.cause {
+  display: block;
+  margin-top: 2px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &[data-status='INDEXED'] mat-icon {
+    color: var(--mat-sys-primary);
+  }
+
+  &[data-status='ERROR'] {
+    color: var(--mat-sys-error);
+  }
+}
+
+// On narrow screens each row becomes a card with its labels: no horizontal scroll of the page.
+@media (max-width: 600px) {
+  .table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  td {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 8px;
+    padding: 4px 0;
+    border: 0;
+    text-align: left;
+
+    &::before {
+      content: attr(data-label);
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
+    }
+  }
+
+  .number {
+    text-align: left;
+  }
+}

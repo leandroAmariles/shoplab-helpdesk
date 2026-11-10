@@ -15,4 +15,14 @@ public enum IndexStatus {
     public String getExternalValue() {
         return externalValue;
     }
+
+    /** The state stored as {@code externalValue}; the database check constraint only allows these three. */
+    public static IndexStatus fromExternalValue(String externalValue) {
+        for (IndexStatus status : values()) {
+            if (status.externalValue.equals(externalValue)) {
+                return status;
+            }
+        }
+        throw new IllegalArgumentException("Unknown index status: " + externalValue);
+    }
 }

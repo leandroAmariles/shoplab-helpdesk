@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Testing Java — JUnit 5, Mockito, StepVerifier, WebFluxTest, JaCoCo.
+description: Testing Java — Context Skill
 ---
 
 # Testing Java — Context Skill
@@ -241,3 +241,4 @@ class MainApplicationTest {
 | Changing a mapper without `mvn clean` | Run `mvn clean` before testing after mapper changes |
 | Starting Spring for every use case test | Use Mockito + `StepVerifier` only |
 | Excluding use cases from JaCoCo | Exclude only boilerplate packages |
+

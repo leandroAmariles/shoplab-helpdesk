@@ -35,8 +35,13 @@ export interface RenderOptions {
   streaming?: boolean;
 }
 
+/**
+ * An unpredictable value for one render. It is built from `crypto.getRandomValues` (128 bits, in hex) because
+ * `crypto.randomUUID` only exists in secure contexts (HTTPS or localhost) and the app is also served over plain HTTP.
+ */
 function newNonce(): string {
-  return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function escapeHtml(text: string): string {

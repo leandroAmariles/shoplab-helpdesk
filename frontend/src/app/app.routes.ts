@@ -20,6 +20,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/chat/chat').then((m) => m.Chat),
       },
       {
+        path: 'documentos',
+        title: 'Documentos',
+        data: { nav: { label: 'Documentos', icon: 'description' } },
+        loadComponent: () => import('./features/documents/documents').then((m) => m.Documents),
+      },
+      {
         path: '**',
         title: 'Página no encontrada',
         loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),

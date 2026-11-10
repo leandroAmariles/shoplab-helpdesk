@@ -9,6 +9,7 @@ import java.util.UUID;
  * @param source     file name that identifies the document
  * @param title      title of the document
  * @param chunkCount number of chunks stored for it
+ * @param replaced   whether a document with the same source already existed and was replaced
  */
-public record IngestedDocument(UUID documentId, String source, String title, int chunkCount) {
+public record IngestedDocument(UUID documentId, String source, String title, int chunkCount, boolean replaced) {
 }

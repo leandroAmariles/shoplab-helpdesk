@@ -1,0 +1,36 @@
+<table class="table">
+  <caption>Documentos de la base de conocimiento, el más reciente primero</caption>
+  <thead>
+    <tr>
+      <th scope="col">Documento</th>
+      <th scope="col">Estado</th>
+      <th scope="col" class="number">Chunks</th>
+      <th scope="col">Actualizado</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (row of rows(); track row.id) {
+      <tr>
+        <td data-label="Documento">
+          <span class="name">{{ row.name }}</span>
+          @if (row.title) {
+            <span class="title">{{ row.title }}</span>
+          }
+        </td>
+        <td data-label="Estado">
+          <span class="status" [attr.data-status]="row.status">
+            <mat-icon aria-hidden="true">{{ row.statusIcon }}</mat-icon>
+            {{ row.statusLabel }}
+          </span>
+          @if (row.cause) {
+            <span class="cause">{{ row.cause }}</span>
+          }
+        </td>
+        <td data-label="Chunks" class="number">{{ row.chunkCount }}</td>
+        <td data-label="Actualizado">
+          <time [attr.datetime]="row.updatedAt">{{ row.updatedAtText }}</time>
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>

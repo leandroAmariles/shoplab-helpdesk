@@ -2,7 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Chat } from './features/chat/chat';
+import { Documents } from './features/documents/documents';
 import { Home } from './features/home/home';
 import { NotFound } from './features/not-found/not-found';
 import { Shell } from './layout/shell/shell';
@@ -10,7 +13,9 @@ import { routes } from './app.routes';
 
 describe('routes', () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+    });
   });
 
   it('renders Home inside the shell at the root', async () => {
@@ -38,6 +43,18 @@ describe('routes', () => {
     const chat = (routes[0].children ?? []).find((route) => route.path === 'chat');
     expect(chat?.title).toBe('Chat');
     expect(chat?.data?.['nav']).toEqual({ label: 'Chat', icon: 'chat' });
+  });
+
+  it('renders the documents screen inside the shell and lists it in the navigation', async () => {
+    const harness = await RouterTestingHarness.create('/documentos');
+
+    expect(harness.fixture.debugElement.query(By.directive(Shell))).not.toBeNull();
+    expect(harness.fixture.debugElement.query(By.directive(Documents))).not.toBeNull();
+
+    const documents = (routes[0].children ?? []).find((route) => route.path === 'documentos');
+    expect(documents?.title).toBe('Documentos');
+    expect(documents?.data?.['nav']).toEqual({ label: 'Documentos', icon: 'description' });
+    expect(documents?.loadComponent).toBeTypeOf('function');
   });
 
   it('declares the wildcard route last', () => {

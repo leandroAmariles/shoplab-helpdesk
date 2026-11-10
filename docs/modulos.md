@@ -88,6 +88,14 @@ Contiene texto libre del cliente: no se registra ni se mide, y todavía no tiene
 `document.title`, sin migración); `chat` lo entrega al cliente en el evento `sources` junto a la sección y el texto del
 fragmento.
 
+**Subida y lista de documentos (LAB-25, ADR-0021).** `retrieval` publica `POST /api/documents` (multipart, parte
+`file`, hasta `shoplab.retrieval.upload.max-bytes` = 10 MiB) y `GET /api/documents` en `DocumentController`. La subida
+reutiliza `IngestDocumentServicePort` (responde `201` si el documento es nuevo y `200` si reemplaza a uno del mismo
+nombre) y los embeddings los dispara el evento de siempre; el documento queda `PENDING`. La lista sale de
+`ListDocumentsServicePort` → `DocumentCatalogPort` (`JdbcDocumentCatalogAdapter`): estado, causa del último error y
+chunks guardados por documento, el más reciente primero. Métricas `retrieval.upload{outcome}` y
+`retrieval.documents{status}`. La pantalla es `/documentos` del frontend.
+
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.
