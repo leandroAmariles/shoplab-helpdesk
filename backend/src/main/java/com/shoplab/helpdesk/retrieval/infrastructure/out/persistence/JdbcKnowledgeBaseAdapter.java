@@ -33,7 +33,7 @@ public class JdbcKnowledgeBaseAdapter implements KnowledgeBasePort {
             ON CONFLICT (source) DO UPDATE
             SET title = EXCLUDED.title, metadata = EXCLUDED.metadata, updated_at = now(),
                 index_status = 'PENDING', index_error = NULL, indexed_at = NULL
-            RETURNING id
+            RETURNING id, (xmax = 0) AS inserted
             """;
     private static final String DELETE_CHUNKS = "DELETE FROM retrieval.chunk WHERE document_id = ?";
     private static final String INSERT_CHUNK = """
@@ -56,13 +56,23 @@ public class JdbcKnowledgeBaseAdapter implements KnowledgeBasePort {
                         error -> ExceptionUtil.technical(ResponseCodeEnum.DATABASE_UNAVAILABLE, error));
     }
 
+    /**
+     * {@code xmax = 0} on the returned row tells an insert from an update of an existing source in the same statement,
+     * so two uploads of the same name cannot race on "did it exist?".
+     */
     private IngestedDocument store(ParsedDocument parsed) {
-        UUID documentId = jdbc.queryForObject(UPSERT_DOCUMENT, UUID.class, parsed.name(), parsed.title(),
+        Upserted upserted = jdbc.queryForObject(UPSERT_DOCUMENT, (rs, row) -> new Upserted(
+                rs.getObject("id", UUID.class), rs.getBoolean("inserted")), parsed.name(), parsed.title(),
                 parsed.format().getExternalValue());
+        UUID documentId = upserted.id();
         jdbc.update(DELETE_CHUNKS, documentId);
         jdbc.batchUpdate(INSERT_CHUNK, parsed.chunks(), BATCH_SIZE, (statement, chunk) -> bind(statement, documentId,
                 parsed.name(), chunk));
-        return new IngestedDocument(documentId, parsed.name(), parsed.title(), parsed.chunks().size());
+        return new IngestedDocument(documentId, parsed.name(), parsed.title(), parsed.chunks().size(),
+                !upserted.inserted());
+    }
+
+    private record Upserted(UUID id, boolean inserted) {
     }
 
     private static void bind(java.sql.PreparedStatement statement, UUID documentId, String document, ParsedChunk chunk)

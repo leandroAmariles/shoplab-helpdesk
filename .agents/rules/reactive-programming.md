@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Reactive Programming — asynchronous pipelines using Mono and Flux, ZERO .block().
+description: Reactive Programming — Context Skill
 ---
 
 # Reactive Programming — Context Skill
@@ -204,3 +204,4 @@ public Mono<ProviderResponse> execute(ProviderRequest request) {
 | Fire-and-forget without `subscribeOn` | Can consume request thread resources | Use `subscribeOn(Schedulers.boundedElastic())` |
 | Sequential independent remote calls | Adds unnecessary latency | Use `Mono.zip` for parallelism |
 | `Thread.sleep()` in tests | Flaky tests | Use `StepVerifier.withVirtualTime` |
+

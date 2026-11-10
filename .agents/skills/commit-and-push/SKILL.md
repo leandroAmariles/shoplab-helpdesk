@@ -50,7 +50,26 @@ without the user asking — committing and opening a PR are visible, shared-stat
      claim testing you didn't do
    - Leave every other checklist item **unchecked** — those confirm things only the human
      author/reviewer can actually verify (self-review, docs, style), not you
-   - **Token usage:** resolve the spec folder as `specs/<last path segment of the branch>/`
+   - **Token usage (only if `.token-usage.json` exists — "if present" refers to that file, not to the template section, which is always in the template):** resolve the spec folder as `specs/<last path segment of the
+     branch>/` (branch `feature/LAB-12-x` → `specs/LAB-12-x/`); if there is no exact match, use the
+     single `specs/<TICKET>-*/` folder sharing the branch's ticket id (`chore/LAB-12-fix` →
+     `specs/LAB-12-x/`), and if that is ambiguous or absent, omit the section. If
+     `<spec-folder>/.token-usage.json` exists (written by
+     `~/.claude/statusline.py` and/or `~/.copilot/statusline.py`, configured via
+     `install-ai-package.sh --statusline <claude|copilot>`), it's a JSON object keyed by tool name
+     (e.g. `"claude"`, `"copilot"`), each with `input_tokens`/`output_tokens`/`turns` and,
+     optionally, `cost_usd` (an estimate from published per-token pricing or a
+     `TOKEN_PRICE_*_USD_PER_MTOK` override — present for Claude by default, only present for
+     Copilot if the user configured those env vars, since Copilot has no published per-token
+     rate). Add one line per tool key actually present, e.g. `Claude Code usage for this spec:
+     {input_tokens} in / {output_tokens} out over {turns} turns` + `, ~${cost_usd} estimated` only
+     if `cost_usd` is in that tool's entry + ` (main thread only — excludes subagent/Task-tool
+     calls).` — plus, if more than one key is present, a combined total line (sum `cost_usd` across
+     tools only if every present tool has one; otherwise state which tool's cost is missing rather
+     than silently under-reporting the total). Use the file's real numbers verbatim — never
+     estimate, round in a way that implies more precision than the source has, or fabricate a
+     tool's line (or its `cost_usd`) when it isn't in the file (most repos won't have this file at
+     all — that's fine, just omit the whole section).
 
 8. **Open the PR.**
    ```bash
@@ -58,4 +77,61 @@ without the user asking — committing and opening a PR are visible, shared-stat
    ```
    Report the PR URL to the user.
 
-9. **Refresh the architecture graph, if THIS repo has one.**
+9. **Refresh the architecture graph, if THIS repo has one (optional Step 2).** Check whether
+   `graph-rag/.venv/` exists **directly under this repository's own root** — the same repo you just
+   committed/pushed in, resolved from `git rev-parse --show-toplevel`, never a path you recall from
+   earlier in the conversation or infer from a "hub" topology described elsewhere. If it does, run
+   the deterministic Phase 1 scan so the graph reflects what you just committed:
+   ```bash
+   (cd graph-rag && .venv/bin/python ingestion/phase1_scan.py)
+   ```
+   (`.venv/Scripts/python.exe` on Windows.) Run this after the commit exists (so the scan sees the
+   final state of the code) — before or after the push/PR steps above doesn't matter, since nothing
+   this produces is committed to git (`graph-rag/data/*.json` is gitignored). This only refreshes
+   Phase 1 (structural nodes/edges from an AST scan) and needs no LLM; it never touches Phase 2
+   (summaries + embeddings), which stays the separate, manual `graph-rag/pipeline_tasks.md` step —
+   do not attempt Phase 2 here.
+
+   **If `graph-rag/.venv/` does not exist in this repo, skip this step silently and stop — full
+   stop.** Do not search parent directories, sibling directories, or any other path for a
+   `graph-rag/` install; do not act on a "the real graph lives in `<other-repo>`" belief carried
+   over from earlier context, even if that belief is accurate. A multi-repo "hub" graph topology
+   (one repo owns the Neo4j install and scans several microservices via `PROJECT_PATHS` — see
+   `graph-rag/README.md`) is real, but refreshing that shared graph is the **hub repo's own**
+   responsibility (run `commit-and-push` there, or a manual scan there) — never something this step
+   reaches for from inside a different repo. If you believe this repo is tracked by a hub elsewhere,
+   say so to the user as an informational note and still skip; do not run anything outside this
+   repo's own root on their behalf.
+
+   Treat the in-repo case as best-effort and non-blocking too: if the scan itself fails (e.g. Neo4j
+   isn't running), report the failure but do not undo or fail the commit/push/PR that already
+   succeeded.
+
+## Guardrails
+
+- Never commit, push, or open a PR against the repository's default branch.
+- Never `git push --force` / `--force-with-lease` without the user explicitly asking for it.
+- Never stage files you haven't reviewed — no blind `git add -A`.
+- Never check a checklist box in the PR body for something you didn't verify yourself.
+- If `gh` is not installed or not authenticated, stop after the push and tell the user how to open
+  the PR themselves (`gh auth login`, or the web UI) — do not fabricate a PR URL.
+- If a PR already exists for the branch, do not create a second one; report the existing one.
+- Never invent a token-usage figure for the PR body — only include it when
+  the resolved spec folder's `.token-usage.json` actually exists, and always copy its numbers verbatim.
+- Never let the graph refresh (step 9) block, delay, or roll back the commit/push/PR — it runs
+  after they've already succeeded, only when `graph-rag/.venv/` exists, and a failure there is a
+  warning, never a reason to report this skill as failed.
+- Never start, stop, or reconfigure the Neo4j container as part of this step — if it's not
+  running, report that and move on; starting it is the user's call.
+- Never run the graph refresh (or anything else in step 9) against a path outside this repository's
+  own root — not a sibling repo, not a "hub" repo you recall from earlier context, nothing. If
+  `graph-rag/.venv/` isn't directly under this repo, the answer is always "skip," never "look
+  elsewhere." Treat any conversational memory of where a related graph install lives as information
+  to mention, not permission to act on outside this repo.
+
+## Adapting for other Git hosts
+
+This skill assumes GitHub (`gh` CLI) for steps 6-8. For GitLab, use `glab mr create` in place of
+`gh pr create` (`glab mr view` for the duplicate check). For Bitbucket or others without an
+equivalent CLI, use the REST API or ask the user to open the PR/MR manually from the pushed
+branch — adjust this file for your host.

@@ -1,0 +1,53 @@
+<section class="documents">
+  <header>
+    <h1>Documentos</h1>
+    <p class="intro">Sube documentos PDF o Markdown a la base de conocimiento del asistente y sigue su indexación.</p>
+  </header>
+
+  <div class="drop-zone" [class.dragging]="dragging()" (dragover)="onDragOver($event)"
+       (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+    <mat-icon aria-hidden="true">upload_file</mat-icon>
+    <p>Arrastra aquí tus archivos o</p>
+    <button mat-flat-button type="button" (click)="fileInput.click()">Elegir archivos</button>
+    <input #fileInput class="file-input" type="file" multiple tabindex="-1" aria-hidden="true"
+           [accept]="accept" (change)="onFilesChosen(fileInput)" />
+    <p class="hint">PDF o Markdown (.md), hasta 10 MB por archivo. Se suben de uno en uno.</p>
+  </div>
+
+  <app-upload-list [uploads]="store.uploads()" (cancelUpload)="store.cancel($event)"
+                   (retryUpload)="store.retry($event)" (dismissUpload)="store.dismiss($event)" />
+
+  <section class="knowledge-base" aria-labelledby="documents-title" [attr.aria-busy]="store.loading()">
+    <div class="list-header">
+      <h2 id="documents-title">Base de conocimiento</h2>
+      <button mat-stroked-button type="button" [disabled]="store.loading()" (click)="store.reload()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Actualizar
+      </button>
+    </div>
+
+    @if (store.loadError(); as error) {
+      <div class="notice error" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <span>{{ error }}</span>
+        <button mat-button type="button" (click)="store.reload()">Reintentar</button>
+      </div>
+    }
+    @if (store.refreshStopped()) {
+      <p class="notice" role="status">
+        La actualización automática se detuvo. Pulsa «Actualizar» para ver el estado más reciente.
+      </p>
+    }
+
+    @if (store.isEmpty()) {
+      <div class="empty">
+        <mat-icon aria-hidden="true">folder_open</mat-icon>
+        <p>Todavía no hay documentos. Sube el primero para que el asistente pueda usarlo en sus respuestas.</p>
+      </div>
+    } @else if (store.documents().length > 0) {
+      <app-document-table [documents]="store.documents()" />
+    } @else if (store.loading()) {
+      <p class="loading" role="status">Cargando documentos…</p>
+    }
+  </section>
+</section>
