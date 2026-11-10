@@ -49,7 +49,7 @@ public class IngestDocumentUseCase implements IngestDocumentServicePort {
         return Mono.defer(() -> {
             long startedAt = System.nanoTime();
             return store(command)
-                    .doOnSuccess(stored -> {
+                    .doOnNext(stored -> {
                         uploadMetrics.recordUpload(IngestOutcome.OK, elapsedSince(startedAt));
                         LOG.info("Document upload finished: name={}, outcome={}, replaced={}, chunks={}, requestId={}",
                                 loggable(command.name()), IngestOutcome.OK.tagValue(), stored.replaced(),
