@@ -304,7 +304,7 @@ guardada en el repositorio (quickstart §2 y §4); sin Ollama, falla en la segun
 
 ### Tests for User Story 4 (escribirlos primero; deben fallar)
 
-- [ ] T044 [P] [US4] `nb/tests/test_notebook.py` (sin ejecutar nada, con `nbformat`): hay **una sola** celda etiquetada
+- [X] T044 [P] [US4] `nb/tests/test_notebook.py` (sin ejecutar nada, con `nbformat`): hay **una sola** celda etiquetada
   `parameters`; la segunda celda de código es el preflight; todas las celdas de código tienen `execution_count` y ninguna
   salida de tipo `error`; la celda final imprime el `sha256` de `results/chunking-results.json` y coincide con el del
   archivo (detecta un notebook o un JSON guardados a medias); los parámetros de la celda `parameters` coinciden con
@@ -313,27 +313,27 @@ guardada en el repositorio (quickstart §2 y §4); sin Ollama, falla en la segun
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] `nb/README.md` en español (FR-019): qué es, requisitos (Python, `uv`, Ollama con `bge-m3` y cómo
+- [X] T045 [P] [US4] `nb/README.md` en español (FR-019): qué es, requisitos (Python, `uv`, Ollama con `bge-m3` y cómo
   levantarlo con el compose), instalación con `uv sync` (un solo comando), cómo ejecutarlo (nbconvert o Jupyter/VS
   Code/IntelliJ), cómo leer la tabla y las métricas (hit rate@k, MRR, qué cuenta como acierto), variables
   `OLLAMA_BASE_URL`/`OLLAMA_EMBED_MODEL`, caché, aviso de que al cambiar parámetros o corpus hay que releer las
   conclusiones escritas a mano, y cómo correr las pruebas
-- [ ] T046 [US4] Ampliar el notebook con la sección «Reproducibilidad»: versión y digest del modelo, qué debe coincidir
+- [X] T046 [US4] Ampliar el notebook con la sección «Reproducibilidad»: versión y digest del modelo, qué debe coincidir
   entre ejecuciones (las posiciones, no las puntuaciones decimales), la tolerancia declarada y cómo comparar dos
   ejecuciones; la celda final imprime el `sha256` del JSON guardado (T044). Depende de T037
-- [ ] T047 [US4] Verificar el fallo temprano (quickstart §3, SC-007): con Ollama parado, ejecutar el notebook en un
+- [X] T047 [US4] Verificar el fallo temprano (quickstart §3, SC-007): con Ollama parado, ejecutar el notebook en un
   directorio de salida temporal y comprobar que falla en la segunda celda de código con `PreflightError` y un mensaje que
   dice qué falta y cómo arrancarlo; repetir con `OLLAMA_EMBED_MODEL=no-existe` (debe sugerir `ollama pull`). Restaurar
   Ollama. Si el mensaje no es claro, corregir `embeddings.py` y T008
-- [ ] T048 [US4] Verificar la reproducibilidad (quickstart §4, SC-003, SC-004): borrar `nb/.cache`, ejecutar el notebook en
+- [X] T048 [US4] Verificar la reproducibilidad (quickstart §4, SC-003, SC-004): borrar `nb/.cache`, ejecutar el notebook en
   frío, **anotar el tiempo** (debe ser < 15 min sin GPU) y comparar `summary` y `rank` de `rows` con el JSON anterior. Si
   alguna posición de `semantic` cambia, ajustar el texto de tolerancia de la sección de reproducibilidad (T046) con lo
   observado. Dejar guardados el notebook y el JSON de esta última ejecución
-- [ ] T049 [US4] CI en `.github/workflows/ci.yml`: añadir el filtro `notebooks` (`notebooks/**`, `ingest/app/**`,
+- [X] T049 [US4] CI en `.github/workflows/ci.yml`: añadir el filtro `notebooks` (`notebooks/**`, `ingest/app/**`,
   `data/kb/**`), su salida en `outputs` del job `changes`, la variable `NOTEBOOKS` y la línea
   `items+=('"notebooks"')` en el paso «Select Python components». El job `python` existente ya hace
   `uv sync --frozen`, `uv run ruff check .` y `uv run pytest`. No cambiar nada más del workflow
-- [ ] T050 [US4] Seguridad de dependencias (R12): `cd notebooks && uv sync --frozen` desde cero debe funcionar; escanear
+- [X] T050 [US4] Seguridad de dependencias (R12): `cd notebooks && uv sync --frozen` desde cero debe funcionar; escanear
   `nb/uv.lock` con Trivy si está disponible (`trivy fs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed notebooks`)
   y, si aparece un HIGH/CRITICAL con corrección, subir esa dependencia y regenerar `uv.lock`; solo si no hay corrección y
   se justifica, añadir una excepción en `.trivyignore` con motivo y responsable
@@ -346,7 +346,7 @@ guardada en el repositorio (quickstart §2 y §4); sin Ollama, falla en la segun
 
 **Purpose**: documentación, verificación completa y limpieza
 
-- [ ] T051 [P] `README.md` de la raíz: actualizar la fila de `notebooks/` de la tabla de carpetas (enlazar a
+- [X] T051 [P] `README.md` de la raíz: actualizar la fila de `notebooks/` de la tabla de carpetas (enlazar a
   `notebooks/README.md` y decir que contiene el notebook comparativo de chunking) y la frase de CI (≈ línea 177) para
   incluir `notebooks/` entre los componentes que se construyen por separado
 - [ ] T052 Verificación completa del proyecto: `cd notebooks && uv sync --frozen && uv run ruff check . && uv run pytest`

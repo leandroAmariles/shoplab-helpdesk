@@ -21,6 +21,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       ingest: ${{ steps.filter.outputs.ingest }}
       eval: ${{ steps.filter.outputs.eval }}
+      notebooks: ${{ steps.filter.outputs.notebooks }}
       olist: ${{ steps.filter.outputs.olist }}
       kb: ${{ steps.filter.outputs.kb }}
       observability: ${{ steps.filter.outputs.observability }}
@@ -45,6 +46,11 @@ jobs:
               - 'data/kb/**'
             eval:
               - 'eval/**'
+            notebooks:
+              - 'notebooks/**'
+              # The chunking notebook reuses the chunker of ingest and validates its questions against the corpus.
+              - 'ingest/app/**'
+              - 'data/kb/**'
             olist:
               - 'data/olist/**'
               # The loader tests apply the migrations of orders and catalog, so they follow those scripts.
@@ -65,6 +71,7 @@ jobs:
         env:
           INGEST: ${{ steps.filter.outputs.ingest }}
           EVAL: ${{ steps.filter.outputs.eval }}
+          NOTEBOOKS: ${{ steps.filter.outputs.notebooks }}
           OLIST: ${{ steps.filter.outputs.olist }}
           KB: ${{ steps.filter.outputs.kb }}
           CI_CHANGED: ${{ steps.filter.outputs.ci }}
@@ -72,6 +79,7 @@ jobs:
           items=()
           if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
           if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
+          if [ "$NOTEBOOKS" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"notebooks"'); fi
           if [ "$OLIST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/olist"'); fi
           if [ "$KB" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/kb-tools"'); fi
           echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
