@@ -8,16 +8,20 @@ from chunking_lab.questions import Question
 from chunking_lab.report import (
     build_results,
     cut_example,
+    differing_cases,
+    headline,
     plot_distance_curve,
     plot_metrics,
     plot_size_histograms,
     read_results,
     results_digest,
     results_table,
+    retrieval_rows,
     size_summary,
     validate_results,
     write_results,
 )
+from chunking_lab.retrieval import Hit, Retrieval
 from chunking_lab.strategies import Chunk, Strategy
 
 
@@ -191,3 +195,53 @@ def test_results_file_has_lf_endings_and_a_digest_that_ignores_crlf(tmp_path):
     digest = results_digest(path)
     path.write_bytes(path.read_bytes().replace(lf, crlf))
     assert results_digest(path) == digest
+
+
+# --- Part 3: headline, differing cases, retrieved chunks (US3) ------------------------------------------------------
+
+def test_headline_names_the_best_strategies_and_the_differences():
+    text = headline(sample())
+    # headings: hit rate 1.0 and MRR 1.0 are the best; fixed 0.95; semantic 0.9
+    assert "Por encabezados" in text
+    assert "MRR" in text
+    assert "hit rate@4" in text
+    assert "1.000" in text
+
+
+def test_headline_reports_a_tie_instead_of_choosing():
+    results = sample()
+    for strategy in ("fixed", "semantic"):
+        results["summary"][strategy] = dict(results["summary"]["headings"])
+    text = headline(results)
+    assert "empat" in text
+
+
+def test_differing_cases_are_ordered_by_spread_then_id_and_include_single_misses():
+    cases = differing_cases(sample())
+    ids = [case["id"] for case in cases]
+    assert ids[0] == "Q01"      # semantic misses (None) while the others find it first: largest spread
+    assert "Q03" in ids          # fixed misses alone
+    assert ids == sorted(ids, key=lambda i: (-spread(cases, i), i))
+
+
+def spread(cases, question_id):
+    case = next(c for c in cases if c["id"] == question_id)
+    values = [5 if r is None else r for r in case["rank"].values()]
+    return max(values) - min(values)
+
+
+def test_differing_cases_is_empty_when_all_strategies_agree():
+    same = [1] * 20
+    results = build_results(ExperimentConfig(), SIZES,
+                            ranks({Strategy.FIXED: same, Strategy.HEADINGS: same, Strategy.SEMANTIC: same}),
+                            questions(), "d", 24, "2026-11-10T22:15:00Z")
+    assert differing_cases(results) == []
+
+
+def test_retrieval_rows_mark_the_correct_chunk_and_keep_the_order():
+    question = Question(id="Q01", topic="returns", question="¿?", document="returns-01-x", passage="p" * 40)
+    hits = (Hit(chunk(Strategy.FIXED, 0, "otro texto"), 0.9), Hit(chunk(Strategy.FIXED, 1, "p" * 40), 0.8))
+    rows = retrieval_rows(Retrieval("Q01", Strategy.FIXED, hits, 2), question)
+    assert [(r["place"], r["correct"]) for r in rows] == [(1, False), (2, True)]
+    assert rows[0]["score"] == 0.9
+    assert rows[1]["text"] == "p" * 40

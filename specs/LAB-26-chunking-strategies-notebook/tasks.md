@@ -257,21 +257,21 @@ relaciona al menos dos preguntas de la tabla (por `id`) con una causa de acierto
 
 ### Tests for User Story 3 (escribirlos primero; deben fallar)
 
-- [ ] T038 [P] [US3] `nb/tests/test_report.py` (parte 3): `headline(results)` nombra la estrategia con mejor MRR y la de
+- [X] T038 [P] [US3] `nb/tests/test_report.py` (parte 3): `headline(results)` nombra la estrategia con mejor MRR y la de
   mejor hit rate, con la diferencia respecto a las otras; con empate lo dice en lugar de elegir una; `differing_cases(rows)`
   devuelve las preguntas en las que los `rank` difieren entre estrategias, ordenadas por mayor diferencia y luego por `id`,
   e incluye las que fallan en una sola estrategia; si ninguna difiere, devuelve lista vacía
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] `nb/src/chunking_lab/report.py` (parte 3): `headline` y `differing_cases` según T038, y un ayudante que,
+- [X] T039 [US3] `nb/src/chunking_lab/report.py` (parte 3): `headline` y `differing_cases` según T038, y un ayudante que,
   dada una pregunta y una estrategia, devuelve los chunks recuperados con su puntuación y marca cuál es el correcto o que
   no lo hay. Depende de T030
-- [ ] T040 [US3] Ampliar el notebook con la sección 9 «Dónde difieren las estrategias»: **al menos dos preguntas** de
+- [X] T040 [US3] Ampliar el notebook con la sección 9 «Dónde difieren las estrategias»: **al menos dos preguntas** de
   `differing_cases` con el chunk recuperado (o el que faltó) por cada estrategia y una explicación escrita a mano, citando
   el `id`, de por qué una acertó y otra falló (p. ej. una tabla cortada por la mitad, una sección diluida en un chunk
   grande). Escribirla **después de ver los resultados reales** de T037
-- [ ] T041 [US3] Ampliar el notebook con la sección «Conclusiones y límites»: titular generado por `headline` (nunca
+- [X] T041 [US3] Ampliar el notebook con la sección «Conclusiones y límites»: titular generado por `headline` (nunca
   contradice la tabla), interpretación escrita a mano que cita al menos dos preguntas por `id`, y la lista de límites de
   la spec: 20 preguntas es una muestra pequeña (un acierto cambia el hit rate 5 puntos), corpus sintético en español, la
   semántica depende de su percentil, sin umbral de similitud ni calidad de generación, y **granularidad distinta** entre

@@ -13,8 +13,9 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from chunking_lab.config import ExperimentConfig  # noqa: E402
-from chunking_lab.metrics import hit_rate, mean_reciprocal_rank  # noqa: E402
+from chunking_lab.metrics import hit_rate, is_correct, mean_reciprocal_rank  # noqa: E402
 from chunking_lab.questions import EXPECTED_TOTAL, Question  # noqa: E402
+from chunking_lab.retrieval import Retrieval  # noqa: E402
 from chunking_lab.strategies import Chunk, Strategy  # noqa: E402
 from chunking_lab.text import normalize  # noqa: E402
 
@@ -204,3 +205,57 @@ def plot_metrics(results: dict):
     axis.legend()
     figure.tight_layout()
     return figure
+
+
+# --- Reading the results: headline, differing cases, retrieved chunks ----------------------------------------------
+
+def _best(values: dict[Strategy, float]) -> tuple[list[Strategy], float, float]:
+    """Strategies sharing the highest value, that value, and the gap to the best of the others (0 if none)."""
+    top = max(values.values())
+    winners = [s for s in Strategy if values[s] == top]
+    rest = [v for s, v in values.items() if s not in winners]
+    return winners, top, (top - max(rest)) if rest else 0.0
+
+
+def _names(strategies: list[Strategy]) -> str:
+    labels = [STRATEGY_LABELS[s] for s in strategies]
+    return labels[0] if len(labels) == 1 else ", ".join(labels[:-1]) + " y " + labels[-1]
+
+
+def headline(results: dict) -> str:
+    """One generated paragraph with the best strategy by MRR and by hit rate, so it never contradicts the table."""
+    top_k = results["meta"]["params"]["top_k"]
+    summary = results["summary"]
+    metrics = (
+        ("MRR", "mrr", lambda value: f"{value:.3f}", lambda gap: f"{gap:.3f}"),
+        (f"hit rate@{top_k}", "hit_rate", lambda value: f"{value:.1%}", lambda gap: f"{gap * 100:.1f} puntos"),
+    )
+    parts = []
+    for name, key, show, show_gap in metrics:
+        winners, top, gap = _best({s: summary[s.value][key] for s in Strategy})
+        if len(winners) == len(Strategy):
+            parts.append(f"en {name} las tres estrategias empatan ({show(top)})")
+        elif len(winners) > 1:
+            parts.append(f"en {name} empatan {_names(winners)} ({show(top)}), {show_gap(gap)} por encima de la otra")
+        else:
+            parts.append(f"en {name} gana {_names(winners)} ({show(top)}), {show_gap(gap)} por encima de la siguiente")
+    return "Con las 20 preguntas de prueba: " + "; ".join(parts) + "."
+
+
+def differing_cases(results: dict) -> list[dict]:
+    """Rows in which the strategies do not all get the same rank, widest gap first (not found = top_k + 1)."""
+    worst = results["meta"]["params"]["top_k"] + 1
+
+    def spread(row: dict) -> int:
+        values = [worst if r is None else r for r in row["rank"].values()]
+        return max(values) - min(values)
+
+    cases = [row for row in results["rows"] if spread(row) > 0]
+    return sorted(cases, key=lambda row: (-spread(row), row["id"]))
+
+
+def retrieval_rows(retrieval: Retrieval, question: Question) -> list[dict]:
+    """The chunks a strategy retrieved for one question, in order, flagging the correct one."""
+    return [{"place": place, "score": hit.score, "document": hit.chunk.document, "position": hit.chunk.position,
+             "section": hit.chunk.section, "correct": is_correct(hit.chunk, question), "text": hit.chunk.text}
+            for place, hit in enumerate(retrieval.hits, start=1)]
