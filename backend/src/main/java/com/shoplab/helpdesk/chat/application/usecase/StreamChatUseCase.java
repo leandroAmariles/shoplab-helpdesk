@@ -3,7 +3,9 @@ package com.shoplab.helpdesk.chat.application.usecase;
 import com.shoplab.helpdesk.chat.application.port.in.StreamChatServicePort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatMetricsPort;
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
+import com.shoplab.helpdesk.chat.application.port.out.ChatTracePort;
 import com.shoplab.helpdesk.chat.application.port.out.KnowledgeContextPort;
+import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
@@ -17,6 +19,7 @@ import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationId;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.HistorySelection;
+import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
@@ -49,10 +52,11 @@ public class StreamChatUseCase implements StreamChatServicePort {
     private final ChatMetricsPort metrics;
     private final ChatProperties properties;
     private final RagProperties ragProperties;
+    private final ChatTracePort chatTrace;
 
     public StreamChatUseCase(ChatModelPort chatModel, KnowledgeContextPort knowledgeContext,
             ContextSelector contextSelector, ConversationHistory history, ChatMetricsPort metrics,
-            ChatProperties properties, RagProperties ragProperties) {
+            ChatProperties properties, RagProperties ragProperties, ChatTracePort chatTrace) {
         this.chatModel = chatModel;
         this.knowledgeContext = knowledgeContext;
         this.contextSelector = contextSelector;
@@ -60,6 +64,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
         this.metrics = metrics;
         this.properties = properties;
         this.ragProperties = ragProperties;
+        this.chatTrace = chatTrace;
     }
 
     @Override
@@ -75,14 +80,20 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean responseRecorded = new AtomicBoolean();
             AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
             StringBuilder answerText = new StringBuilder();
-            return conversation.map(id -> history.load(id, command.requestId()))
+            return chatTrace.traceTurn(command, trace -> conversation.map(id -> history.load(id, command.requestId()))
                     .orElseGet(() -> Mono.just(HistorySelection.empty()))
-                    .flatMapMany(selection -> retrieveContext(command, selection)
-                            .flatMapMany(context -> {
-                                fixedMessageAnswer.set(answersWithFixedMessage(context));
-                                return events(command, selection.turns(), context, startedAt, fragments,
-                                        firstTokenSeen, fixedMessageAnswer, answerText);
-                            }))
+                    .flatMapMany(selection -> {
+                        trace.historyTurns(selection.turns().size());
+                        return retrieveContext(command, selection, trace)
+                                .flatMapMany(context -> {
+                                    fixedMessageAnswer.set(answersWithFixedMessage(context));
+                                    if (fixedMessageAnswer.get()) {
+                                        trace.fixedMessageAnswer();
+                                    }
+                                    return events(command, selection.turns(), context, startedAt, fragments,
+                                            firstTokenSeen, fixedMessageAnswer, answerText);
+                                });
+                    })
                     .concatWith(Mono.defer(() -> finish(command, conversation.orElse(null), answerText,
                             fragments)))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
@@ -90,7 +101,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
                     .onErrorResume(error -> {
                         record(responseRecorded, ChatOutcome.ERROR, startedAt);
                         return failed(command, error, firstTokenSeen.get());
-                    });
+                    }));
         });
     }
 
@@ -194,16 +205,25 @@ public class StreamChatUseCase implements StreamChatServicePort {
      * The fragments the answer may rely on. A failure of the search is counted here and travels on as the flux's
      * error, which {@code failed} logs once: the answer is never generated as if the context had been there.
      */
-    private Mono<List<ContextFragment>> retrieveContext(StreamChatCommand command, HistorySelection selection) {
+    private Mono<List<ContextFragment>> retrieveContext(StreamChatCommand command, HistorySelection selection,
+            TurnTrace trace) {
         long startedAt = System.nanoTime();
         AtomicInteger candidatesFound = new AtomicInteger();
-        return knowledgeContext.retrieve(history.searchText(command.message(), selection), ragProperties.topK())
+        String searchText = history.searchText(command.message(), selection);
+        return knowledgeContext.retrieve(searchText, ragProperties.topK())
                 .defaultIfEmpty(List.of())
-                .doOnError(error -> metrics.recordContext(ContextOutcome.FAILED, 0, elapsedSince(startedAt)))
+                .doOnError(error -> {
+                    metrics.recordContext(ContextOutcome.FAILED, 0, elapsedSince(startedAt));
+                    trace.retrieval(new RetrievalTrace(searchText, 0, List.of(), true), elapsedSince(startedAt));
+                })
                 .doOnNext(candidates -> candidatesFound.set(candidates.size()))
                 .map(candidates -> contextSelector.select(candidates, ragProperties.similarityThreshold(),
                         ragProperties.maxContextCharacters()))
-                .doOnNext(selected -> recordContext(command, selected, candidatesFound.get(), startedAt));
+                .doOnNext(selected -> {
+                    recordContext(command, selected, candidatesFound.get(), startedAt);
+                    trace.retrieval(new RetrievalTrace(searchText, candidatesFound.get(), selected, false),
+                            elapsedSince(startedAt));
+                });
     }
 
     private void recordContext(StreamChatCommand command, List<ContextFragment> selected, int candidates,

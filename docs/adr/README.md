@@ -29,6 +29,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0019 | [Citas a la fuente en el chat](0019-citas-a-la-fuente-en-el-chat.md) | aceptado |
 | 0020 | [Memoria de la conversación en una tabla propia del módulo `chat`](0020-memoria-de-conversacion-en-tabla-propia.md) | aceptado |
 | 0021 | [Subida y administración de documentos desde la aplicación](0021-subida-y-administracion-de-documentos.md) | aceptado |
+| 0022 | [Trazas de LLM con Langfuse autoalojado por OTLP](0022-trazas-de-llm-con-langfuse-por-otlp.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

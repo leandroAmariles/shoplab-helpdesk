@@ -291,6 +291,8 @@ jobs:
         run: bash infra/observability/check-dashboards.sh
       - name: Validate the compose profile
         run: docker compose -f infra/docker-compose.yml --profile observability config -q
+      - name: Validate the llmops compose profile
+        run: docker compose -f infra/docker-compose.yml --profile llmops config -q
       # Every dashboard JSON must be packaged as a labelled ConfigMap for the cluster (Argo CD reads this path).
       - name: Validate the dashboards kustomization
         run: |

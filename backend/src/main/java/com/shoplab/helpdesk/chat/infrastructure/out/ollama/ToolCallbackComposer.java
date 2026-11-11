@@ -1,5 +1,6 @@
 package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
 
+import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.ai.tool.ToolCallback;
@@ -21,8 +22,15 @@ public class ToolCallbackComposer {
     }
 
     public List<ToolCallback> compose() {
+        return compose(TurnTrace.NONE);
+    }
+
+    /** The same tools, each one reporting its calls to the trace of the turn that is being answered (LAB-64). */
+    public List<ToolCallback> compose(TurnTrace trace) {
         return providers.orderedStream()
                 .flatMap(provider -> Arrays.stream(provider.getToolCallbacks()))
+                .map(callback -> trace == TurnTrace.NONE ? callback : (ToolCallback) new TracedToolCallback(callback,
+                        trace))
                 .toList();
     }
 }

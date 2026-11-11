@@ -18,7 +18,7 @@ final class ModuleArchitectureRules {
 
     /** Families the domain must not know: AI, messaging, persistence mapping and reactive types. */
     static final List<String> FORBIDDEN_IN_DOMAIN = List.of(
-            "org.springframework.ai..",
+            "org.springframework.ai..", "io.opentelemetry..",
             "org.springframework.kafka..", "org.apache.kafka..",
             "jakarta.persistence..", "javax.persistence..", "org.springframework.data.jpa..", "org.hibernate..",
             "reactor..");

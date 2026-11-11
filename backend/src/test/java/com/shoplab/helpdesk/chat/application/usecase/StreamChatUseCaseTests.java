@@ -33,6 +33,7 @@ import com.shoplab.helpdesk.chat.domain.model.ChatEvent.SourcesEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
+import com.shoplab.helpdesk.chat.infrastructure.out.tracing.NoOpChatTrace;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -82,7 +83,8 @@ class StreamChatUseCaseTests {
 
     private StreamChatUseCase newUseCase(ChatModelPort model, RagProperties rag) {
         return new StreamChatUseCase(model, knowledge, new ContextSelector(),
-                history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH, "system"), rag);
+                history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH, "system"), rag,
+                new NoOpChatTrace());
     }
 
     private StreamChatUseCase useCaseAnswering(Flux<String> answer) {
@@ -720,7 +722,7 @@ class StreamChatUseCaseTests {
         when(selector.select(any(), anyDouble(), anyInt())).thenThrow(new IllegalStateException("bug"));
         StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector,
                 history(new MemoryProperties(null, null, null)), metrics,
-                new ChatProperties(MAX_LENGTH, "system"), rag(null, null));
+                new ChatProperties(MAX_LENGTH, "system"), rag(null, null), new NoOpChatTrace());
 
         StepVerifier.create(useCase.stream(command("q"))).expectError(IllegalStateException.class).verify();
 

@@ -3,6 +3,7 @@ package com.shoplab.helpdesk.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.shoplab.helpdesk.architecture.violations.domain.OpenTelemetryInDomain;
 import com.shoplab.helpdesk.architecture.violations.domain.ReactorInDomain;
 import com.shoplab.helpdesk.architecture.violations.domain.SpringAiInDomain;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -89,6 +90,16 @@ class ModuleArchitectureTests {
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("ReactorInDomain")
                 .hasMessageContaining("reactor");
+    }
+
+    @Test
+    void theDomainRuleRejectsOpenTelemetryAndNamesTheClass() {
+        ArchRule rule = ModuleArchitectureRules.domainIsFreeOfFrameworks();
+
+        assertThatThrownBy(() -> rule.check(new ClassFileImporter().importClasses(OpenTelemetryInDomain.class)))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("OpenTelemetryInDomain")
+                .hasMessageContaining("io.opentelemetry");
     }
 
     @Test
