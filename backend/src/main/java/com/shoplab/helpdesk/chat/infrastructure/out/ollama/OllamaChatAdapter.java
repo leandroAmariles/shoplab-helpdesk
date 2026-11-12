@@ -137,12 +137,10 @@ public class OllamaChatAdapter implements ChatModelPort {
             ChatOptions options = chatModel.getOptions();
             Map<String, Object> parameters = new LinkedHashMap<>();
             parameters.put(PROVIDER_PARAMETER, PROVIDER);
-            if (options != null) {
-                putIfPresent(parameters, "temperature", options.getTemperature());
-                putIfPresent(parameters, "topP", options.getTopP());
-                putIfPresent(parameters, "maxTokens", options.getMaxTokens());
-            }
-            String model = options == null || options.getModel() == null ? "unknown" : options.getModel();
+            putIfPresent(parameters, "temperature", options.getTemperature());
+            putIfPresent(parameters, "topP", options.getTopP());
+            putIfPresent(parameters, "maxTokens", options.getMaxTokens());
+            String model = options.getModel() == null ? "unknown" : options.getModel();
             List<PromptMessage> prompt = messages.stream()
                     .map(item -> new PromptMessage(roleOf(item), item.getText()))
                     .toList();
@@ -171,9 +169,8 @@ public class OllamaChatAdapter implements ChatModelPort {
      * the chunks that carry no count (Ollama sends them in the last one only), so zero in both sides is unknown.
      */
     private static TokenUsage usageOf(ChatResponse response) {
-        Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
-        if (usage == null || usage.getPromptTokens() == null || usage.getCompletionTokens() == null
-                || (usage.getPromptTokens() == 0 && usage.getCompletionTokens() == 0)) {
+        Usage usage = response.getMetadata().getUsage();
+        if (usage.getPromptTokens() == 0 && usage.getCompletionTokens() == 0) {
             return TokenUsage.unknown();
         }
         return new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens());

@@ -4,6 +4,7 @@ import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;
 import java.time.Duration;
 import java.util.function.Supplier;
+import org.jspecify.annotations.NonNull;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
@@ -25,22 +26,22 @@ class TracedToolCallback implements ToolCallback {
     }
 
     @Override
-    public ToolDefinition getToolDefinition() {
+    public @NonNull ToolDefinition getToolDefinition() {
         return delegate.getToolDefinition();
     }
 
     @Override
-    public ToolMetadata getToolMetadata() {
+    public @NonNull ToolMetadata getToolMetadata() {
         return delegate.getToolMetadata();
     }
 
     @Override
-    public String call(String toolInput) {
+    public @NonNull String call(@NonNull String toolInput) {
         return traced(toolInput, () -> delegate.call(toolInput));
     }
 
     @Override
-    public String call(String toolInput, ToolContext toolContext) {
+    public @NonNull String call(@NonNull String toolInput, ToolContext toolContext) {
         return traced(toolInput, () -> delegate.call(toolInput, toolContext));
     }
 

@@ -16,6 +16,7 @@ import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessorBuilder;
 import java.time.Duration;
 import java.util.Collection;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,7 @@ public final class DroppedSpansReporter implements MetricExporter {
     }
 
     @Override
-    public CompletableResultCode export(Collection<MetricData> metrics) {
+    public CompletableResultCode export(@NonNull Collection<MetricData> metrics) {
         try {
             long total = metrics.stream()
                     .filter(metric -> PROCESSED_SPANS.equals(metric.getName())
@@ -95,7 +96,7 @@ public final class DroppedSpansReporter implements MetricExporter {
     }
 
     @Override
-    public AggregationTemporality getAggregationTemporality(InstrumentType instrumentType) {
+    public AggregationTemporality getAggregationTemporality(@NonNull InstrumentType instrumentType) {
         return AggregationTemporality.CUMULATIVE;
     }
 }

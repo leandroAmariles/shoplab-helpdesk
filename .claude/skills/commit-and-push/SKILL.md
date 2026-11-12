@@ -1,6 +1,7 @@
 ---
 name: commit-and-push
 description: Stage relevant changes, commit with a Conventional Commits message, push the branch, and open a pull request filled from the team's PR template. Use when the user asks to commit, push, or open a PR, or after finishing a logical unit of work that's ready for review.
+model: sonnet
 ---
 
 # Commit, Push & Open PR — Usage Instructions

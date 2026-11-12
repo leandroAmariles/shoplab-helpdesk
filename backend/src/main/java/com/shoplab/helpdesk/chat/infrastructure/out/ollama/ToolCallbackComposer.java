@@ -29,8 +29,7 @@ public class ToolCallbackComposer {
     public List<ToolCallback> compose(TurnTrace trace) {
         return providers.orderedStream()
                 .flatMap(provider -> Arrays.stream(provider.getToolCallbacks()))
-                .map(callback -> trace == TurnTrace.NONE ? callback : (ToolCallback) new TracedToolCallback(callback,
-                        trace))
+                .map(callback -> trace == TurnTrace.NONE ? callback : new TracedToolCallback(callback, trace))
                 .toList();
     }
 }

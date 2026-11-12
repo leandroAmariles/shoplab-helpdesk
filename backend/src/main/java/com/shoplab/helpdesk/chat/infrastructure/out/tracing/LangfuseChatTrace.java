@@ -138,7 +138,6 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
 
         private final StreamChatCommand command;
         private final Span root;
-        private final Context rootContext;
         private final Instant startedAt = Instant.now();
         private final StringBuilder answer = new StringBuilder();
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -160,7 +159,6 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
             } finally {
                 ids.clear();
             }
-            this.rootContext = Context.root().with(root);
             String question = text(command.message());
             root.setAttribute(LangfuseAttributes.TRACE_NAME, LangfuseAttributes.TURN_SPAN);
             root.setAttribute(LangfuseAttributes.OBSERVATION_TYPE, LangfuseAttributes.TYPE_SPAN);

@@ -1,6 +1,7 @@
 ---
 name: new-properties
 description: After an implementation, list the configuration properties that were added (e.g. @Value, @ConfigurationProperties, application*.yml) with a value for each, as a YAML snippet ready to paste into the environment's config yml. Returns nothing if no new properties were added. Use when the user asks for the new properties/config of an implementation, or right after /speckit-implement or /opsx-apply.
+model: sonnet
 ---
 
 # new-properties — Usage Instructions

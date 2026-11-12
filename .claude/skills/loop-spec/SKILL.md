@@ -1,6 +1,7 @@
 ---
 name: loop-spec
 description: Revise a spec-kit feature's spec.md after implementation started (or finished) - scoped to only the requirement, scenario, or entity that broke or changed - then cascade that same scoped edit into plan.md and tasks.md so the SDD cycle can resume on just the delta, handing off to /speckit-implement. Use when a bug reveals a wrong/missing requirement, or a stakeholder decision changes scope, for a spec-kit feature. Never for drafting a brand-new feature (use /speckit-specify) and never to regenerate an entire spec/plan/tasks file at once.
+model: sonnet
 ---
 
 # loop-spec — Usage Instructions

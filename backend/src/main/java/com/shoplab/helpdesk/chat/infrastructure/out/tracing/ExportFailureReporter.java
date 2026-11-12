@@ -7,6 +7,7 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import java.time.Duration;
 import java.util.Collection;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,7 @@ public final class ExportFailureReporter implements SpanExporter {
     }
 
     @Override
-    public CompletableResultCode export(Collection<SpanData> spans) {
+    public CompletableResultCode export(@NonNull Collection<SpanData> spans) {
         CompletableResultCode result;
         try {
             result = delegate.export(spans);
