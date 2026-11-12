@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.16.0...v0.17.0) (2026-11-12)
+
+
+### Features
+
+* **chat:** [LAB-64] trazas de LLM con Langfuse autoalojado ([#114](https://github.com/leandroAmariles/shoplab-helpdesk/issues/114)) ([2c92ef4](https://github.com/leandroAmariles/shoplab-helpdesk/commit/2c92ef49ad23510af6e8fdc297b4c88a803df74a))
+
 ## [0.16.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.15.0...v0.16.0) (2026-11-10)
 
 
