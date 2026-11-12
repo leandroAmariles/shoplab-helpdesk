@@ -29,6 +29,7 @@ import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
+import com.shoplab.helpdesk.chat.infrastructure.out.tracing.NoOpChatTrace;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.util.ArrayList;
@@ -75,7 +76,8 @@ class StreamChatUseCaseMemoryTests {
         ConversationHistory history = new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(),
                 properties, metrics);
         return new StreamChatUseCase(model, knowledge, new ContextSelector(), history, metrics,
-                new ChatProperties(4000, "system"), new RagProperties(null, null, null, null, null, mode, null));
+                new ChatProperties(4000, "system"), new RagProperties(null, null, null, null, null, mode, null),
+                new NoOpChatTrace());
     }
 
     private static StreamChatCommand command(String message, String conversationId) {

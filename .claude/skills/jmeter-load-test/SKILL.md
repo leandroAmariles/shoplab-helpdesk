@@ -1,6 +1,7 @@
 ---
 name: jmeter-load-test
 description: Design and execute a JMeter load test against a service endpoint. Use when the user asks for a load test, performance test, or stress test, or to run JMeter. Asks for the target endpoint if not provided; compares results against SLOs and draws conclusions only when the user gives an objective, otherwise reports raw results only.
+model: sonnet
 ---
 
 # JMeter Load Test — Usage Instructions

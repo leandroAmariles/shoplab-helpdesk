@@ -48,6 +48,21 @@ public final class OllamaStubs {
         return ((lines.isEmpty() ? "" : lines + "\n") + last + "\n").getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Like {@link #body(String...)} but the final {@code done} line carries the token counts the way Ollama reports
+     * them: {@code prompt_eval_count} (prompt) and {@code eval_count} (answer).
+     */
+    public static byte[] bodyWithUsage(int promptTokens, int outputTokens, String... fragments) {
+        String lines = Arrays.stream(fragments)
+                .map(f -> "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\""
+                        + f.replace("\\", "\\\\").replace("\"", "\\\"") + "\"},\"done\":false}")
+                .collect(Collectors.joining("\n"));
+        String last = "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"\"},"
+                + "\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":" + promptTokens
+                + ",\"eval_count\":" + outputTokens + "}";
+        return ((lines.isEmpty() ? "" : lines + "\n") + last + "\n").getBytes(StandardCharsets.UTF_8);
+    }
+
     public static ResponseDefinitionBuilder streaming(byte[] body) {
         return aResponse().withStatus(200).withHeader("Content-Type", NDJSON).withBody(body);
     }

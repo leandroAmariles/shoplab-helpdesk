@@ -144,11 +144,11 @@ La dimensión del embedding fija el tamaño de la columna `vector(n)` en las his
 | Perfil | Servicios | Estado |
 | --- | --- | --- |
 | `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` | Siempre activo |
-| `llmops` | — | Reservado |
+| `llmops` | `langfuse-web`, `langfuse-worker`, `langfuse-postgres`, `langfuse-clickhouse`, `langfuse-redis`, `langfuse-minio` (trazas de LLM, LAB-64) | Opcional: `--profile llmops` |
 | `observability` | `prometheus`, `grafana` (métricas del backend y dashboards, LAB-102) | Opcional: `--profile observability` |
 | `kafka` | — | Reservado (F4) |
 
-Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores. El perfil `observability` ya tiene servicios (ver más abajo).
+Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores. Los perfiles `observability` y `llmops` ya tienen servicios (ver más abajo).
 
 ### Operar el entorno
 
@@ -168,9 +168,58 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 - **Puerto ocupado:** cambia `POSTGRES_PORT`, `OLLAMA_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
 - **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y Ollama en `http://localhost:11434`; las credenciales de ejemplo están en `infra/.env.example`.
 
+### Langfuse (perfil `llmops`)
+
+`docker compose -f infra/docker-compose.yml --profile llmops up -d --wait` levanta Langfuse v4 autoalojado con sus almacenes (PostgreSQL, ClickHouse, Redis y MinIO) para inspeccionar cada turno del chat. La interfaz queda en `http://localhost:3001` (el 3000 es de Grafana; se cambia con `LANGFUSE_PORT`). Arranca ya inicializado: organización, proyecto `shoplab-helpdesk`, usuario `admin@shoplab.local` (contraseña `LANGFUSE_INIT_USER_PASSWORD`, por defecto `change-me-local-only`, solo válida en local) y las claves `pk-lf-shoplab-local` / `sk-lf-shoplab-local`. Es opcional y pesado: en reposo usa unos 3 GB de RAM (la web de Langfuse ~1,6 GB, el worker ~0,7 GB, ClickHouse ~0,4 GB); medición en `specs/LAB-64-langfuse-llm-traces/validation.md`. Sin el perfil no arranca ninguno de sus contenedores. Los datos viven en volúmenes con nombre (`langfuse_*`) y sobreviven a reinicios. Para que el backend envíe trazas, ver «Trazas de LLM».
+
 ### Observabilidad local (perfil `observability`)
 
 `docker compose -f infra/docker-compose.yml --profile observability up -d --wait` levanta Prometheus (`http://localhost:9090`) y Grafana (`http://localhost:3000`, usuario `admin`, contraseña `GRAFANA_ADMIN_PASSWORD`, por defecto `change-me-local-only` y solo válida en local). Prometheus recoge `/actuator/prometheus` del backend que corre en el host en el puerto 8080; Grafana arranca con el origen de datos y los dashboards de `infra/observability/`. Sin el perfil no arranca nada de esto. Detalle, dashboards, alerta y cómo borrar solo sus datos: [docs/observabilidad.md](docs/observabilidad.md).
+
+### Trazas de LLM
+
+Cada turno del chat puede dejar una traza en Langfuse (LAB-64, ADR-0022). **Está apagado por defecto**: sin la variable no se crea ningún exportador ni se abre ninguna conexión.
+
+**Activarlo en local** (con el perfil `llmops` levantado):
+
+```bash
+SHOPLAB_CHAT_TRACING_ENABLED=true SHOPLAB_CHAT_TRACING_PUBLIC_KEY=pk-lf-shoplab-local SHOPLAB_CHAT_TRACING_SECRET_KEY=sk-lf-shoplab-local ./mvnw spring-boot:run
+```
+
+Las demás variables (`SHOPLAB_CHAT_TRACING_ENDPOINT`, `_ENVIRONMENT`, `_MAX_CONTENT_CHARACTERS`, `_QUEUE_SIZE`, `_BATCH_SIZE`, `_SCHEDULE_DELAY`, `_EXPORT_TIMEOUT`, `_SHUTDOWN_TIMEOUT`) tienen valores por defecto en `backend/src/main/resources/application.yml`. Con `enabled=true` y las claves vacías el backend arranca igualmente, avisa en el log (sin valores) y no envía nada.
+
+**Cómo leer una traza.** En `http://localhost:3001`, proyecto `shoplab-helpdesk`, cada turno es una traza `chat-turn` con:
+
+| Paso | Qué muestra |
+|---|---|
+| `chat-turn` (raíz) | la pregunta, la respuesta, `result` (`completed`, `no_context`, `cancelled` o `error`), el `X-Request-Id`, los turnos de memoria usados y el tiempo hasta el primer token; en un error, `error_code` y `failed_stage`. La conversación se agrupa en una sesión por su `conversationId` |
+| `retrieval` | el texto buscado y los fragmentos entregados al modelo con fuente, título, sección y **puntuación**, más cuántos candidatos hubo |
+| `generation` | el modelo y sus parámetros, el prompt completo (`system`, historial y pregunta con contexto), la respuesta, los tokens de entrada y salida, el coste y el tiempo hasta el primer token |
+| `tool:<nombre>` | por cada herramienta que el modelo llamó: argumentos, resultado y duración |
+
+Un uso de tokens que el modelo no informó aparece como desconocido, nunca como cero. El nombre exacto de cada atributo está en `specs/LAB-64-langfuse-llm-traces/contracts/trace-schema.md`.
+
+**Precios.** El coste sale de la tabla `shoplab.chat.tracing.pricing` (USD por millón de tokens, por nombre exacto de modelo y, si no, por proveedor). Los modelos locales de Ollama valen 0. Para un modelo de pago añade una entrada, por ejemplo:
+
+```yaml
+shoplab.chat.tracing.pricing.claude-sonnet-5-5:
+  input-per-million: 3.0
+  output-per-million: 15.0
+```
+
+Un modelo sin precio no tiene coste en su traza (no se inventa).
+
+**Encontrar la traza de una petición.** El identificador de la traza es `SHA-256(X-Request-Id)` en hexadecimal, sus primeros 32 caracteres:
+
+```bash
+printf '%s' "<X-Request-Id>" | sha256sum | cut -c1-32
+```
+
+Con ese id, la interfaz abre `http://localhost:3001/project/shoplab-helpdesk/traces/<traceId>`.
+
+> **Datos.** Las trazas contienen la conversación completa (preguntas, respuestas, fragmentos y prompt). Úsalas solo con datos públicos o de prueba: la base de conocimiento actual lo es. Si activas el envío con datos reales, Langfuse los guarda.
+
+**Ambiente DEV.** El backend de dev envía las trazas al Langfuse del clúster y este no tiene Ingress; se abre con `kubectl -n shoplab-dev port-forward svc/langfuse-web 3001:3000` y luego `http://localhost:3001` (detalles y secretos en `docs/observability.md` del repositorio `shoplab-infra`).
 
 ## Integración continua
 

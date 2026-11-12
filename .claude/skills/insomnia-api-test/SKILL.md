@@ -1,6 +1,7 @@
 ---
 name: insomnia-api-test
 description: Run an authenticated API test against a BAC environment (DEV/QA) the way Insomnia does it. Use when the user asks to test/probe/call an endpoint "in Insomnia", "en insomnia", or to see what a service/client answers in an environment. Logs in through the Ping journey using the values of the user's Insomnia export, builds the request for the given environment, service path and parameters, sends it, and reports the response (plus a redacted curl to paste into Insomnia).
+model: sonnet
 ---
 
 # Insomnia API Test - Usage Instructions

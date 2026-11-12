@@ -4,7 +4,8 @@
 #
 # Perfiles:
 #   core           postgres + ollama + ingest. Siempre activo (sin clave `profiles:`); `--profile core` es no-op.
-#   llmops         reservado, sin servicios todavia (llega en una fase posterior).
+#   llmops         langfuse (LAB-64): web, worker y sus almacenes (postgres, clickhouse, redis, minio) con prefijo
+#                  `langfuse-`. Interfaz en http://localhost:3001. Activar: --profile llmops.
 #   observability  prometheus + grafana (LAB-102): Prometheus recoge el backend que corre en el host (puerto 8080)
 #                  y Grafana arranca con el origen de datos y los dashboards de infra/observability/.
 #                  Activar: --profile observability.
@@ -128,8 +129,173 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # ---- Perfil llmops (LAB-64): Langfuse v4 autoalojado --------------------------------------------------------------
+  # Interfaz en http://localhost:${LANGFUSE_PORT:-3001} (3000 es de Grafana). Los almacenes no publican puertos al host
+  # (solo MinIO, en loopback, para la carga de medios desde el navegador). Credenciales: marcadores SOLO para uso local.
+  langfuse-postgres:
+    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    profiles: [llmops]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LANGFUSE_POSTGRES_PASSWORD:-change-me-local-only}
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  langfuse-clickhouse:
+    image: ${LANGFUSE_CLICKHOUSE_IMAGE:-docker.io/clickhouse/clickhouse-server:26.3.62.3}
+    profiles: [llmops]
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-change-me-local-only}
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  langfuse-redis:
+    image: ${LANGFUSE_REDIS_IMAGE:-docker.io/redis:7.4.6}
+    profiles: [llmops]
+    command: >
+      --requirepass ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+      --maxmemory-policy noeviction
+    volumes:
+      - langfuse_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+    restart: unless-stopped
+
+  langfuse-minio:
+    image: ${LANGFUSE_MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:fb893e36fc369d41e92f678b17ec27378fa5bf0576aeef7ac15460c13629ab5a}
+    profiles: [llmops]
+    # El bucket `langfuse` es el directorio /data/langfuse: se crea antes de arrancar el servidor.
+    entrypoint: sh
+    command:
+      - -c
+      - mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+    ports:
+      - "127.0.0.1:${LANGFUSE_MINIO_PORT:-9092}:9000"
+    volumes:
+      - langfuse_minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  langfuse-worker:
+    image: ${LANGFUSE_WORKER_IMAGE:-docker.langfuse.com/langfuse/langfuse-worker:4.77.0}
+    profiles: [llmops]
+    environment: &langfuse-env
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3001}
+      DATABASE_URL: postgresql://postgres:${LANGFUSE_POSTGRES_PASSWORD:-change-me-local-only}@langfuse-postgres:5432/postgres
+      SALT: ${LANGFUSE_SALT:-change-me-local-only}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-change-me-local-only}
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+      REDIS_TLS_ENABLED: "false"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+    depends_on: &langfuse-depends
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+    healthcheck:
+      # Langfuse escucha en la direccion del contenedor, no en 127.0.0.1.
+      test: ["CMD-SHELL", "wget -q --spider http://$${HOSTNAME}:3030/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  langfuse-web:
+    image: ${LANGFUSE_WEB_IMAGE:-docker.langfuse.com/langfuse/langfuse:4.77.0}
+    profiles: [llmops]
+    depends_on: *langfuse-depends
+    ports:
+      - "${LANGFUSE_PORT:-3001}:3000"
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-local-only}
+      # El navegador sube los medios a MinIO por el puerto publicado en el host.
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:${LANGFUSE_MINIO_PORT:-9092}
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://langfuse-minio:9000
+      # Organizacion, proyecto, usuario y claves creados al arrancar (sin alta manual en la interfaz).
+      LANGFUSE_INIT_ORG_ID: shoplab
+      LANGFUSE_INIT_ORG_NAME: ShopLab
+      LANGFUSE_INIT_PROJECT_ID: shoplab-helpdesk
+      LANGFUSE_INIT_PROJECT_NAME: shoplab-helpdesk
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PUBLIC_KEY:-pk-lf-shoplab-local}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_SECRET_KEY:-sk-lf-shoplab-local}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@shoplab.local}
+      LANGFUSE_INIT_USER_NAME: admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-change-me-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://$${HOSTNAME}:3000/api/public/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
 volumes:
   pgdata:
   ollama_models:
   prometheus_data:
   grafana_data:
+  langfuse_postgres_data:
+  langfuse_clickhouse_data:
+  langfuse_clickhouse_logs:
+  langfuse_minio_data:
+  langfuse_redis_data:

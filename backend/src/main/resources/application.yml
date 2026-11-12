@@ -46,6 +46,26 @@ shoplab:
       max-history-characters: ${SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS:4000}
       # Previous questions added to the search of context so a follow-up finds the topic; 0 uses the message alone.
       retrieval-turns: ${SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS:1}
+    # One Langfuse trace per chat turn (LAB-64). Off by default: nothing is created and nothing is sent. The traces
+    # carry the whole conversation (question, prompt, context, answer): use them with public or test data only.
+    tracing:
+      enabled: ${SHOPLAB_CHAT_TRACING_ENABLED:false}
+      endpoint: ${SHOPLAB_CHAT_TRACING_ENDPOINT:http://localhost:3001/api/public/otel}
+      public-key: ${SHOPLAB_CHAT_TRACING_PUBLIC_KEY:}
+      secret-key: ${SHOPLAB_CHAT_TRACING_SECRET_KEY:}
+      environment: ${SHOPLAB_CHAT_TRACING_ENVIRONMENT:local}
+      max-content-characters: ${SHOPLAB_CHAT_TRACING_MAX_CONTENT_CHARACTERS:20000}
+      queue-size: ${SHOPLAB_CHAT_TRACING_QUEUE_SIZE:2048}
+      batch-size: ${SHOPLAB_CHAT_TRACING_BATCH_SIZE:256}
+      schedule-delay: ${SHOPLAB_CHAT_TRACING_SCHEDULE_DELAY:2s}
+      export-timeout: ${SHOPLAB_CHAT_TRACING_EXPORT_TIMEOUT:5s}
+      shutdown-timeout: ${SHOPLAB_CHAT_TRACING_SHUTDOWN_TIMEOUT:5s}
+      # USD per million tokens, by model name or by provider; a local model costs 0. A model without a price has
+      # no cost in its trace (it is not guessed).
+      pricing:
+        ollama:
+          input-per-million: 0
+          output-per-million: 0
   retrieval:
     ingest:
       base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}
