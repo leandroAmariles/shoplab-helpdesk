@@ -170,7 +170,7 @@ services:
     restart: unless-stopped
 
   langfuse-redis:
-    image: ${LANGFUSE_REDIS_IMAGE:-docker.io/redis:7.4.6}
+    image: ${LANGFUSE_REDIS_IMAGE:-docker.io/redis:8.10.3}
     profiles: [llmops]
     command: >
       --requirepass ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
