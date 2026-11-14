@@ -151,7 +151,7 @@ services:
     restart: unless-stopped
 
   langfuse-clickhouse:
-    image: ${LANGFUSE_CLICKHOUSE_IMAGE:-docker.io/clickhouse/clickhouse-server:26.3.62.3}
+    image: ${LANGFUSE_CLICKHOUSE_IMAGE:-docker.io/clickhouse/clickhouse-server:26.10.3.7}
     profiles: [llmops]
     user: "101:101"
     environment:
