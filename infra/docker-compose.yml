@@ -133,7 +133,7 @@ services:
   # Interfaz en http://localhost:${LANGFUSE_PORT:-3001} (3000 es de Grafana). Los almacenes no publican puertos al host
   # (solo MinIO, en loopback, para la carga de medios desde el navegador). Credenciales: marcadores SOLO para uso local.
   langfuse-postgres:
-    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:18.0}
     profiles: [llmops]
     environment:
       POSTGRES_USER: postgres
