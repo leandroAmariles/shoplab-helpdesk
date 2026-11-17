@@ -120,7 +120,7 @@ public class GatewayChatAdapter implements ChatModelPort {
                     .doOnNext(response -> {
                         usage.accumulateAndGet(usageOf(response), TokenUsage::plus);
                         String model = response.getMetadata().getModel();
-                        if (model != null && !model.isBlank()) {
+                        if (!model.isBlank()) {
                             servedBy.set(model);
                         }
                     })

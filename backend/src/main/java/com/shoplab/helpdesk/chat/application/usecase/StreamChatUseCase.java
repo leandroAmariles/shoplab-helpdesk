@@ -104,7 +104,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
                     .onErrorResume(error -> {
                         record(responseRecorded, ChatOutcome.ERROR, startedAt);
                         return failed(command, error, firstTokenSeen.get());
-                    })).contextWrite(context -> correlation(context, command, conversation));
+                    })).contextWrite(context -> correlation(context, command, conversation.orElse(null)));
         });
     }
 
@@ -244,12 +244,11 @@ public class StreamChatUseCase implements StreamChatServicePort {
     }
 
     /** The ids the model gateway logs next to each call, so its logs can be crossed with ours (LAB-84, FR-025). */
-    private static Context correlation(Context context, StreamChatCommand command,
-            Optional<ConversationId> conversation) {
+    private static Context correlation(Context context, StreamChatCommand command, ConversationId conversation) {
         Context correlated = command.requestId() == null ? context
                 : context.put(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, command.requestId());
-        return conversation.map(id -> correlated.put(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, id.value()))
-                .orElse(correlated);
+        return conversation == null ? correlated
+                : correlated.put(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, conversation.value());
     }
 
     /** Before the first fragment the failure is the flux's error (an HTTP error); afterwards it is a last event. */
