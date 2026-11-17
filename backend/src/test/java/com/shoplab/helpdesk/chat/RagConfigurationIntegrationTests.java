@@ -70,7 +70,7 @@ class RagConfigurationIntegrationTests {
 
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
@@ -92,7 +92,7 @@ class RagConfigurationIntegrationTests {
         ingest.resetAll();
         ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json").withBody(ANSWER)));
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
     }
 
     @AfterEach
@@ -109,7 +109,8 @@ class RagConfigurationIntegrationTests {
         ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"Texto tres.\"}");
 
         assertThat(result.status()).isEqualTo(200);
-        String requestBody = ollama.findAll(postRequestedFor(urlEqualTo("/api/chat"))).get(0).getBodyAsString();
+        String requestBody = ollama.findAll(postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))).get(0)
+                .getBodyAsString();
         Matcher fragments = Pattern.compile("\\[\\d+] Politica › [A-E]\\b").matcher(requestBody);
         int count = 0;
         while (fragments.find()) {

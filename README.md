@@ -143,7 +143,7 @@ La dimensión del embedding fija el tamaño de la columna `vector(n)` en las his
 
 | Perfil | Servicios | Estado |
 | --- | --- | --- |
-| `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` | Siempre activo |
+| `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` (sin puerto publicado), `litellm` (gateway de modelos, puerto 4000), `litellm-postgres` y `litellm-bootstrap` (crea las claves virtuales y termina), `ingest` | Siempre activo |
 | `llmops` | `langfuse-web`, `langfuse-worker`, `langfuse-postgres`, `langfuse-clickhouse`, `langfuse-redis`, `langfuse-minio` (trazas de LLM, LAB-64) | Opcional: `--profile llmops` |
 | `observability` | `prometheus`, `grafana` (métricas del backend y dashboards, LAB-102) | Opcional: `--profile observability` |
 | `kafka` | — | Reservado (F4) |
@@ -164,9 +164,10 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 | Reiniciar desde cero | `docker compose -f infra/docker-compose.yml down -v` |
 
 - **Salud:** `ollama` solo pasa a `healthy` cuando el modelo de chat y el de embeddings están descargados; `postgres`, cuando acepta conexiones y la extensión `vector` existe.
-- **Cambiar de modelo:** define `OLLAMA_CHAT_MODEL` u `OLLAMA_EMBED_MODEL` en `infra/.env` y vuelve a ejecutar `up -d --wait`. El modelo anterior sigue en el disco; se elimina con `down -v`.
-- **Puerto ocupado:** cambia `POSTGRES_PORT`, `OLLAMA_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
-- **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y Ollama en `http://localhost:11434`; las credenciales de ejemplo están en `infra/.env.example`.
+- **Cambiar de modelo:** define `LITELLM_CHAT_PRIMARY_MODEL` o `LITELLM_EMBED_MODEL` (o `OLLAMA_CHAT_MODEL` / `OLLAMA_EMBED_MODEL` si hay que descargarlos) en `infra/.env` y ejecuta `up -d litellm`; el backend no se reinicia. El modelo anterior sigue en el disco; se elimina con `down -v`. Ver [`docs/gateway-de-modelos.md`](docs/gateway-de-modelos.md).
+- **Puerto ocupado:** cambia `POSTGRES_PORT`, `LITELLM_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
+- **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y el gateway de modelos en `http://localhost:4000/v1` (el backend habla solo con él, con su clave virtual; **Ollama ya no publica puerto**: solo lo alcanza el gateway, y para depurarlo se añade `-f infra/docker-compose.ollama-host.yml`); las credenciales de ejemplo están en `infra/.env.example`.
+- **Gateway de modelos (LAB-84):** fallback entre dos modelos locales (`OLLAMA_FALLBACK_MODEL`), presupuesto por clave virtual, coste y tokens por conversación en los logs del gateway y un proveedor cloud opcional (desactivado sin clave). Guía: [`docs/gateway-de-modelos.md`](docs/gateway-de-modelos.md) y [ADR-0023](docs/adr/0023-gateway-de-modelos-litellm.md).
 
 ### Langfuse (perfil `llmops`)
 

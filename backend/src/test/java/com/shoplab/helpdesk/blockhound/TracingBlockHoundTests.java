@@ -11,7 +11,7 @@ import static org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.ChatTestClient;
-import com.shoplab.helpdesk.chat.OllamaStubs;
+import com.shoplab.helpdesk.chat.GatewayStubs;
 import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.time.Duration;
@@ -62,7 +62,7 @@ class TracingBlockHoundTests {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.chat.rag.no-context-mode", () -> "model");
         registry.add("shoplab.chat.tracing.enabled", () -> "true");
         registry.add("shoplab.chat.tracing.endpoint", () -> langfuse.baseUrl() + "/api/public/otel");
@@ -81,7 +81,7 @@ class TracingBlockHoundTests {
     void prepare() {
         ollama.resetAll();
         langfuse.resetAll();
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.bodyWithUsage(4, 2, ANSWER)));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.bodyWithUsage(4, 2, ANSWER)));
         langfuse.stubFor(post(urlEqualTo(TRACES_URL)).willReturn(aResponse().withStatus(200)));
         embedding.recover();
         embedding.useModel(MODEL);

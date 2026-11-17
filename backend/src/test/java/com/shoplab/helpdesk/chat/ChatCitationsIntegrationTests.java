@@ -82,7 +82,7 @@ class ChatCitationsIntegrationTests {
 
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
@@ -107,7 +107,7 @@ class ChatCitationsIntegrationTests {
         ingest.resetAll();
         ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json").withBody(PARSED)));
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Treinta dias ", "[1].")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Treinta dias ", "[1].")));
         embedding.recover();
         embedding.useModel(MODEL);
         embedding.resetCounters();
@@ -171,7 +171,7 @@ class ChatCitationsIntegrationTests {
 
         ask(QUESTION_JSON);
 
-        ollama.verify(exactly(1), postRequestedFor(urlEqualTo("/api/chat"))
+        ollama.verify(exactly(1), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .withRequestBody(matchingJsonPath("$.messages[0].content",
                         containing("termina con el número de su fragmento entre corchetes")))
                 .withRequestBody(matchingJsonPath("$.messages[1].content",
@@ -185,9 +185,9 @@ class ChatCitationsIntegrationTests {
         String before = counter("valid") + "/" + counter("invalid") + "/" + counter("none");
 
         ask(QUESTION_JSON);
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Treinta dias ", "[7].")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Treinta dias ", "[7].")));
         ask(QUESTION_JSON);
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Treinta dias.")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Treinta dias.")));
         ask(QUESTION_JSON);
 
         assertThat(counter("valid") + "/" + counter("invalid") + "/" + counter("none")).isNotEqualTo(before);

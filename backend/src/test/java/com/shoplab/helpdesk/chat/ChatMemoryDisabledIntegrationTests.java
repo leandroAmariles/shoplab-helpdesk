@@ -35,7 +35,7 @@ class ChatMemoryDisabledIntegrationTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
     }
 
     @LocalServerPort
@@ -47,7 +47,7 @@ class ChatMemoryDisabledIntegrationTests {
     @BeforeEach
     void prepare() {
         ollama.resetAll();
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Hola ", "mundo")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola ", "mundo")));
     }
 
     @Test
@@ -62,7 +62,7 @@ class ChatMemoryDisabledIntegrationTests {
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM chat.conversation_turn", Integer.class))
                 .isEqualTo(before);
-        ollama.verify(2, postRequestedFor(urlEqualTo("/api/chat"))
+        ollama.verify(2, postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .withRequestBody(matchingJsonPath("$.messages.length()", equalTo("2"))));
     }
 

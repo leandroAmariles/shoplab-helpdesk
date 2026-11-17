@@ -1,5 +1,6 @@
 package com.shoplab.helpdesk.chat.application.port.out;
 
+import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 
 /** One call to the model inside a turn. It ends exactly once, whichever of the three ends comes first. */
@@ -32,6 +33,14 @@ public interface GenerationScope {
 
     /** The model finished; {@code usage} may be unknown. */
     void complete(TokenUsage usage, String answer);
+
+    /**
+     * The model finished and the gateway said which model really answered, which may not be the primary one (LAB-84).
+     * Scopes that do not record the served model ignore it.
+     */
+    default void complete(TokenUsage usage, String answer, ServedModel served) {
+        complete(usage, answer);
+    }
 
     /** The model failed. */
     void fail(Throwable error);

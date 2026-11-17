@@ -72,7 +72,7 @@ class ChatMemoryDownIntegrationTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
     }
 
     @LocalServerPort
@@ -83,7 +83,7 @@ class ChatMemoryDownIntegrationTests {
         failReads = false;
         failWrites = false;
         ollama.resetAll();
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Hola ", "mundo")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola ", "mundo")));
     }
 
     private ChatTestClient.Result ask() {
@@ -112,7 +112,7 @@ class ChatMemoryDownIntegrationTests {
 
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.body()).contains("SLHD_CHAT_00006");
-        assertThat(ollama.findAll(postRequestedFor(urlEqualTo("/api/chat")))).isEmpty();
+        assertThat(ollama.findAll(postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)))).isEmpty();
         assertThat(prometheus()).contains("shoplab_chat_memory_failures_total{")
                 .contains("operation=\"read\"");
     }

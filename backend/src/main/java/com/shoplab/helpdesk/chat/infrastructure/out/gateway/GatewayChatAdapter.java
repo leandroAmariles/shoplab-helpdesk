@@ -1,17 +1,20 @@
-package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
+package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.application.port.out.GenerationScope;
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.config.GatewayProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
-import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
+import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
+import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
+import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -34,6 +37,7 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
 import org.springframework.ai.rag.generation.augmentation.QueryAugmenter;
@@ -45,7 +49,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 /**
- * Talks to the local model through Spring AI; the rest of the module only knows {@link ChatModelPort}.
+ * Talks to the model gateway (an OpenAI-compatible API) through Spring AI; the rest of the module only knows
+ * {@link ChatModelPort}. The backend asks for the logical model {@code chat}: which real model answers, the fallback,
+ * the budget and the cost are the gateway's business (LAB-84).
  *
  * <p>It streams from the {@link ChatModel} directly instead of {@code ChatClient.stream()}: the client's terminal
  * advisor re-publishes every stream on {@code Schedulers.boundedElastic()}, which pins one thread per open stream and
@@ -53,10 +59,14 @@ import reactor.core.scheduler.Schedulers;
  * {@code RetrievalAugmentationAdvisor} (its retrieval is synchronous) but by the {@link QueryAugmenter} that advisor
  * is built on, with fragments the use case already retrieved without blocking. The request sent to the model is the
  * same.
+ *
+ * <p>Each call tells the gateway which conversation and which chat request it belongs to (the {@code user} field and
+ * the request-id header) so the gateway's logs can be crossed with the backend's and with the traces.
  */
 @Component
-public class OllamaChatAdapter implements ChatModelPort {
+public class GatewayChatAdapter implements ChatModelPort {
 
+    /** The trace prices by provider; the gateway fronts local Ollama models, whose cost in traces is 0 (LAB-64). */
     private static final String PROVIDER = "ollama";
     private static final String PROVIDER_PARAMETER = "provider";
     private static final String TITLE_KEY = "title";
@@ -74,34 +84,46 @@ public class OllamaChatAdapter implements ChatModelPort {
     private final String emptyContextTemplate;
     private final QueryAugmenter augmenter;
     private final ToolCallbackComposer tools;
+    private final String primaryModel;
 
-    public OllamaChatAdapter(ChatModel chatModel, ChatProperties properties, RagProperties ragProperties,
-            ToolCallbackComposer tools) {
+    public GatewayChatAdapter(ChatModel chatModel, ChatProperties properties, RagProperties ragProperties,
+            ToolCallbackComposer tools, GatewayProperties gateway) {
         this.chatModel = chatModel;
         this.systemPrompt = properties.systemPrompt();
         this.emptyContextTemplate = ragProperties.emptyContextTemplate();
         // Only used with context: its own empty-context path would drop the question, see userText.
         this.augmenter = ContextualQueryAugmenter.builder()
                 .promptTemplate(new PromptTemplate(ragProperties.contextTemplate()))
-                .documentFormatter(OllamaChatAdapter::formatDocuments)
+                .documentFormatter(GatewayChatAdapter::formatDocuments)
                 .build();
         this.tools = tools;
+        this.primaryModel = gateway.primaryModel();
     }
 
-    /** Any failure of the model is a {@link ChatModelException}; the use case decides what it means for the stream. */
+    /** Any failure of the model is a typed exception; the use case decides what it means for the stream. */
     @Override
     public Flux<String> streamAnswer(String message, List<ConversationTurn> history, List<ContextFragment> context) {
         return Flux.deferContextual(reactorContext -> {
             TurnTrace trace = reactorContext.getOrDefault(TracingConstants.TURN_TRACE_KEY, TurnTrace.NONE);
+            String conversationId = reactorContext.getOrDefault(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, null);
+            String requestId = reactorContext.getOrDefault(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, null);
             List<Message> messages = messages(message, history, context);
             List<ToolCallback> callbacks = tools.compose(trace);
-            Prompt prompt = callbacks.isEmpty() ? new Prompt(messages) : new Prompt(messages, withTools(callbacks));
+            ChatOptions options = requestOptions(callbacks, conversationId, requestId);
+            Prompt prompt = options == null ? new Prompt(messages) : new Prompt(messages, options);
             GenerationScope generation = startGeneration(trace, messages);
             StringBuffer answer = new StringBuffer();
             AtomicReference<TokenUsage> usage = new AtomicReference<>(TokenUsage.unknown());
+            AtomicReference<String> servedBy = new AtomicReference<>();
             AtomicBoolean firstFragment = new AtomicBoolean();
             return streamResponses(prompt)
-                    .doOnNext(response -> usage.accumulateAndGet(usageOf(response), TokenUsage::plus))
+                    .doOnNext(response -> {
+                        usage.accumulateAndGet(usageOf(response), TokenUsage::plus);
+                        String model = response.getMetadata().getModel();
+                        if (model != null && !model.isBlank()) {
+                            servedBy.set(model);
+                        }
+                    })
                     .mapNotNull(response -> response.getResult() == null ? null
                             : response.getResult().getOutput().getText())
                     .filter(fragment -> !fragment.isEmpty())
@@ -111,9 +133,10 @@ public class OllamaChatAdapter implements ChatModelPort {
                         }
                         answer.append(fragment);
                     })
-                    .onErrorMap(error -> !(error instanceof HelpdeskException), ChatModelException::new)
+                    .onErrorMap(error -> !(error instanceof HelpdeskException), GatewayErrorTranslator::translate)
                     .doOnError(generation::fail)
-                    .doOnComplete(() -> generation.complete(usage.get(), answer.toString()))
+                    .doOnComplete(() -> generation.complete(usage.get(), answer.toString(),
+                            ServedModel.of(servedBy.get(), primaryModel)))
                     .doOnCancel(() -> generation.cancel(answer.toString()));
         });
     }
@@ -166,7 +189,7 @@ public class OllamaChatAdapter implements ChatModelPort {
 
     /**
      * The tokens a chunk of the answer reports. Spring AI gives zeros both when the model did not report them and for
-     * the chunks that carry no count (Ollama sends them in the last one only), so zero in both sides is unknown.
+     * the chunks that carry no count (the gateway sends them in the last one only), so zero in both sides is unknown.
      */
     private static TokenUsage usageOf(ChatResponse response) {
         Usage usage = response.getMetadata().getUsage();
@@ -230,7 +253,32 @@ public class OllamaChatAdapter implements ChatModelPort {
                 + (hasSection ? SECTION_SEPARATOR + section : "");
     }
 
-    /** Per-request options replace the defaults instead of merging, so the tools go on a copy of the defaults. */
+    /**
+     * Per-request options replace the defaults instead of merging, so what the call needs (the tools, and the
+     * conversation and request ids for the gateway) goes on a copy of the defaults. {@code null} when there is
+     * nothing to add.
+     */
+    private ChatOptions requestOptions(List<ToolCallback> callbacks, String conversationId, String requestId) {
+        boolean correlated = conversationId != null || requestId != null;
+        if (callbacks.isEmpty() && !correlated) {
+            return null;
+        }
+        if (chatModel.getOptions() instanceof OpenAiChatOptions defaults) {
+            OpenAiChatOptions.Builder builder = defaults.mutate();
+            if (conversationId != null) {
+                builder.user(conversationId);
+            }
+            if (requestId != null) {
+                builder.customHeaders(Map.of(GatewayHeaders.REQUEST_ID_HEADER, requestId));
+            }
+            if (!callbacks.isEmpty()) {
+                builder.toolCallbacks(callbacks);
+            }
+            return builder.build();
+        }
+        return callbacks.isEmpty() ? null : withTools(callbacks);
+    }
+
     private ChatOptions withTools(List<ToolCallback> callbacks) {
         ToolCallingChatOptions.Builder<?> builder = chatModel.getOptions() instanceof ToolCallingChatOptions d
                 ? d.mutate()

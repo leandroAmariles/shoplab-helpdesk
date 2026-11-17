@@ -24,7 +24,9 @@ import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
+import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -39,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class StreamChatUseCase implements StreamChatServicePort {
@@ -101,7 +104,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
                     .onErrorResume(error -> {
                         record(responseRecorded, ChatOutcome.ERROR, startedAt);
                         return failed(command, error, firstTokenSeen.get());
-                    }));
+                    })).contextWrite(context -> correlation(context, command, conversation));
         });
     }
 
@@ -238,6 +241,15 @@ public class StreamChatUseCase implements StreamChatServicePort {
             LOG.info("Context retrieved: requestId={}, candidates={}, delivered={}, bestScore={}, outcome={}",
                     command.requestId(), candidates, selected.size(), bestScore, outcome.tagValue());
         }
+    }
+
+    /** The ids the model gateway logs next to each call, so its logs can be crossed with ours (LAB-84, FR-025). */
+    private static Context correlation(Context context, StreamChatCommand command,
+            Optional<ConversationId> conversation) {
+        Context correlated = command.requestId() == null ? context
+                : context.put(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, command.requestId());
+        return conversation.map(id -> correlated.put(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, id.value()))
+                .orElse(correlated);
     }
 
     /** Before the first fragment the failure is the flux's error (an HTTP error); afterwards it is a last event. */

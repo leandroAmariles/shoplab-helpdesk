@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
+import com.shoplab.helpdesk.retrieval.domain.model.enums.EmbeddingPurpose;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class DeterministicEmbeddingPortTests {
@@ -18,6 +20,10 @@ class DeterministicEmbeddingPortTests {
             sum += left[index] * right[index];
         }
         return sum;
+    }
+
+    private Mono<List<float[]>> embed(String text) {
+        return port.embed(List.of(text), EmbeddingPurpose.DOCUMENT_INDEX);
     }
 
     @Test
@@ -39,8 +45,8 @@ class DeterministicEmbeddingPortTests {
 
     @Test
     void countsItsCallsAndTheTextsItEmbedded() {
-        port.embed(List.of("a", "b", "c")).block();
-        port.embed(List.of("d")).block();
+        port.embed(List.of("a", "b", "c"), EmbeddingPurpose.DOCUMENT_INDEX).block();
+        port.embed(List.of("d"), EmbeddingPurpose.DOCUMENT_INDEX).block();
 
         assertThat(port.batches()).isEqualTo(2);
         assertThat(port.textsEmbedded()).isEqualTo(4);
@@ -51,20 +57,20 @@ class DeterministicEmbeddingPortTests {
     void failsTheRequestedNumberOfBatchesThenRecovers() {
         port.failNext(1, ResponseCodeEnum.EMBEDDING_SERVICE_FAILED);
 
-        StepVerifier.create(port.embed(List.of("a")))
+        StepVerifier.create(port.embed(List.of("a"), EmbeddingPurpose.DOCUMENT_INDEX))
                 .expectErrorSatisfies(error -> assertThat(((HelpdeskException) error).getResponseCode())
                         .isEqualTo(ResponseCodeEnum.EMBEDDING_SERVICE_FAILED))
                 .verify();
-        StepVerifier.create(port.embed(List.of("a"))).expectNextCount(1).verifyComplete();
+        StepVerifier.create(embed("a")).expectNextCount(1).verifyComplete();
     }
 
     @Test
     void failsForeverUntilItRecovers() {
         port.failAlways(ResponseCodeEnum.EMBEDDING_SERVICE_UNAVAILABLE);
 
-        StepVerifier.create(port.embed(List.of("a"))).expectError(HelpdeskException.class).verify();
-        StepVerifier.create(port.embed(List.of("a"))).expectError(HelpdeskException.class).verify();
+        StepVerifier.create(embed("a")).expectError(HelpdeskException.class).verify();
+        StepVerifier.create(embed("a")).expectError(HelpdeskException.class).verify();
         port.recover();
-        StepVerifier.create(port.embed(List.of("a"))).expectNextCount(1).verifyComplete();
+        StepVerifier.create(embed("a")).expectNextCount(1).verifyComplete();
     }
 }

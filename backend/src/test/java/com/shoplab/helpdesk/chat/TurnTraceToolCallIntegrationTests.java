@@ -15,7 +15,6 @@ import com.shoplab.helpdesk.chat.application.port.out.ChatTracePort;
 import com.shoplab.helpdesk.chat.support.RecordedSpansConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -46,11 +45,8 @@ class TurnTraceToolCallIntegrationTests {
 
     private static final String SCENARIO = "tool-call-turn";
     private static final String TOOL_CALLED = "tool-called";
-    private static final byte[] FIRST_ROUND_TOOL_CALL = ("""
-            {"model":"llama3.2:3b","message":{"role":"assistant","content":"","tool_calls":\
-            [{"function":{"name":"lookupSomething","arguments":{"id":"ORD-42"}}}]},\
-            "done":true,"done_reason":"stop","prompt_eval_count":10,"eval_count":5}
-            """).getBytes(StandardCharsets.UTF_8);
+    private static final byte[] FIRST_ROUND_TOOL_CALL =
+            GatewayStubs.toolCallBody("lookupSomething", "{\"id\":\"ORD-42\"}", 10, 5);
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
@@ -58,7 +54,7 @@ class TurnTraceToolCallIntegrationTests {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.chat.rag.no-context-mode", () -> "model");
         RecordedSpansConfig.enableTracing(registry);
     }
@@ -77,15 +73,15 @@ class TurnTraceToolCallIntegrationTests {
 
     @Test
     void aToolCallProducesAChildToolSpanAndSumsTokensAcrossBothRounds() {
-        ollama.stubFor(post(urlEqualTo("/api/chat"))
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .inScenario(SCENARIO)
                 .whenScenarioStateIs(STARTED)
-                .willReturn(OllamaStubs.streaming(FIRST_ROUND_TOOL_CALL))
+                .willReturn(GatewayStubs.streaming(FIRST_ROUND_TOOL_CALL))
                 .willSetStateTo(TOOL_CALLED));
-        ollama.stubFor(post(urlEqualTo("/api/chat"))
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .inScenario(SCENARIO)
                 .whenScenarioStateIs(TOOL_CALLED)
-                .willReturn(OllamaStubs.streaming(OllamaStubs.bodyWithUsage(14, 6, "Pedido ", "ORD-42"))));
+                .willReturn(GatewayStubs.streaming(GatewayStubs.bodyWithUsage(14, 6, "Pedido ", "ORD-42"))));
 
         ChatTestClient.Result result = new ChatTestClient(port).post(
                 "{\"message\":\"Estado del pedido ORD-42\"}", "text/event-stream", "trace-tool-1");

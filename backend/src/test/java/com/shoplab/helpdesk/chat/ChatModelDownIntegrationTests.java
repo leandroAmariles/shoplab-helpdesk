@@ -22,7 +22,7 @@ class ChatModelDownIntegrationTests {
 
     @DynamicPropertySource
     static void closedPort(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", () -> "http://localhost:1");
+        registry.add("spring.ai.openai.base-url", () -> "http://localhost:1/v1");
     }
 
     @LocalServerPort

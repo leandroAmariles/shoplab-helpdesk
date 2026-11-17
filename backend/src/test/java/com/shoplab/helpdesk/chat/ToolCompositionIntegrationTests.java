@@ -7,7 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.shoplab.helpdesk.chat.infrastructure.out.ollama.OllamaChatAdapter;
+import com.shoplab.helpdesk.chat.infrastructure.out.gateway.GatewayChatAdapter;
 import com.shoplab.helpdesk.support.PostgresTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -38,20 +38,20 @@ class ToolCompositionIntegrationTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
     }
 
     @Autowired
-    private OllamaChatAdapter adapter;
+    private GatewayChatAdapter adapter;
 
     @Test
     void aToolPublishedByAnotherModuleIsOfferedToTheModel() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
 
         StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of(), java.util.List.of()))
                 .expectNext("ok").verifyComplete();
 
-        ollama.verify(postRequestedFor(urlEqualTo("/api/chat"))
+        ollama.verify(postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .withRequestBody(matchingJsonPath("$.tools[0].function.name", equalTo("lookupSomething"))));
     }
 

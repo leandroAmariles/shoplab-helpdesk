@@ -23,7 +23,6 @@ import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.support.PostgresTest;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,11 +59,8 @@ class TraceSpecialTurnsIntegrationTests {
     private static final String BODY = "{\"message\":\"Cual es el plazo de devolucion?\"}";
     private static final List<ContextFragment> ONE_FRAGMENT = List.of(
             new ContextFragment("policy.md", "Politica", "Plazos", 0, "Treinta dias.", 0.9));
-    private static final byte[] TOOL_CALL = ("""
-            {"model":"llama3.2:3b","message":{"role":"assistant","content":"","tool_calls":\
-            [{"function":{"name":"failingLookup","arguments":{"id":"ORD-1"}}}]},\
-            "done":true,"done_reason":"stop","prompt_eval_count":10,"eval_count":5}
-            """).getBytes(StandardCharsets.UTF_8);
+    private static final byte[] TOOL_CALL =
+            GatewayStubs.toolCallBody("failingLookup", "{\"id\":\"ORD-1\"}", 10, 5);
 
     /** What the knowledge base answers in the current test. */
     private static final AtomicReference<Mono<List<ContextFragment>>> CONTEXT = new AtomicReference<>();
@@ -75,7 +71,7 @@ class TraceSpecialTurnsIntegrationTests {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         RecordedSpansConfig.enableTracing(registry);
     }
 
@@ -133,7 +129,7 @@ class TraceSpecialTurnsIntegrationTests {
 
     @Test
     void aTurnCancelledInTheMiddleKeepsThePartialTextAndIsAWarning() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("uno ", "dos ", "tres ", "cuatro ",
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("uno ", "dos ", "tres ", "cuatro ",
                 "cinco ", "seis ", "siete ", "ocho ")).withChunkedDribbleDelay(8, 4_000));
 
         new ChatTestClient(port).open(BODY).blockFirst(Duration.ofSeconds(10));
@@ -153,7 +149,8 @@ class TraceSpecialTurnsIntegrationTests {
 
     @Test
     void anUnavailableModelEndsTheTurnAsAnErrorAtTheGenerationStage() {
-        ollama.stubFor(post(urlEqualTo("/api/chat")).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH))
+                .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         ChatTestClient.Result response = ask("special-model-down");
 
@@ -186,10 +183,10 @@ class TraceSpecialTurnsIntegrationTests {
 
     @Test
     void aToolThatFailsEndsTheTurnAtTheToolStageAndItsSpanIsAnError() {
-        ollama.stubFor(post(urlEqualTo("/api/chat")).inScenario(SCENARIO).whenScenarioStateIs(STARTED)
-                .willReturn(OllamaStubs.streaming(TOOL_CALL)).willSetStateTo(TOOL_CALLED));
-        ollama.stubFor(post(urlEqualTo("/api/chat")).inScenario(SCENARIO).whenScenarioStateIs(TOOL_CALLED)
-                .willReturn(OllamaStubs.streaming(OllamaStubs.body("no deberia llegar"))));
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH)).inScenario(SCENARIO).whenScenarioStateIs(STARTED)
+                .willReturn(GatewayStubs.streaming(TOOL_CALL)).willSetStateTo(TOOL_CALLED));
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH)).inScenario(SCENARIO).whenScenarioStateIs(TOOL_CALLED)
+                .willReturn(GatewayStubs.streaming(GatewayStubs.body("no deberia llegar"))));
 
         ask("special-tool");
 
