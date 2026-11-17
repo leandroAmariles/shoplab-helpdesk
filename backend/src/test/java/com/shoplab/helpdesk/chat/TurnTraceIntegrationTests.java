@@ -81,7 +81,7 @@ class TurnTraceIntegrationTests {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
         RecordedSpansConfig.enableTracing(registry);
     }
@@ -111,8 +111,8 @@ class TurnTraceIntegrationTests {
         ingest.resetAll();
         ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json").withBody(ANSWER)));
-        OllamaStubs.stubAnyChat(ollama,
-                OllamaStubs.streaming(OllamaStubs.bodyWithUsage(11, 7, "Treinta ", "dias.")));
+        GatewayStubs.stubAnyChat(ollama,
+                GatewayStubs.streaming(GatewayStubs.bodyWithUsage(11, 7, "Treinta ", "dias.")));
         embedding.recover();
         embedding.useModel(MODEL);
         embedding.resetCounters();
@@ -166,7 +166,7 @@ class TurnTraceIntegrationTests {
         flush(chatTrace);
 
         SpanData generation = span("generation");
-        assertThat(attr(generation, "langfuse.observation.model.name")).isEqualTo("llama3.2:3b");
+        assertThat(attr(generation, "langfuse.observation.model.name")).isEqualTo("chat");
         assertThat(attr(generation, "langfuse.observation.usage_details"))
                 .isEqualTo("{\"input\":11,\"output\":7,\"total\":18}");
         assertThat(attr(generation, "langfuse.observation.cost_details"))

@@ -83,7 +83,7 @@ class RagAnsweringIntegrationTests {
 
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
@@ -108,7 +108,7 @@ class RagAnsweringIntegrationTests {
         ingest.resetAll();
         ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json").withBody(ANSWER)));
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Treinta ", "dias.")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Treinta ", "dias.")));
         embedding.recover();
         embedding.useModel(MODEL);
         embedding.resetCounters();
@@ -140,7 +140,7 @@ class RagAnsweringIntegrationTests {
         assertThat(result.text()).isEqualTo("Treinta dias.");
         assertThat(result.last().name()).isEqualTo("done");
         assertThat(result.last().data()).isEqualTo("{\"fragments\":2}");
-        ollama.verify(exactly(1), postRequestedFor(urlEqualTo("/api/chat"))
+        ollama.verify(exactly(1), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))
                 .withRequestBody(matchingJsonPath("$.messages[0].role", containing("system")))
                 .withRequestBody(matchingJsonPath("$.messages[0].content",
                         containing("solo con la información de la sección CONTEXTO")))
@@ -158,7 +158,7 @@ class RagAnsweringIntegrationTests {
         assertThat(result.text()).isEqualTo(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE);
         assertThat(result.last().name()).isEqualTo("done");
         assertThat(result.last().data()).isEqualTo("{\"fragments\":1}");
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
         assertThat(prometheus()).containsPattern(
                 "shoplab_chat_context_retrieval_seconds_count\\{[^}]*outcome=\"no_context\"[^}]*} [1-9]");
     }
@@ -172,7 +172,7 @@ class RagAnsweringIntegrationTests {
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.text()).isEqualTo(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE);
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 
     @Test
@@ -185,7 +185,7 @@ class RagAnsweringIntegrationTests {
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.body()).contains("SLHD_CHAT_00004").contains("The knowledge base is not available")
                 .doesNotContain("SLHD_CHAT_00002");
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
         assertThat(prometheus()).containsPattern(
                 "shoplab_chat_context_retrieval_seconds_count\\{[^}]*outcome=\"failed\"[^}]*} [1-9]");
     }
@@ -197,7 +197,7 @@ class RagAnsweringIntegrationTests {
         assertThat(result.status()).isEqualTo(400);
         assertThat(result.body()).contains("SLHD_CHAT_00001");
         assertThat(embedding.batches()).isZero();
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 
     @Test

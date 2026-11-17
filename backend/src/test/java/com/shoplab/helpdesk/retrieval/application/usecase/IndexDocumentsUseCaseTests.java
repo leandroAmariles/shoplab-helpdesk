@@ -18,6 +18,7 @@ import com.shoplab.helpdesk.retrieval.domain.model.ChunkToEmbed;
 import com.shoplab.helpdesk.retrieval.domain.model.IndexingSummary;
 import com.shoplab.helpdesk.retrieval.domain.model.PendingDocument;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.IndexOutcome;
+import com.shoplab.helpdesk.retrieval.domain.model.enums.EmbeddingPurpose;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.IndexScope;
 import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
@@ -217,7 +218,7 @@ class IndexDocumentsUseCaseTests {
         storing(true);
         var shortModel = new DeterministicEmbeddingPort(MODEL) {
             @Override
-            public Mono<List<float[]>> embed(List<String> input) {
+            public Mono<List<float[]>> embed(List<String> input, EmbeddingPurpose purpose) {
                 return Mono.just(List.of(vectorFor("x")));
             }
         };

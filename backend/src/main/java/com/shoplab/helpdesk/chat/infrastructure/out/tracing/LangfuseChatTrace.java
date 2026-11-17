@@ -11,6 +11,7 @@ import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
 import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
+import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
@@ -406,9 +407,15 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
 
             @Override
             public void complete(TokenUsage usage, String answerText) {
+                complete(usage, answerText, null);
+            }
+
+            @Override
+            public void complete(TokenUsage usage, String answerText, ServedModel served) {
                 end("the end of the generation", () -> {
                     span.setAttribute(LangfuseAttributes.OBSERVATION_OUTPUT, text(answerText));
                     usage(usage);
+                    servedModel(served);
                     Instant first = firstToken;
                     if (first != null) {
                         span.setAttribute(LangfuseAttributes.COMPLETION_START_TIME, first.toString());
@@ -448,6 +455,20 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
                 }
                 safely(what, action);
                 span.end();
+            }
+
+            /**
+             * The trace names the model that really answered, not the logical name that was asked for, and says whether
+             * it was a fallback (LAB-84, FR-015).
+             */
+            private void servedModel(ServedModel served) {
+                if (served == null || ServedModel.UNKNOWN.equals(served.name())) {
+                    return;
+                }
+                span.setAttribute(LangfuseAttributes.MODEL_NAME, served.name());
+                span.setAttribute(LangfuseAttributes.observationMetadata("requested_model"), model);
+                span.setAttribute(LangfuseAttributes.observationMetadata("served_model"), served.name());
+                span.setAttribute(LangfuseAttributes.observationMetadata("fallback"), String.valueOf(served.fallback()));
             }
 
             private void usage(TokenUsage usage) {

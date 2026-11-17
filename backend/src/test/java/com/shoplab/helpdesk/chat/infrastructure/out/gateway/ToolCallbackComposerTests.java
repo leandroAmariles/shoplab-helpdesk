@@ -1,4 +1,4 @@
-package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
+package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

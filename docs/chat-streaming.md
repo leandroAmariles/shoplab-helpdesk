@@ -1,6 +1,6 @@
 # Chat en streaming (`POST /api/chat`)
 
-El backend responde al mensaje del cliente con la respuesta del modelo local (Ollama) **a medida que se genera**,
+El backend responde al mensaje del cliente con la respuesta del modelo local **a medida que se genera** (la pide al gateway de modelos, LiteLLM, que la encamina a Ollama; `docs/gateway-de-modelos.md`),
 como un flujo de eventos del servidor (SSE). Especificación y decisiones: `specs/LAB-12-chat-streaming-sse/`.
 
 ## Probarlo desde la terminal
@@ -46,7 +46,8 @@ Si el fallo ocurre antes del primer evento no hay flujo: la respuesta es JSON `{
 | 400 | `SLHD_CHAT_00001` | Mensaje ausente, vacío, solo espacios o de más de 4000 caracteres |
 | 400 | `SLHD_CHAT_00005` | `conversationId` presente pero que no es un UUID en texto canónico (también con la memoria desactivada) |
 | 400 | `SLHD_GENE_00002` | Cuerpo que no es JSON válido |
-| 503 | `SLHD_CHAT_00002` | Ollama no responde o el modelo no existe |
+| 503 | `SLHD_CHAT_00002` | El gateway de modelos no responde, rechaza la clave, el modelo no existe o principal y respaldo han fallado |
+| 429 | `SLHD_CHAT_00007` | La clave virtual del backend agotó su presupuesto en el gateway |
 | 503 | `SLHD_CHAT_00004` | No se pudo recuperar el contexto de la base de conocimiento (servicio de embeddings o base de datos caídos). El bot no responde sin contexto |
 | 503 | `SLHD_CHAT_00006` | No se pudo leer la memoria de la conversación (base de datos caída). El bot no responde como si no hubiera historial |
 | 500 | `SLHD_GENE_00001` | Error inesperado |
@@ -58,9 +59,10 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 
 | Variable / propiedad | Por defecto | Uso |
 | --- | --- | --- |
-| `OLLAMA_CHAT_MODEL` | `llama3.2:3b` | Modelo de chat |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Dirección de Ollama |
-| `OLLAMA_KEEP_ALIVE` | `30m` | Tiempo que Ollama mantiene el modelo cargado tras la última petición. Con el valor por defecto de Ollama (5 min) una pausa larga descarga el modelo y la siguiente petición tarda decenas de segundos |
+| `SPRING_AI_OPENAI_BASE_URL` | `http://localhost:4000/v1` | Dirección del gateway de modelos (con `/v1`); el modelo real lo decide el gateway (`LITELLM_CHAT_PRIMARY_MODEL`) |
+| `SPRING_AI_OPENAI_API_KEY` | `sk-shoplab-backend-local` | Clave virtual del backend (marcador solo para uso local) |
+| `SHOPLAB_CHAT_GATEWAY_PRIMARY_MODEL` | `chat` | Nombre con el que el gateway informa las respuestas de su modelo principal; otro nombre se marca como fallback en la traza |
+| `SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT` | `60s` | Tiempo máximo que el backend espera al gateway |
 | `shoplab.chat.max-message-length` | `4000` | Longitud máxima del mensaje, en caracteres |
 | `SHOPLAB_CHAT_SYSTEM_PROMPT` / `shoplab.chat.system-prompt` | prompt fundamentado en español | Prompt de sistema; vacío usa el de por defecto (responder solo con el contexto, reconocer lo que no sabe) |
 | `SHOPLAB_CHAT_RAG_TOP_K` / `shoplab.chat.rag.top-k` | `4` | Fragmentos que se piden a la búsqueda por pregunta. Rango 1–20; fuera de rango el arranque falla |
@@ -71,7 +73,7 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 | `SHOPLAB_CHAT_MEMORY_MAX_TURNS` / `shoplab.chat.memory.max-turns` | `5` | Turnos recientes (pregunta + respuesta) que recibe el modelo. Rango 0–50; `0` apaga la memoria aunque llegue `conversationId` (el identificador se sigue validando) |
 | `SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS` / `shoplab.chat.memory.max-history-characters` | `4000` | Máximo de caracteres de historial (preguntas y respuestas), mínimo 200; se descarta el turno más antiguo entero, nunca se recorta un texto |
 | `SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS` / `shoplab.chat.memory.retrieval-turns` | `1` | Preguntas anteriores que se anteponen a la consulta de búsqueda para que un seguimiento encuentre su tema (0–50); `0` busca solo con el mensaje. Nunca más que `max-turns` |
-| `OLLAMA_NUM_CTX` | `8192` | Ventana de contexto que se pide a Ollama (`num-ctx`); con la de por defecto el servidor podría recortar el contexto |
+| `LITELLM_NUM_CTX` / `LITELLM_KEEP_ALIVE` | `8192` / `30m` | Ventana de contexto y tiempo de carga del modelo que el **gateway** pide a Ollama (antes `OLLAMA_NUM_CTX` y `OLLAMA_KEEP_ALIVE` en el backend) |
 
 ## Observabilidad
 

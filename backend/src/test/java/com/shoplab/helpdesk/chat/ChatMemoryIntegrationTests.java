@@ -87,7 +87,7 @@ class ChatMemoryIntegrationTests {
 
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
@@ -114,7 +114,7 @@ class ChatMemoryIntegrationTests {
         ingest.resetAll();
         ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json").withBody(PARSED)));
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Tarda tres dias ", "[1].")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Tarda tres dias ", "[1].")));
         embedding.recover();
         embedding.useModel(MODEL);
         embedding.resetCounters();
@@ -141,7 +141,7 @@ class ChatMemoryIntegrationTests {
     }
 
     private List<LoggedRequest> modelRequests() {
-        return ollama.findAll(postRequestedFor(urlEqualTo("/api/chat")));
+        return ollama.findAll(postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 
     private LoggedRequest lastModelRequest() {
@@ -177,8 +177,12 @@ class ChatMemoryIntegrationTests {
         assertThat(followUp.events().get(0).data()).contains("\"title\":\"Politica de envios\"")
                 .contains("\"number\":1");
         String body = lastModelRequest().getBodyAsString();
-        assertThat(body).contains("\"role\":\"user\",\"content\":\"" + QUESTION + "\"")
-                .contains("\"role\":\"assistant\",\"content\":\"Tarda tres dias.\"")
+        // The key order of each message is the client's business: look the messages up by role instead.
+        assertThat(com.jayway.jsonpath.JsonPath.<List<String>>read(body,
+                "$.messages[?(@.role == 'user')].content")).contains(QUESTION);
+        assertThat(com.jayway.jsonpath.JsonPath.<List<String>>read(body,
+                "$.messages[?(@.role == 'assistant')].content")).containsExactly("Tarda tres dias.");
+        assertThat(body)
                 .doesNotContain("Tarda tres dias [1]");
         assertThat(storedTurns(conversation)).isEqualTo(2);
     }
@@ -248,7 +252,8 @@ class ChatMemoryIntegrationTests {
 
     @Test
     void anAnswerThatFailsBeforeItStartsStoresNothing() {
-        ollama.stubFor(post(urlEqualTo("/api/chat")).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+        ollama.stubFor(post(urlEqualTo(GatewayStubs.CHAT_PATH))
+                .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         ChatTestClient.Result result = ask(QUESTION, conversation);
 
@@ -303,6 +308,6 @@ class ChatMemoryIntegrationTests {
     void theModelIsCalledOncePerRequest() {
         ask(QUESTION, conversation);
 
-        ollama.verify(exactly(1), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(1), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 }

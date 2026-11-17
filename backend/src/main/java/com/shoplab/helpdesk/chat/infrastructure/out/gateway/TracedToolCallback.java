@@ -1,4 +1,4 @@
-package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
+package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;

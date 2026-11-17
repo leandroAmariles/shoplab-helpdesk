@@ -1,11 +1,11 @@
-package com.shoplab.helpdesk.chat.infrastructure.out.ollama;
+package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.shoplab.helpdesk.chat.OllamaStubs;
+import com.shoplab.helpdesk.chat.GatewayStubs;
 import com.shoplab.helpdesk.chat.application.port.out.GenerationScope;
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
@@ -13,6 +13,7 @@ import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
 import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
+import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
@@ -33,7 +34,7 @@ import reactor.test.StepVerifier;
 /** The model adapter reports the generation to the trace of the turn it finds in the Reactor context (LAB-64). */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @PostgresTest
-class OllamaChatAdapterTraceTests {
+class GatewayChatAdapterTraceTests {
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
@@ -41,12 +42,12 @@ class OllamaChatAdapterTraceTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.chat.system-prompt", () -> "You are the test assistant");
     }
 
     @Autowired
-    private OllamaChatAdapter adapter;
+    private GatewayChatAdapter adapter;
 
     private final RecordingTrace trace = new RecordingTrace();
 
@@ -56,8 +57,27 @@ class OllamaChatAdapterTraceTests {
     }
 
     @Test
+    void theTraceIsToldWhichModelReallyAnsweredAndThatItIsNotAFallbackWhenItIsThePrimaryOne() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
+
+        StepVerifier.create(answer(List.of(), List.of())).expectNext("Hola").verifyComplete();
+
+        assertThat(trace.completedServed).isEqualTo(new ServedModel("chat", false));
+    }
+
+    @Test
+    void whenTheGatewayFellBackTheTraceSeesTheFallbackModelAndTheFallbackMark() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(
+                GatewayStubs.bodyServedBy(GatewayStubs.FALLBACK_MODEL, "Hola")));
+
+        StepVerifier.create(answer(List.of(), List.of())).expectNext("Hola").verifyComplete();
+
+        assertThat(trace.completedServed).isEqualTo(new ServedModel("chat-fallback", true));
+    }
+
+    @Test
     void theGenerationIsReportedWithTheModelTheParametersAndThePromptThatWasSent() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.bodyWithUsage(11, 7, "Diez ", "días")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.bodyWithUsage(11, 7, "Diez ", "días")));
         List<ContextFragment> context = List.of(new ContextFragment("returns.md", "Devoluciones", "Plazos", 0,
                 "Treinta días.", 0.9));
 
@@ -65,7 +85,7 @@ class OllamaChatAdapterTraceTests {
                 .expectNext("Diez ", "días").verifyComplete();
 
         assertThat(trace.started).isEqualTo(1);
-        assertThat(trace.model).isEqualTo("llama3.2:3b");
+        assertThat(trace.model).isEqualTo("chat");
         assertThat(trace.parameters).containsEntry("provider", "ollama");
         assertThat(trace.messages).extracting(PromptMessage::role)
                 .containsExactly("system", "user", "assistant", "user");
@@ -78,7 +98,7 @@ class OllamaChatAdapterTraceTests {
 
     @Test
     void whenTheModelDoesNotReportTokensTheUsageIsUnknownNotZero() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Hola")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
 
         StepVerifier.create(answer(List.of(), List.of())).expectNext("Hola").verifyComplete();
 
@@ -89,7 +109,7 @@ class OllamaChatAdapterTraceTests {
     @Test
     void aFailureOfTheModelIsReportedAndStillReachesTheCaller() {
         ollama.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(
-                com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo("/api/chat"))
+                com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo(GatewayStubs.CHAT_PATH))
                 .willReturn(aResponse().withStatus(500)));
 
         StepVerifier.create(answer(List.of(), List.of())).expectError(ChatModelException.class).verify();
@@ -100,7 +120,7 @@ class OllamaChatAdapterTraceTests {
 
     @Test
     void aCancelledAnswerReportsWhatHadArrived() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Diez ", "días")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Diez ", "días")));
 
         StepVerifier.create(answer(List.of(), List.of()).take(1)).expectNext("Diez ").verifyComplete();
 
@@ -110,7 +130,7 @@ class OllamaChatAdapterTraceTests {
 
     @Test
     void withoutATraceInTheContextTheAnswerIsTheSame() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("Hola")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
 
         StepVerifier.create(adapter.streamAnswer("¿Plazo?", List.of(), List.of())).expectNext("Hola")
                 .verifyComplete();
@@ -128,6 +148,7 @@ class OllamaChatAdapterTraceTests {
         private List<PromptMessage> messages = new ArrayList<>();
         private TokenUsage completedUsage;
         private String completedAnswer;
+        private ServedModel completedServed;
         private Throwable failure;
         private String cancelledAnswer;
 
@@ -163,6 +184,12 @@ class OllamaChatAdapterTraceTests {
                 public void complete(TokenUsage usage, String answer) {
                     completedUsage = usage;
                     completedAnswer = answer;
+                }
+
+                @Override
+                public void complete(TokenUsage usage, String answer, ServedModel served) {
+                    completedServed = served;
+                    complete(usage, answer);
                 }
 
                 @Override

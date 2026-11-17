@@ -15,16 +15,20 @@ spring:
       max-disk-usage-per-part: ${SHOPLAB_RETRIEVAL_UPLOAD_MAX_PART_SIZE:11MB}
       max-parts: 4
   ai:
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    # Every call to a model goes through the LiteLLM gateway (LAB-84): an OpenAI-compatible API. The backend knows
+    # the gateway's address (with /v1), its own virtual key and two LOGICAL model names; which real model answers,
+    # the fallback, the budget and the cost are configured in the gateway (infra/litellm/config.yaml).
+    openai:
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:4000/v1}
+      # Virtual key of the backend; the local default is a placeholder that only works with the local gateway.
+      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-shoplab-backend-local}
+      # The gateway retries and falls back on its own; a second retry layer here would multiply the attempts.
+      max-retries: 0
+      timeout: ${SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT:60s}
       chat:
-        options:
-          model: ${OLLAMA_CHAT_MODEL:llama3.2:3b}
-          keep-alive: ${OLLAMA_KEEP_ALIVE:30m}
-          num-ctx: ${OLLAMA_NUM_CTX:8192}
+        model: chat
       embedding:
-        options:
-          model: ${OLLAMA_EMBED_MODEL:bge-m3}
+        model: embeddings
 
 server:
   port: 8080
@@ -32,6 +36,12 @@ server:
 shoplab:
   chat:
     max-message-length: 4000
+    gateway:
+      # The name under which the gateway reports an answer of its primary model (the model group, `chat`); the group
+      # of the fallback model is reported under another name, which is how the trace marks a fallback. Blank means
+      # unknown and no turn is marked.
+      primary-model: ${SHOPLAB_CHAT_GATEWAY_PRIMARY_MODEL:chat}
+      request-timeout: ${SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT:60s}
     # Empty keeps the grounded default prompt (answer only with the retrieved context).
     system-prompt: ${SHOPLAB_CHAT_SYSTEM_PROMPT:}
     rag:
@@ -75,6 +85,8 @@ shoplab:
       # Largest document accepted by POST /api/documents; the same 10 MiB as the ingest service.
       max-bytes: ${SHOPLAB_RETRIEVAL_UPLOAD_MAX_BYTES:10485760}
     embedding:
+      # Name of the real model behind `embeddings`; it is stored with each vector (ADR-0017).
+      model-name: ${SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME:bge-m3}
       batch-size: ${SHOPLAB_RETRIEVAL_EMBEDDING_BATCH_SIZE:16}
       search-limit: ${SHOPLAB_RETRIEVAL_EMBEDDING_SEARCH_LIMIT:5}
       auto-index: ${SHOPLAB_RETRIEVAL_EMBEDDING_AUTO_INDEX:true}

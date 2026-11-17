@@ -48,7 +48,7 @@ class ChatStreamingIntegrationTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
     }
 
     @LocalServerPort
@@ -60,24 +60,24 @@ class ChatStreamingIntegrationTests {
 
     @Test
     void streamsTheWholeAnswerInOrderAndEndsWithDone() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.fixtureBody()));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.fixtureBody()));
 
         ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.header("Content-Type")).startsWith("text/event-stream");
-        assertThat(result.events()).hasSize(OllamaStubs.FIXTURE_FRAGMENTS + 1);
+        assertThat(result.events()).hasSize(GatewayStubs.FIXTURE_FRAGMENTS + 1);
         assertThat(result.last().name()).isEqualTo("done");
-        assertThat(result.last().data()).isEqualTo("{\"fragments\":" + OllamaStubs.FIXTURE_FRAGMENTS + "}");
-        assertThat(result.text()).isEqualTo(OllamaStubs.FIXTURE_TEXT);
+        assertThat(result.last().data()).isEqualTo("{\"fragments\":" + GatewayStubs.FIXTURE_FRAGMENTS + "}");
+        assertThat(result.text()).isEqualTo(GatewayStubs.FIXTURE_TEXT);
     }
 
     @Test
     void concurrentRequestsNeverMixTheirFragments() throws Exception {
         int requests = 5;
         for (int i = 0; i < requests; i++) {
-            ollama.stubFor(OllamaStubs.chatFor("msg-" + i).willReturn(OllamaStubs
-                    .streaming(OllamaStubs.body("R" + i + "-a ", "R" + i + "-b ", "R" + i + "-c"))
+            ollama.stubFor(GatewayStubs.chatFor("msg-" + i).willReturn(GatewayStubs
+                    .streaming(GatewayStubs.body("R" + i + "-a ", "R" + i + "-b ", "R" + i + "-c"))
                     .withChunkedDribbleDelay(3, 300)));
         }
 
@@ -98,8 +98,8 @@ class ChatStreamingIntegrationTests {
 
     @Test
     void theFirstTokenArrivesWhileTheModelIsStillGenerating() {
-        ollama.stubFor(OllamaStubs.chatFor("slow").willReturn(OllamaStubs
-                .streaming(OllamaStubs.body("uno ", "dos ", "tres ", "cuatro ", "cinco ", "seis ", "siete ",
+        ollama.stubFor(GatewayStubs.chatFor("slow").willReturn(GatewayStubs
+                .streaming(GatewayStubs.body("uno ", "dos ", "tres ", "cuatro ", "cinco ", "seis ", "siete ",
                         "ocho ", "nueve ", "diez"))
                 .withChunkedDribbleDelay(10, 3000)));
 
@@ -116,7 +116,7 @@ class ChatStreamingIntegrationTests {
 
     @Test
     void publishesTheChatMetricsOnThePrometheusEndpoint() throws Exception {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.fixtureBody()));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.fixtureBody()));
         client().post("{\"message\":\"Hola\"}");
 
         HttpResponse<String> metrics = HttpClient.newHttpClient().send(
@@ -140,17 +140,17 @@ class ChatStreamingIntegrationTests {
         assertThat(result.header("Content-Type")).startsWith("application/json");
         assertThat(result.body()).contains("\"code\":\"SLHD_CHAT_00001\"");
         assertThat(result.header("X-Request-Id")).isEqualTo("req-bad-1");
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 
     @Test
     void aMessageOverTheLimitIsRejectedAndOneOfExactlyTheLimitIsAccepted() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
 
         ChatTestClient.Result tooLong = client().post("{\"message\":\"" + "x".repeat(4001) + "\"}");
         assertThat(tooLong.status()).isEqualTo(400);
         assertThat(tooLong.body()).contains("\"code\":\"SLHD_CHAT_00001\"");
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
 
         ChatTestClient.Result atLimit = client().post("{\"message\":\"" + "x".repeat(4000) + "\"}");
         assertThat(atLimit.status()).isEqualTo(200);
@@ -163,12 +163,12 @@ class ChatStreamingIntegrationTests {
 
         assertThat(result.status()).isEqualTo(400);
         assertThat(result.body()).contains("\"code\":\"SLHD_GENE_00002\"");
-        ollama.verify(exactly(0), postRequestedFor(urlEqualTo("/api/chat")));
+        ollama.verify(exactly(0), postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH)));
     }
 
     @Test
     void aMissingModelBeforeTheAnswerStartsIsServiceUnavailableAsJson() {
-        OllamaStubs.stubAnyChat(ollama, aResponse().withStatus(404).withHeader("Content-Type", "application/json")
+        GatewayStubs.stubAnyChat(ollama, aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":\"model not found\"}"));
 
         ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
@@ -180,7 +180,7 @@ class ChatStreamingIntegrationTests {
 
     @Test
     void theRequestIdSentByTheClientIsEchoedOnSuccess() {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
 
         ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}", "text/event-stream", "req-ok-9");
 
@@ -189,9 +189,9 @@ class ChatStreamingIntegrationTests {
 
     @Test
     void closingTheConnectionCancelsTheAnswerAndTheNextRequestIsServedNormally() throws Exception {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.body("ok")));
-        ollama.stubFor(OllamaStubs.chatFor("long").willReturn(OllamaStubs
-                .streaming(OllamaStubs.body("a ".repeat(40).split("(?<= )")))
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
+        ollama.stubFor(GatewayStubs.chatFor("long").willReturn(GatewayStubs
+                .streaming(GatewayStubs.body("a ".repeat(40).split("(?<= )")))
                 .withChunkedDribbleDelay(40, 8000)));
         double cancelledBefore = cancelledResponses();
         double errorsBefore = responsesWithOutcome("error");

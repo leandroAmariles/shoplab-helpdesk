@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.retrieval.support;
 
 import com.shoplab.helpdesk.retrieval.application.port.out.EmbeddingPort;
+import com.shoplab.helpdesk.retrieval.domain.model.enums.EmbeddingPurpose;
 import com.shoplab.helpdesk.retrieval.domain.model.constants.RetrievalConstants;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -19,6 +20,7 @@ public class DeterministicEmbeddingPort implements EmbeddingPort {
     private volatile String modelName;
     private final AtomicInteger batches = new AtomicInteger();
     private final AtomicInteger texts = new AtomicInteger();
+    private final java.util.List<EmbeddingPurpose> purposes = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final AtomicInteger failuresLeft = new AtomicInteger();
     private volatile ResponseCodeEnum failureCode = ResponseCodeEnum.EMBEDDING_SERVICE_UNAVAILABLE;
     private volatile Runnable beforeEmbedding;
@@ -28,9 +30,10 @@ public class DeterministicEmbeddingPort implements EmbeddingPort {
     }
 
     @Override
-    public Mono<List<float[]>> embed(List<String> input) {
+    public Mono<List<float[]>> embed(List<String> input, EmbeddingPurpose purpose) {
         return Mono.defer(() -> {
             batches.incrementAndGet();
+            purposes.add(purpose);
             Runnable hook = beforeEmbedding;
             if (hook != null) {
                 hook.run();
@@ -41,6 +44,11 @@ public class DeterministicEmbeddingPort implements EmbeddingPort {
             texts.addAndGet(input.size());
             return Mono.just(input.stream().map(DeterministicEmbeddingPort::vectorFor).toList());
         });
+    }
+
+    /** Why each call was made, in order (indexing or searching). */
+    public List<EmbeddingPurpose> purposes() {
+        return List.copyOf(purposes);
     }
 
     @Override

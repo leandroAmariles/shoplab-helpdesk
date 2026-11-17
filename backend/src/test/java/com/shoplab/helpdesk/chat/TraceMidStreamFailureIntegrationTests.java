@@ -34,14 +34,14 @@ import org.springframework.test.context.DynamicPropertySource;
 @Import({EmptyKnowledgeContextConfig.class, RecordedSpansConfig.class})
 class TraceMidStreamFailureIntegrationTests {
 
-    private static final RawOllamaServer OLLAMA = new RawOllamaServer(List.of(
-            "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"uno \"},\"done\":false}",
-            "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"dos\"},\"done\":false}"),
+    private static final RawGatewayServer OLLAMA = new RawGatewayServer(List.of(
+            GatewayStubs.chunk("uno "),
+            GatewayStubs.chunk("dos")),
             200);
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", OLLAMA::baseUrl);
+        registry.add("spring.ai.openai.base-url", OLLAMA::baseUrl);
         RecordedSpansConfig.enableTracing(registry);
     }
 

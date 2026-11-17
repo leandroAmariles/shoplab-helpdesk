@@ -49,7 +49,7 @@ class ChatStreamContractTests {
 
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
     }
 
     @LocalServerPort
@@ -59,7 +59,7 @@ class ChatStreamContractTests {
 
     @Test
     void theRawEventStreamEqualsTheGoldenFile() throws Exception {
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.fixtureBody()));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.fixtureBody()));
 
         HttpResponse<byte[]> response = client.send(HttpRequest.newBuilder(url("/api/chat"))
                 .header("Content-Type", "application/json")

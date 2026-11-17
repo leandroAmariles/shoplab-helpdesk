@@ -20,7 +20,7 @@ contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verific
 ├── api/             lo que publica a otros módulos: herramientas del agente (@Tool) y tipos públicos
 ├── domain/          modelo, constantes, enums, excepciones; sin Spring AI, Kafka, JPA ni Reactor
 ├── application/     puertos y casos de uso; aquí sí se usan Mono y Flux
-├── infrastructure/  adaptadores (REST, Ollama, JDBC, métricas); aísla lo bloqueante
+├── infrastructure/  adaptadores (REST, gateway de modelos, JDBC, métricas); aísla lo bloqueante
 └── config/          cableado, propiedades y el `ModuleSchema` del módulo
 ```
 
@@ -69,7 +69,7 @@ mientras tanto no participan en la búsqueda, que filtra `embedding IS NOT NULL`
 detrás de `EmbeddingPort`; `ingest` no conoce ningún modelo. `V4__document_index_status.sql` añade a `document` el
 estado de indexado (`PENDING`, `INDEXED`, `ERROR` con `index_error`). Tras una ingesta el documento queda `PENDING` y
 `IndexDocumentsServicePort.indexPending(retryFailed)` calcula los vectores por lotes y los guarda por documento, todo o
-nada, con el nombre del modelo (`spring.ai.ollama.embedding.options.model` / `OLLAMA_EMBED_MODEL`). Para cambiar de
+nada, con el nombre del modelo real (`shoplab.retrieval.embedding.model-name` / `SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME`; el backend pide al gateway el nombre lógico `embeddings`). Para cambiar de
 modelo se cambia esa variable y se arranca con `shoplab.retrieval.embedding.reindex-on-startup=true` (o `force`), o se
 llama a `ReindexDocumentsServicePort.reindex(force)`; no se vuelve a llamar a `ingest`. `SearchChunksServicePort`
 calcula el embedding de la consulta y busca solo entre chunks con vector del modelo configurado. Ajustes en

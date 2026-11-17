@@ -1,0 +1,14 @@
+# Override opcional que vuelve a publicar el puerto de Ollama (LAB-84). Por defecto Ollama NO publica puerto: solo el
+# gateway (`litellm`) llega a el, por la red interna `models` (FR-002).
+#
+# Dos usos:
+#   1. Ollama del host de DEV: el cluster (k3s en Docker) llega a el por 172.17.0.1:11434
+#      (ver shoplab-infra/k8s/overlays/dev/ollama-host.yaml). Levantalo asi:
+#        docker compose -f infra/docker-compose.yml -f infra/docker-compose.ollama-host.yml up -d ollama
+#   2. Depuracion y mediciones (p. ej. SC-004: primer token con y sin gateway).
+#
+# Publicar el puerto reabre un camino directo a Ollama desde el host: no lo uses en local salvo para eso.
+services:
+  ollama:
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"

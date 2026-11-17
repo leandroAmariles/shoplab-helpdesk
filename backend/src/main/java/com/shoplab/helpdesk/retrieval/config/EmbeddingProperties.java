@@ -5,8 +5,9 @@ import com.shoplab.helpdesk.retrieval.domain.model.enums.ReindexMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Settings of the embeddings step under {@code shoplab.retrieval.embedding}. The model itself is configured once, in
- * {@code spring.ai.ollama.embedding.options.model}, and its name is what gets stored with each vector.
+ * Settings of the embeddings step under {@code shoplab.retrieval.embedding}. The backend asks the model gateway for
+ * the logical model {@code embeddings}; the name of the real model behind it is {@code model-name} (read by the
+ * adapter) and is what gets stored with each vector.
  *
  * @param batchSize        texts sent to the model in one call (at least 1)
  * @param searchLimit      results of a search when the caller does not say (from 1 to 50)

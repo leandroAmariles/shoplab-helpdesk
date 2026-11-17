@@ -33,6 +33,17 @@ class ResponseCodeEnumTests {
     }
 
     @Test
+    void theBudgetCodesAreTooManyRequestsAndDifferentFromModelUnavailable() {
+        assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getCode()).isEqualTo("SLHD_CHAT_00007");
+        assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(ResponseCodeEnum.EMBEDDING_BUDGET_EXCEEDED.getCode()).isEqualTo("SLHD_RETR_00010");
+        assertThat(ResponseCodeEnum.EMBEDDING_BUDGET_EXCEEDED.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getCode())
+                .isNotEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE.getCode());
+        assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getDefaultMessage()).doesNotContainIgnoringCase("ollama");
+    }
+
+    @Test
     void theRetrievalIngestionCodesCarryTheirHttpStatus() {
         assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getCode()).isEqualTo("SLHD_RETR_00001");
         assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getHttpStatus())

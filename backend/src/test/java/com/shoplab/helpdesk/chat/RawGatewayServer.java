@@ -13,16 +13,16 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * A minimal fake of Ollama that sends some streaming lines and then drops the connection without the final
+ * A minimal fake of the model gateway that sends some streaming chunks and then drops the connection without the final
  * chunk, which WireMock cannot do. Used to test failures in the middle of an answer.
  */
-public final class RawOllamaServer implements AutoCloseable {
+public final class RawGatewayServer implements AutoCloseable {
 
     private final ServerSocket server;
     private final List<String> lines;
     private final long pauseMillis;
 
-    public RawOllamaServer(List<String> lines, long pauseMillis) {
+    public RawGatewayServer(List<String> lines, long pauseMillis) {
         this.lines = lines;
         this.pauseMillis = pauseMillis;
         try {
@@ -30,11 +30,12 @@ public final class RawOllamaServer implements AutoCloseable {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Thread.ofVirtual().name("raw-ollama").start(this::acceptLoop);
+        Thread.ofVirtual().name("raw-gateway").start(this::acceptLoop);
     }
 
+    /** The base URL of the OpenAI-compatible API, with the {@code /v1} the client appends its paths to. */
     public String baseUrl() {
-        return "http://localhost:" + server.getLocalPort();
+        return "http://localhost:" + server.getLocalPort() + "/v1";
     }
 
     @Override
@@ -58,10 +59,10 @@ public final class RawOllamaServer implements AutoCloseable {
             InputStream in = new BufferedInputStream(socket.getInputStream());
             consumeRequest(in);
             OutputStream out = socket.getOutputStream();
-            out.write(("HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\n"
+            out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n"
                     + "Transfer-Encoding: chunked\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
             for (String line : lines) {
-                byte[] data = (line + "\n").getBytes(StandardCharsets.UTF_8);
+                byte[] data = ("data: " + line + "\n\n").getBytes(StandardCharsets.UTF_8);
                 out.write((Integer.toHexString(data.length) + "\r\n").getBytes(StandardCharsets.US_ASCII));
                 out.write(data);
                 out.write("\r\n".getBytes(StandardCharsets.US_ASCII));

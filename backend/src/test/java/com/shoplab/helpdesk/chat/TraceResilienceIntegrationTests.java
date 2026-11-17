@@ -71,7 +71,7 @@ class TraceResilienceIntegrationTests {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", ollama::baseUrl);
+        registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
         registry.add("shoplab.chat.rag.no-context-mode", () -> "model");
         registry.add("shoplab.chat.tracing.enabled", () -> "true");
         registry.add("shoplab.chat.tracing.endpoint", () -> langfuse.baseUrl() + "/api/public/otel");
@@ -94,7 +94,7 @@ class TraceResilienceIntegrationTests {
     void prepare() {
         ollama.resetAll();
         langfuse.resetAll();
-        OllamaStubs.stubAnyChat(ollama, OllamaStubs.streaming(OllamaStubs.bodyWithUsage(5, 3, ANSWER)));
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.bodyWithUsage(5, 3, ANSWER)));
         embedding.recover();
         embedding.useModel(MODEL);
         embedding.resetCounters();
