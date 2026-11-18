@@ -86,8 +86,8 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean responseRecorded = new AtomicBoolean();
             AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
             StringBuilder answerText = new StringBuilder();
-            return chatTrace.traceTurn(command, trace -> turn(command, conversation, trace, startedAt, fragments,
-                    firstTokenSeen, fixedMessageAnswer, answerText)
+            return chatTrace.traceTurn(command, trace -> turn(command, conversation.orElse(null), trace, startedAt,
+                    fragments, firstTokenSeen, fixedMessageAnswer, answerText)
                     .concatWith(Mono.defer(() -> finish(command, conversation.orElse(null), answerText,
                             fragments)))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
@@ -102,15 +102,18 @@ public class StreamChatUseCase implements StreamChatServicePort {
     /**
      * The events of the turn before {@code done}. A message that is only a courtesy is answered at once, before the
      * history is read and without any search (LAB-114); anything else follows the grounded flow.
+     *
+     * @param conversation the conversation of the request, or {@code null} when it has none (no memory)
      */
-    private Flux<ChatEvent> turn(StreamChatCommand command, Optional<ConversationId> conversation, TurnTrace trace,
+    private Flux<ChatEvent> turn(StreamChatCommand command, ConversationId conversation, TurnTrace trace,
             long startedAt, AtomicInteger fragments, AtomicBoolean firstTokenSeen, AtomicBoolean fixedMessageAnswer,
             StringBuilder answerText) {
         if (smallTalk.handles(command.message())) {
             return smallTalkTurn(command, trace, fragments, firstTokenSeen, answerText);
         }
-        return conversation.map(id -> history.load(id, command.requestId()))
-                .orElseGet(() -> Mono.just(HistorySelection.empty()))
+        Mono<HistorySelection> selected = conversation == null ? Mono.just(HistorySelection.empty())
+                : history.load(conversation, command.requestId());
+        return selected
                 .flatMapMany(selection -> {
                     trace.historyTurns(selection.turns().size());
                     return retrieveContext(command, selection, trace)
@@ -135,7 +138,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
         LOG.info("Small talk turn: requestId={}, messageLength={}", command.requestId(), command.message().length());
         return smallTalk.reply(command.message())
                 .doOnNext(answerText::append)
-                .<ChatEvent>map(content -> {
+                .map(content -> {
                     firstTokenSeen.set(true);
                     fragments.incrementAndGet();
                     return new TokenEvent(content);
