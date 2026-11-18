@@ -118,4 +118,12 @@ class SearchChunksUseCaseTests {
         verify(store, never()).search(any(), anyString(), anyInt());
         verify(metrics).recordSearch(any());
     }
+
+    @Test
+    void reportsTheModelItSearchesWithoutSearching() {
+        assertThat(useCase.embeddingModel()).isEqualTo(MODEL);
+
+        assertThat(embedding.batches()).isZero();
+        verify(store, never()).search(any(), anyString(), anyInt());
+    }
 }
