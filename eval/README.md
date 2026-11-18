@@ -9,10 +9,12 @@ las historias de F2 juzgan al asistente: métricas de recuperación (LAB-28), ca
 |---|---|
 | `golden.jsonl` | El dataset: 90 casos, uno por línea |
 | `REVIEW.md` | Revisión manual registrada (quién revisó qué y cuándo) |
-| `src/shoplab_eval/` | Lector y validación del dataset (`load_golden`, `validate_golden`) |
+| `src/shoplab_eval/` | Lector y validación del dataset (`load_golden`, `validate_golden`) y medición de la recuperación (`retrieval_*.py`, `search_client.py`) |
+| `results/` | Salida local de la medición de recuperación (los CSV no se versionan) |
 | `tests/` | Pruebas, incluida una contra el `golden.jsonl` y el `data/kb` reales |
 
-Especificación y decisiones: [`specs/LAB-27-golden-dataset/`](../specs/LAB-27-golden-dataset/).
+Especificación y decisiones: [`specs/LAB-27-golden-dataset/`](../specs/LAB-27-golden-dataset/) (dataset) y
+[`specs/LAB-28-retrieval-metrics/`](../specs/LAB-28-retrieval-metrics/) (métricas de recuperación, ADR-0024).
 
 ## Formato de cada caso
 
@@ -124,6 +126,97 @@ Lo que la validación no puede comprobar lo revisa una persona y queda en [`REVI
 referencia es cierta y completa leyendo solo sus documentos, que las preguntas sin respuesta del tema no se pueden contestar
 con el corpus, y que ninguna respuesta sin respuesta escribe plazos en palabras. Además se repasa una **muestra de 15 casos
 con semilla fija**. Si falla un caso de la muestra, se revisan todos los de su tema.
+
+## Métricas de recuperación
+
+Mide **solo la búsqueda**, sin el modelo que redacta la respuesta: si el asistente falla, esto dice si fue porque no
+encontró el documento correcto. Para cada pregunta con respuesta del dataset (70 de los 90 casos) consulta la búsqueda real
+del backend y compara los documentos que devuelve, en orden de cercanía, con los `expected_documents` del caso.
+
+| Métrica | Qué dice | Por caso |
+|---|---|---|
+| `hit_rate@k` | ¿Apareció algún documento esperado entre los k primeros? | `1` o `0` |
+| `recall@k` | ¿Qué parte de los documentos esperados apareció entre los k primeros? | de `0` a `1` |
+| `mrr` | ¿Cuántos puestos hubo que bajar hasta el primer documento esperado? | `1 / posición`, o `0` si no aparece |
+
+Cada valor del resumen es la **media** de los casos. Ejemplo con k = 3: un caso con un documento esperado que aparece en
+**tercer** lugar aporta `hit@3 = 1`, `recall@3 = 1` y `1/3` al MRR (con k = 1 aportaría `hit@1 = 0`). Un caso con **dos**
+documentos esperados de los que solo uno aparece entre los 3 primeros aporta `hit@3 = 1` pero `recall@3 = 0,5`. El MRR se
+calcula sobre la lista completa, no cortada a k. Con k = 1 y dos documentos esperados el recall máximo es 0,5: por eso se
+informan varios k (por defecto 1, 3 y 5).
+
+**Se mide por documento, no por fragmento.** Los fragmentos devueltos se reducen a documentos distintos (el id es el nombre
+del archivo sin extensión, así el Markdown y el PDF del mismo documento cuentan como uno), cada uno en la posición de su
+fragmento más cercano. Por eso es algo más indulgente que lo que consume el chat (cuatro fragmentos) y mide el orden de la
+búsqueda **antes** de que el chat aplique su umbral de similitud y su presupuesto de contexto (ADR-0018). Los casos sin
+respuesta no tienen documentos esperados y quedan fuera; que el asistente no invente ante ellos lo mide LAB-29.
+
+### Ejecutar
+
+Necesita el stack local levantado (`docker compose -f infra/docker-compose.yml up`) y los 24 documentos de `data/kb`
+**indexados** (estado «Indexado» en la pantalla de documentos). Tarda menos de un minuto.
+
+```bash
+cd eval
+uv run python -m shoplab_eval retrieval                       # k = 1, 3, 5; resultado en eval/results/
+uv run python -m shoplab_eval retrieval --k 1,5 --out results/antes
+```
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| `--k` | `1,3,5` | Valores de k separados por comas: enteros positivos, sin repetir y no mayores que `--depth` |
+| `--depth` | `50` | Fragmentos que se piden por pregunta (1–50). Con 50 hay margen para reunir k documentos distintos |
+| `--base-url` | `$SHOPLAB_EVAL_BASE_URL` o `http://localhost:8080` | Backend que sirve la búsqueda |
+| `--out` | `eval/results/` | Carpeta de salida (se crea si falta) |
+| `--golden`, `--kb` | los de `validate` | Dataset y corpus |
+| `--timeout` | `10` | Segundos máximos por petición |
+
+Código de salida: `0` medición completa y CSV escritos; `1` la medición no es válida; `2` uso incorrecto (k o `--depth`
+inválidos). Con `1` y `2` **no se escribe ningún CSV** ni se tocan los de una ejecución anterior.
+
+### Leer los CSV
+
+Dos archivos, UTF-8 sin BOM, números con cuatro decimales y punto decimal, sin marcas de tiempo: con el mismo índice, la misma
+configuración y el mismo dataset, dos ejecuciones dan archivos idénticos byte a byte. En Excel, impórtalos con
+«Datos → Desde texto/CSV» y codificación UTF-8 (con doble clic las tildes pueden verse mal).
+
+**`retrieval-summary.csv`**: una fila `all` y una por categoría con casos medibles (`off_topic` no tiene).
+
+| Columna | Significado |
+|---|---|
+| `scope` | `all` o la categoría |
+| `cases`, `excluded_cases` | Casos medidos y casos del ámbito sin documentos esperados (no medidos) |
+| `embedding_model`, `search_depth` | Con qué modelo estaba indexada la base y cuántos fragmentos se pidieron: sin esto dos resultados no son comparables |
+| `hit_rate@k`, `recall@k` | Una columna por cada k pedido |
+| `mrr` | Media del inverso de la posición del primer acierto |
+
+**`retrieval-detail.csv`**: una fila por caso medible, en el orden del dataset. Es de donde sale cualquier número del resumen.
+
+| Columna | Significado |
+|---|---|
+| `id`, `category`, `question` | El caso |
+| `expected_documents` | Ids esperados, separados por `\|` |
+| `retrieved_documents` | Ids recuperados en orden de cercanía, separados por `\|` |
+| `first_hit_rank` | Posición del primer documento esperado; vacía si no aparece |
+| `hit@k`, `recall@k`, `reciprocal_rank` | Los valores del caso |
+
+Ante una caída del hit rate, ordena el detalle por `first_hit_rank` (vacíos primero) y mira qué devolvió la búsqueda en su
+lugar. Para comparar dos ejecuciones, guarda cada una en su carpeta (`--out`) y compara los resúmenes: si cambia
+`embedding_model`, el cambio es del modelo.
+
+### Errores
+
+| Qué ves | Causa | Qué hacer |
+|---|---|---|
+| `No se pudo conectar con el backend en …` o `Tiempo agotado … esperando al backend` | El backend no está en esa dirección (en Windows un puerto cerrado también acaba en tiempo agotado) | Levanta el stack o indica `--base-url`; sube `--timeout` si Ollama es lento |
+| `El índice no contiene los documentos que el dataset espera` y la lista | Hay documentos sin subir o en `PENDING`/`ERROR` | Súbelos o reindexa, espera al estado «Indexado» y repite. Se detecta **antes** de buscar |
+| `Falló la búsqueda del caso G0xx: El backend respondió 503 (SLHD_RETR_00006)` | El modelo de embeddings no responde | Revisa Ollama y el gateway; la pregunta del caso no se cuenta como fallo de recuperación |
+| `El modelo de embeddings cambió durante la medición` | Se reindexó a mitad de ejecución | Repite la medición |
+| `G-…` (`G-DUPLICATE`, …) | El dataset no es válido | Corrígelo como indica «Validar» |
+| `Respuesta ilegible de …` | El endpoint no responde con la forma esperada | Comprueba que el backend es de esta versión |
+
+Un cero **no** es un error: si la búsqueda funciona pero no devuelve el documento esperado, el caso aporta `0`. Los errores
+son solo los que impiden dar un resultado fiable.
 
 ## Cambiar un umbral
 

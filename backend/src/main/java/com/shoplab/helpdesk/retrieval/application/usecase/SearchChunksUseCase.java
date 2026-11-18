@@ -54,6 +54,11 @@ public class SearchChunksUseCase implements SearchChunksServicePort {
         });
     }
 
+    @Override
+    public String embeddingModel() {
+        return embedding.modelName();
+    }
+
     /** An empty answer after a model change that was not reindexed is explained in the log, not hidden. */
     private Mono<Void> warnIfModelChanged(String model) {
         return store.hasChunksFromOtherModels(model)

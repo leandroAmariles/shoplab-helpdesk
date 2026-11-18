@@ -37,3 +37,7 @@ specs/*/.token-usage.json
 
 # Cache local de embeddings del notebook (LAB-26)
 notebooks/.cache/
+
+# Resultados locales de la medicion de recuperacion (LAB-28); la linea base versionada es de LAB-30
+eval/results/*
+!eval/results/.gitkeep

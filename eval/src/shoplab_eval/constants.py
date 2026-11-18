@@ -42,3 +42,23 @@ class GoldenRules:
     answer_length: tuple[int, int] = (20, 800)
     max_expected_documents: int = 2
     min_low_overlap_share: float = 0.30
+
+
+# Retrieval metrics (specs/LAB-28-retrieval-metrics). The defaults come from the plan and research R4, R9 and R10.
+DEFAULT_KS = (1, 3, 5)
+# Chunks asked of the search per question. 50 is the most the backend accepts (RetrievalConstants.MAX_SEARCH_LIMIT).
+DEFAULT_DEPTH = 50
+MAX_DEPTH = 50
+DEFAULT_BASE_URL = "http://localhost:8080"
+BASE_URL_ENV = "SHOPLAB_EVAL_BASE_URL"
+DEFAULT_TIMEOUT_SECONDS = 10
+DEFAULT_RESULTS_DIR = REPO_ROOT / "eval" / "results"
+SUMMARY_FILE = "retrieval-summary.csv"
+DETAIL_FILE = "retrieval-detail.csv"
+ALL_SCOPE = "all"
+# Joins the document ids of one CSV cell; it cannot appear in an id (letters, digits and hyphens).
+LIST_SEPARATOR = "|"
+DECIMALS = 4
+INDEXED_STATUS = "INDEXED"
+SEARCH_PATH = "/api/knowledge/search"
+DOCUMENTS_PATH = "/api/documents"
