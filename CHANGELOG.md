@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.17.0...v0.18.0) (2026-11-18)
+
+
+### Features
+
+* **chat:** [LAB-84] gateway de modelos con LiteLLM ([#126](https://github.com/leandroAmariles/shoplab-helpdesk/issues/126)) ([5fd7cc1](https://github.com/leandroAmariles/shoplab-helpdesk/commit/5fd7cc1afc6d7fd5069512f43262497f16ff223a))
+* **eval:** [LAB-27] dataset golden de preguntas y respuestas ([#128](https://github.com/leandroAmariles/shoplab-helpdesk/issues/128)) ([3bb4690](https://github.com/leandroAmariles/shoplab-helpdesk/commit/3bb4690be24ae0d828ac1f4c2fb72455dd4a596d))
+
 ## [0.17.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.16.0...v0.17.0) (2026-11-12)
 
 
