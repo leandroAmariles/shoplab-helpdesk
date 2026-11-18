@@ -88,7 +88,7 @@ class ChatMemoryDownIntegrationTests {
 
     private ChatTestClient.Result ask() {
         return new ChatTestClient(port).post(
-                "{\"message\":\"Hola\",\"conversationId\":\"" + UUID.randomUUID() + "\"}");
+                "{\"message\":\"¿Cuánto tarda un envío?\",\"conversationId\":\"" + UUID.randomUUID() + "\"}");
     }
 
     private String prometheus() {

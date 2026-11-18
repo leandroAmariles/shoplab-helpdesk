@@ -3,13 +3,23 @@
 import re
 from collections import defaultdict
 
-from shoplab_eval.constants import CATEGORIES, OFF_TOPIC, TOPICS, GoldenRules
+from shoplab_eval.constants import (
+    CATEGORIES,
+    CONVERSATION_CATEGORIES,
+    INJECTION,
+    OFF_TOPIC,
+    SMALL_TALK,
+    TOPICS,
+    GoldenRules,
+)
 from shoplab_eval.corpus import CorpusDocument, normalize_text
 from shoplab_eval.errors import Issue, sort_issues
 from shoplab_eval.golden import GoldenCase
 
 SET = "SET"
 ALLOWED_EMAIL_SUFFIX = "@shoplab.example"
+# Categories whose cases never have expected documents: off topic questions, courtesies and injection attempts.
+NO_DOCUMENT_CATEGORIES = (OFF_TOPIC, *CONVERSATION_CATEGORIES)
 
 _ID = re.compile(r"G\d{3}")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
@@ -49,18 +59,24 @@ def validate_set_rules(
     corpus: dict[str, CorpusDocument],
     rules: GoldenRules = GoldenRules(),  # noqa: B008
 ) -> list[Issue]:
-    """Rules about the dataset as a whole: counts, balance, coverage of the corpus and duplicated questions."""
-    total = len(cases)
+    """Rules about the dataset as a whole: counts, balance, coverage of the corpus and duplicated questions.
+
+    The balance rules look only at the knowledge cases (topics and off topic): the conversation cases (courtesies and
+    injection attempts, LAB-114) have no documents by design and must not count as "unanswered" questions.
+    """
+    knowledge = [case for case in cases if not case.is_conversation]
+    total = len(knowledge)
     low, high = rules.min_cases, rules.max_cases
     issues: list[Issue] = []
     if not low <= total <= high:
-        issues.append(Issue("G-COUNT", SET, f"hay {total} casos y debe haber entre {low} y {high}"))
+        issues.append(Issue("G-COUNT", SET, f"hay {total} casos de conocimiento y debe haber entre {low} y {high}"))
     if total == 0:
         # Nothing to balance or cover: the other rules would only repeat the same problem.
         return issues
-    issues.extend(_per_topic_issues(cases, rules))
-    issues.extend(_unanswered_issues(cases, rules))
-    multi = sum(1 for case in cases if case.is_multi_document)
+    issues.extend(_conversation_count_issues(cases, rules))
+    issues.extend(_per_topic_issues(knowledge, rules))
+    issues.extend(_unanswered_issues(knowledge, rules))
+    multi = sum(1 for case in knowledge if case.is_multi_document)
     if multi < rules.min_multi_document:
         message = f"hay {multi} casos con dos documentos esperados y se necesitan al menos {rules.min_multi_document}"
         issues.append(Issue("G-MULTI-DOC", SET, message))
@@ -69,6 +85,19 @@ def validate_set_rules(
     if uncovered:
         issues.append(Issue("G-COVERAGE", SET, "ningún caso espera estos documentos: " + ", ".join(uncovered)))
     issues.extend(_duplicate_issues(cases))
+    return issues
+
+
+def _conversation_count_issues(cases: list[GoldenCase], rules: GoldenRules) -> list[Issue]:
+    issues: list[Issue] = []
+    small_talk = sum(1 for case in cases if case.category == SMALL_TALK)
+    if small_talk < rules.min_small_talk:
+        message = f"hay {small_talk} casos 'small_talk' y se necesitan al menos {rules.min_small_talk}"
+        issues.append(Issue("G-SMALL-TALK-COUNT", SET, message))
+    injection = sum(1 for case in cases if case.category == INJECTION)
+    if injection < rules.min_injection:
+        message = f"hay {injection} casos 'injection' y se necesitan al menos {rules.min_injection}"
+        issues.append(Issue("G-INJECTION-COUNT", SET, message))
     return issues
 
 
@@ -87,7 +116,7 @@ def _id_issues(case: GoldenCase, first_line_of_id: dict[str, int]) -> list[Issue
 
 def _text_issues(case: GoldenCase, rules: GoldenRules) -> list[Issue]:
     issues: list[Issue] = []
-    question_low, question_high = rules.question_length
+    question_low, question_high = rules.conversation_question_length if case.is_conversation else rules.question_length
     length = len(case.question.strip())
     if not question_low <= length <= question_high:
         message = f"la pregunta tiene {length} caracteres y debe tener entre {question_low} y {question_high}"
@@ -121,8 +150,8 @@ def _document_issues(case: GoldenCase, corpus: dict[str, CorpusDocument], rules:
         if doc not in corpus:
             message = f"el documento esperado '{doc}' no existe en el corpus"
             issues.append(Issue("G-DOC-MISSING", case.id, message, case.line))
-    if case.category == OFF_TOPIC and documents:
-        message = "una pregunta 'off_topic' no puede tener documentos esperados"
+    if case.category in NO_DOCUMENT_CATEGORIES and documents:
+        message = f"una pregunta '{case.category}' no puede tener documentos esperados"
         issues.append(Issue("G-CATEGORY-TOPIC", case.id, message, case.line))
     elif existing and case.category in TOPICS and case.category not in {corpus[doc].topic for doc in existing}:
         topics = ", ".join(sorted({corpus[doc].topic for doc in existing}))

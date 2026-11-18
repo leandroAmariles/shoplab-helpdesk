@@ -168,6 +168,11 @@ class GatewayChatAdapterTraceTests {
         }
 
         @Override
+        public void smallTalkAnswer() {
+            // not reported by the model adapter
+        }
+
+        @Override
         public GenerationScope startGeneration(String model, Map<String, Object> parameters,
                 List<PromptMessage> messages) {
             started++;

@@ -6,6 +6,7 @@ import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
+import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -53,6 +54,15 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
                 .publishPercentileHistogram()
                 .register(registry)
                 .record(elapsed);
+    }
+
+    @Override
+    public void recordTurn(TurnKind kind) {
+        Counter.builder(ChatConstants.TURNS_METRIC)
+                .description("Chat turns attended, by kind: small talk, with context or without context")
+                .tag(ChatConstants.KIND_TAG, kind.tagValue())
+                .register(registry)
+                .increment();
     }
 
     @Override

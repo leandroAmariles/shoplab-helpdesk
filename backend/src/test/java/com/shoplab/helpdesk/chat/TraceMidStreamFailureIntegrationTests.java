@@ -63,8 +63,8 @@ class TraceMidStreamFailureIntegrationTests {
 
     @Test
     void aFailureInTheMiddleKeepsThePartialAnswerAndNamesTheStreamErrorAtTheGenerationStage() {
-        ChatTestClient.Result response = new ChatTestClient(port).post("{\"message\":\"Hola\"}", "text/event-stream",
-                "mid-stream-1");
+        ChatTestClient.Result response = new ChatTestClient(port).post("{\"message\":\"¿Cuánto tarda un envío?\"}",
+                "text/event-stream", "mid-stream-1");
         flush(chatTrace);
 
         assertThat(response.text()).isEqualTo("uno dos");

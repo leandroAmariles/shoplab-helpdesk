@@ -10,6 +10,7 @@ import com.shoplab.helpdesk.chat.domain.model.HistorySelection;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +32,16 @@ public class ConversationHistory {
     private final FollowUpQuery followUp;
     private final MemoryProperties properties;
     private final ChatMetricsPort metrics;
+    private final SmallTalk smallTalk;
 
     public ConversationHistory(ConversationMemoryPort memory, HistoryWindow window, FollowUpQuery followUp,
-            MemoryProperties properties, ChatMetricsPort metrics) {
+            MemoryProperties properties, ChatMetricsPort metrics, SmallTalk smallTalk) {
         this.memory = memory;
         this.window = window;
         this.followUp = followUp;
         this.properties = properties;
         this.metrics = metrics;
+        this.smallTalk = smallTalk;
     }
 
     /**
@@ -57,9 +60,16 @@ public class ConversationHistory {
                 .doOnNext(selection -> record(requestId, selection));
     }
 
-    /** The text for the search of context: the previous question of the conversation, if any, then the message. */
+    /**
+     * The text for the search of context: the previous question of the conversation, if any, then the message. A turn
+     * whose question was only a courtesy ("hola", "gracias") says nothing about the topic, so it is left out and
+     * the search uses the last real question instead (LAB-114). The turn stays in the history the model receives.
+     */
     public String searchText(String message, HistorySelection selection) {
-        return followUp.compose(message, selection.turns(), properties.effectiveRetrievalTurns(),
+        List<ConversationTurn> topical = selection.turns().stream()
+                .filter(turn -> !smallTalk.isCourtesy(turn.question()))
+                .toList();
+        return followUp.compose(message, topical, properties.effectiveRetrievalTurns(),
                 ChatConstants.FOLLOW_UP_QUERY_MAX_CHARACTERS);
     }
 

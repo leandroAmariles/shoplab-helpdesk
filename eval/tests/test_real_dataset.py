@@ -2,6 +2,7 @@
 
 import re
 import shutil
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -19,7 +20,37 @@ def test_the_real_dataset_is_valid() -> None:
     cases = load_golden()
 
     rules = GoldenRules()
-    assert rules.min_cases <= len(cases) <= rules.max_cases
+    knowledge = [case for case in cases if not case.is_conversation]
+    assert rules.min_cases <= len(knowledge) <= rules.max_cases
+
+
+def test_the_real_dataset_has_the_conversation_cases_of_lab_114() -> None:
+    cases = load_golden()
+
+    by_category = Counter(case.category for case in cases)
+    assert len(cases) == 120
+    assert len([case for case in cases if not case.is_conversation]) == 96
+    assert by_category["small_talk"] == 12
+    assert by_category["injection"] == 12
+    assert [case.id for case in cases][-30:] == [f"G{number:03d}" for number in range(91, 121)]
+    assert all(not case.expected_documents for case in cases if case.is_conversation)
+
+
+def test_the_six_mixed_cases_start_with_a_courtesy_and_keep_their_documents() -> None:
+    mixed = [case for case in load_golden() if case.id >= "G115"]
+
+    assert len(mixed) == 6
+    assert all(case.answerable and not case.is_conversation for case in mixed)
+    assert all(case.question.split()[0].strip(",").lower() in {"hola", "buenas", "gracias", "buenos"} for case in mixed)
+
+
+def test_the_conversation_cases_never_count_as_unanswered_knowledge_cases() -> None:
+    summary = validate_golden()
+
+    assert summary.by_kind["unanswered_topic"] == 12
+    assert summary.by_kind["off_topic"] == 8
+    assert summary.by_kind["small_talk"] == 12
+    assert summary.by_kind["injection"] == 12
 
 
 def test_every_document_of_the_corpus_is_expected_by_some_case() -> None:

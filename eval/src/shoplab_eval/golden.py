@@ -5,7 +5,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from shoplab_eval.constants import DEFAULT_GOLDEN_PATH, DEFAULT_KB_DIR, OFF_TOPIC, REQUIRED_KEYS
+from shoplab_eval.constants import (
+    CONVERSATION_CATEGORIES,
+    DEFAULT_GOLDEN_PATH,
+    DEFAULT_KB_DIR,
+    OFF_TOPIC,
+    REQUIRED_KEYS,
+)
 from shoplab_eval.corpus import CorpusDocument, load_corpus
 from shoplab_eval.errors import InvalidGoldenError, Issue
 
@@ -35,7 +41,14 @@ class GoldenCase:
         return bool(self.expected_documents)
 
     @property
+    def is_conversation(self) -> bool:
+        """A courtesy or an injection attempt: it has no search by design (LAB-114)."""
+        return self.category in CONVERSATION_CATEGORIES
+
+    @property
     def kind(self) -> str:
+        if self.is_conversation:
+            return self.category
         if self.answerable:
             return "answered"
         return "off_topic" if self.category == OFF_TOPIC else "unanswered_topic"

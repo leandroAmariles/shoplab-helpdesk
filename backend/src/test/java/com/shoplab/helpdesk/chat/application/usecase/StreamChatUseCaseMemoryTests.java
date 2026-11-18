@@ -1,5 +1,6 @@
 package com.shoplab.helpdesk.chat.application.usecase;
 
+import static com.shoplab.helpdesk.chat.support.SmallTalkTestSupport.smallTalk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -74,10 +75,10 @@ class StreamChatUseCaseMemoryTests {
 
     private StreamChatUseCase useCase(MemoryProperties properties, NoContextMode mode) {
         ConversationHistory history = new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(),
-                properties, metrics);
+                properties, metrics, smallTalk());
         return new StreamChatUseCase(model, knowledge, new ContextSelector(), history, metrics,
                 new ChatProperties(4000, "system"), new RagProperties(null, null, null, null, null, mode, null),
-                new NoOpChatTrace());
+                new NoOpChatTrace(), smallTalk());
     }
 
     private static StreamChatCommand command(String message, String conversationId) {

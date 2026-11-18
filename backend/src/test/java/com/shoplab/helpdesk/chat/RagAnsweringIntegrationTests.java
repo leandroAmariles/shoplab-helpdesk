@@ -147,7 +147,8 @@ class RagAnsweringIntegrationTests {
                 .withRequestBody(matchingJsonPath("$.messages[1].content",
                         matching("(?s).*\\[1] Politica › Politica > Plazos\\s+Plazos\\s+Treinta dias\\..*")))
                 .withRequestBody(matchingJsonPath("$.messages[1].content",
-                        matching("(?s).*Pregunta del cliente: Plazos\\s+Treinta dias\\..*"))));
+                        matching("(?s).*Pregunta del cliente: <mensaje_del_cliente>\\s+Plazos\\s+Treinta dias\\."
+                                + "\\s+</mensaje_del_cliente>.*"))));
     }
 
     @Test

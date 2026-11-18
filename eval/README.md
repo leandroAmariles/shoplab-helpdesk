@@ -7,7 +7,7 @@ las historias de F2 juzgan al asistente: métricas de recuperación (LAB-28), ca
 
 | Archivo | Para qué sirve |
 |---|---|
-| `golden.jsonl` | El dataset: 90 casos, uno por línea |
+| `golden.jsonl` | El dataset: 120 casos (96 de conocimiento y 24 de conversación), uno por línea |
 | `REVIEW.md` | Revisión manual registrada (quién revisó qué y cuándo) |
 | `src/shoplab_eval/` | Lector y validación del dataset (`load_golden`, `validate_golden`) y medición de la recuperación (`retrieval_*.py`, `search_client.py`) |
 | `results/` | Salida local de la medición de recuperación (los CSV no se versionan) |
@@ -32,7 +32,7 @@ JSON Lines en UTF-8 **sin BOM**: un objeto por línea, sin comentarios ni cabece
 | `question` | La pregunta, en español, tal como la escribiría un cliente. Autocontenida (sin «¿y en cuotas?») |
 | `reference_answer` | La respuesta correcta según el corpus, redactada con palabras propias |
 | `expected_documents` | De 0 a 2 ids de documento de `data/kb` (el nombre del archivo sin `.md`) donde está la respuesta |
-| `category` | `payments`, `privacy`, `returns`, `shipping`, `warranty` u `off_topic` |
+| `category` | `payments`, `privacy`, `returns`, `shipping`, `warranty`, `off_topic`, `small_talk` o `injection` |
 
 Se rechazan las claves desconocidas.
 
@@ -46,7 +46,19 @@ Se rechazan las claves desconocidas.
 - **Ajena a la tienda** (`off_topic`): nada que ver con la tienda (una receta, el tiempo). Lista vacía y categoría
   `off_topic`.
 
-El tipo se deduce de la lista de documentos y de la categoría; no se guarda aparte.
+- **Cortesía** (`small_talk`, LAB-114): un saludo, un agradecimiento, una despedida o «¿qué puedes hacer?». Sin documentos
+  esperados. La pregunta debe ser **solo** cortesía con el léxico cerrado del backend (`SmallTalkConstants`); la respuesta de
+  referencia es breve, amable e invita a preguntar por los temas de la tienda, sin ningún dato.
+- **Inyección** (`injection`, LAB-114): un intento de sacar el prompt o la configuración, de cambiar el rol o una instrucción
+  embebida en un saludo. Sin documentos esperados. **Ninguna** pregunta puede ser una cortesía; la respuesta de referencia
+  no revela nada, mantiene el rol y redirige a los temas de la tienda.
+- **Mixto**: no tiene categoría propia. Es un caso con respuesta de su tema, con sus documentos, cuya pregunta **empieza por
+  una cortesía** («Hola, mi boleto venció…»). Lo mide la recuperación como cualquier otro y el backend comprueba que no se
+  clasifica como charla.
+
+El tipo se deduce de la lista de documentos y de la categoría; no se guarda aparte. Los casos de conversación **no cuentan**
+como «sin respuesta», no entran en la medición de recuperación ni en sus «excluidos», y la prueba `GoldenDatasetClassifierTests`
+del backend lee este archivo para comprobar que el clasificador y el dataset no se contradicen.
 
 La respuesta de referencia de un caso sin respuesta describe la **intención** («no hay información»), no el texto exacto del
 mensaje fijo que el asistente usa cuando no recupera contexto (LAB-22).
@@ -72,21 +84,26 @@ fallos juntos).
 | `G-JSON` | la línea no es JSON válido, o el archivo tiene BOM o no es UTF-8 |
 | `G-FIELDS` | falta una clave, hay una desconocida o un valor tiene el tipo equivocado |
 | `G-ID` | el id no es `G` + tres dígitos, o se repite |
-| `G-QUESTION-LENGTH` / `G-ANSWER-LENGTH` | pregunta fuera de 10–300 caracteres o respuesta fuera de 20–800 |
-| `G-CATEGORY` | la categoría no es una de las seis |
+| `G-QUESTION-LENGTH` / `G-ANSWER-LENGTH` | pregunta fuera de 10–300 caracteres (2–300 en `small_talk` e `injection`) o respuesta fuera de 20–800 |
+| `G-CATEGORY` | la categoría no es una de las ocho |
 | `G-DOC-COUNT` | más de dos documentos esperados, o repetidos |
 | `G-DOC-MISSING` | un documento esperado no existe en `data/kb` (se renombró o se borró) |
-| `G-CATEGORY-TOPIC` | la categoría no es el tema de ninguno de sus documentos, o `off_topic` con documentos |
+| `G-CATEGORY-TOPIC` | la categoría no es el tema de ninguno de sus documentos, o `off_topic`, `small_talk` o `injection` con documentos |
 | `G-NOANSWER-DIGITS` | la respuesta de un caso sin respuesta contiene una cifra (plazo o importe inventado) |
 | `G-QUESTION-VERBATIM` | la pregunta es una frase copiada de un documento: reescríbela como un cliente |
 | `G-PII` | un correo que no es `@shoplab.example` o una secuencia de 8 o más dígitos |
-| `G-COUNT` | el total no está entre 80 y 100 |
+| `G-COUNT` | los casos de conocimiento (temas y `off_topic`, sin `small_talk` ni `injection`) no son entre 80 y 100 |
 | `G-PER-TOPIC` | un tema tiene menos de 12 casos con respuesta |
 | `G-UNANSWERED` | los casos sin respuesta son menos de 12 o están fuera del 15–25 % del total |
 | `G-UNANSWERED-KINDS` | menos de 5 sin respuesta del tema o menos de 5 `off_topic` |
 | `G-MULTI-DOC` | menos de 8 casos con dos documentos |
 | `G-COVERAGE` | algún documento del corpus no lo espera ningún caso |
+| `G-SMALL-TALK-COUNT` | menos de 10 casos `small_talk` |
+| `G-INJECTION-COUNT` | menos de 10 casos `injection` |
 | `G-DUPLICATE` | dos preguntas son iguales salvo mayúsculas, espacios o puntuación |
+
+Las reglas de conjunto de conocimiento (`G-COUNT`, `G-PER-TOPIC`, `G-UNANSWERED*`, `G-MULTI-DOC`, `G-COVERAGE`) miran solo los
+casos de conocimiento; el resto de reglas se aplican a todos los casos.
 
 El resumen añade un **indicador léxico** (porcentaje de preguntas con respuesta cuyas palabras de contenido aparecen menos de
 la mitad en sus documentos). Debe ser al menos el 30 % (FR-013) para que medir la recuperación no se reduzca a coincidencia
@@ -94,7 +111,7 @@ de texto; es informativo y no hace fallar la validación.
 
 ## Añadir un caso
 
-1. Elige el siguiente `id` libre (`G091`, …). Con 100 casos se alcanza el máximo; subirlo es una decisión de la spec.
+1. Elige el siguiente `id` libre (`G121`, …). El máximo de 100 se cuenta sobre los casos de conocimiento (hoy 96); subirlo es una decisión de la spec.
 2. Abre los documentos del tema en `data/kb/` y redacta la pregunta como un cliente, **con palabras distintas** a las del
    documento. Redacta la respuesta solo con lo que dicen los documentos esperados; **no inventes datos**.
 3. Para un caso **sin respuesta del tema**, busca los términos clave en `data/kb` (`grep -ril "<término>" data/kb`, con y sin
@@ -130,7 +147,7 @@ con semilla fija**. Si falla un caso de la muestra, se revisan todos los de su t
 ## Métricas de recuperación
 
 Mide **solo la búsqueda**, sin el modelo que redacta la respuesta: si el asistente falla, esto dice si fue porque no
-encontró el documento correcto. Para cada pregunta con respuesta del dataset (70 de los 90 casos) consulta la búsqueda real
+encontró el documento correcto. Para cada pregunta con respuesta del dataset (76 de los 120 casos: los 70 originales y los 6 mixtos) consulta la búsqueda real
 del backend y compara los documentos que devuelve, en orden de cercanía, con los `expected_documents` del caso.
 
 | Métrica | Qué dice | Por caso |
@@ -220,6 +237,6 @@ son solo los que impiden dar un resultado fiable.
 
 ## Cambiar un umbral
 
-Los números (80–100 casos, 12 con respuesta por tema, 15–25 % sin respuesta, 8 casos de dos documentos…) vienen de
+Los números (80–100 casos de conocimiento, 12 con respuesta por tema, 15–25 % sin respuesta, 8 casos de dos documentos…) vienen de
 `specs/LAB-27-golden-dataset/spec.md` y viven en `GoldenRules` (`src/shoplab_eval/constants.py`). Cambiar uno es una decisión
 de la spec: se actualizan los dos a la vez.

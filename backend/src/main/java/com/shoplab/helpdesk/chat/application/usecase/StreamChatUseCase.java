@@ -26,6 +26,7 @@ import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
+import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
@@ -56,10 +57,11 @@ public class StreamChatUseCase implements StreamChatServicePort {
     private final ChatProperties properties;
     private final RagProperties ragProperties;
     private final ChatTracePort chatTrace;
+    private final SmallTalk smallTalk;
 
     public StreamChatUseCase(ChatModelPort chatModel, KnowledgeContextPort knowledgeContext,
             ContextSelector contextSelector, ConversationHistory history, ChatMetricsPort metrics,
-            ChatProperties properties, RagProperties ragProperties, ChatTracePort chatTrace) {
+            ChatProperties properties, RagProperties ragProperties, ChatTracePort chatTrace, SmallTalk smallTalk) {
         this.chatModel = chatModel;
         this.knowledgeContext = knowledgeContext;
         this.contextSelector = contextSelector;
@@ -68,6 +70,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
         this.properties = properties;
         this.ragProperties = ragProperties;
         this.chatTrace = chatTrace;
+        this.smallTalk = smallTalk;
     }
 
     @Override
@@ -83,20 +86,8 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean responseRecorded = new AtomicBoolean();
             AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
             StringBuilder answerText = new StringBuilder();
-            return chatTrace.traceTurn(command, trace -> conversation.map(id -> history.load(id, command.requestId()))
-                    .orElseGet(() -> Mono.just(HistorySelection.empty()))
-                    .flatMapMany(selection -> {
-                        trace.historyTurns(selection.turns().size());
-                        return retrieveContext(command, selection, trace)
-                                .flatMapMany(context -> {
-                                    fixedMessageAnswer.set(answersWithFixedMessage(context));
-                                    if (fixedMessageAnswer.get()) {
-                                        trace.fixedMessageAnswer();
-                                    }
-                                    return events(command, selection.turns(), context, startedAt, fragments,
-                                            firstTokenSeen, fixedMessageAnswer, answerText);
-                                });
-                    })
+            return chatTrace.traceTurn(command, trace -> turn(command, conversation.orElse(null), trace, startedAt,
+                    fragments, firstTokenSeen, fixedMessageAnswer, answerText)
                     .concatWith(Mono.defer(() -> finish(command, conversation.orElse(null), answerText,
                             fragments)))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
@@ -106,6 +97,52 @@ public class StreamChatUseCase implements StreamChatServicePort {
                         return failed(command, error, firstTokenSeen.get());
                     })).contextWrite(context -> correlation(context, command, conversation.orElse(null)));
         });
+    }
+
+    /**
+     * The events of the turn before {@code done}. A message that is only a courtesy is answered at once, before the
+     * history is read and without any search (LAB-114); anything else follows the grounded flow.
+     *
+     * @param conversation the conversation of the request, or {@code null} when it has none (no memory)
+     */
+    private Flux<ChatEvent> turn(StreamChatCommand command, ConversationId conversation, TurnTrace trace,
+            long startedAt, AtomicInteger fragments, AtomicBoolean firstTokenSeen, AtomicBoolean fixedMessageAnswer,
+            StringBuilder answerText) {
+        if (smallTalk.handles(command.message())) {
+            return smallTalkTurn(command, trace, fragments, firstTokenSeen, answerText);
+        }
+        Mono<HistorySelection> selected = conversation == null ? Mono.just(HistorySelection.empty())
+                : history.load(conversation, command.requestId());
+        return selected
+                .flatMapMany(selection -> {
+                    trace.historyTurns(selection.turns().size());
+                    return retrieveContext(command, selection, trace)
+                            .flatMapMany(context -> {
+                                fixedMessageAnswer.set(answersWithFixedMessage(context));
+                                if (fixedMessageAnswer.get()) {
+                                    trace.fixedMessageAnswer();
+                                }
+                                return events(command, selection.turns(), context, startedAt, fragments,
+                                        firstTokenSeen, fixedMessageAnswer, answerText);
+                            });
+                });
+    }
+
+    /**
+     * The answer to a courtesy: tokens only, no sources. The log carries the length of the message, never its text.
+     */
+    private Flux<ChatEvent> smallTalkTurn(StreamChatCommand command, TurnTrace trace, AtomicInteger fragments,
+            AtomicBoolean firstTokenSeen, StringBuilder answerText) {
+        metrics.recordTurn(TurnKind.SMALL_TALK);
+        trace.smallTalkAnswer();
+        LOG.info("Small talk turn: requestId={}, messageLength={}", command.requestId(), command.message().length());
+        return smallTalk.reply(command.message())
+                .doOnNext(answerText::append)
+                .map(content -> {
+                    firstTokenSeen.set(true);
+                    fragments.incrementAndGet();
+                    return new TokenEvent(content);
+                });
     }
 
     /**
@@ -233,6 +270,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
             long startedAt) {
         ContextOutcome outcome = selected.isEmpty() ? ContextOutcome.NO_CONTEXT : ContextOutcome.WITH_CONTEXT;
         metrics.recordContext(outcome, selected.size(), elapsedSince(startedAt));
+        metrics.recordTurn(selected.isEmpty() ? TurnKind.NO_CONTEXT : TurnKind.WITH_CONTEXT);
         double bestScore = selected.stream().mapToDouble(ContextFragment::score).max().orElse(0.0);
         if (selected.isEmpty()) {
             LOG.warn("No context for the answer: requestId={}, candidates={}, outcome={}", command.requestId(),

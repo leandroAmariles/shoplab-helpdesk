@@ -146,6 +146,7 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
         private volatile int historyTurns;
         private volatile int delivered;
         private volatile boolean fixedMessage;
+        private volatile boolean smallTalk;
         private volatile String failureCode;
         private volatile FailureStage failedStage;
         private volatile Generation generation;
@@ -208,7 +209,7 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
             if (failureCode != null) {
                 finish(TurnResult.ERROR);
             } else {
-                finish(fixedMessage ? TurnResult.NO_CONTEXT : TurnResult.COMPLETED);
+                finish(smallTalk ? TurnResult.SMALL_TALK : fixedMessage ? TurnResult.NO_CONTEXT : TurnResult.COMPLETED);
             }
         }
 
@@ -252,6 +253,11 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
                 }
                 span.end();
             });
+        }
+
+        @Override
+        public void smallTalkAnswer() {
+            smallTalk = true;
         }
 
         @Override

@@ -179,12 +179,27 @@ class ChatMemoryIntegrationTests {
         String body = lastModelRequest().getBodyAsString();
         // The key order of each message is the client's business: look the messages up by role instead.
         assertThat(com.jayway.jsonpath.JsonPath.<List<String>>read(body,
-                "$.messages[?(@.role == 'user')].content")).contains(QUESTION);
+                "$.messages[?(@.role == 'user')].content"))
+                .contains("<mensaje_del_cliente>\n" + QUESTION + "\n</mensaje_del_cliente>");
         assertThat(com.jayway.jsonpath.JsonPath.<List<String>>read(body,
                 "$.messages[?(@.role == 'assistant')].content")).containsExactly("Tarda tres dias.");
         assertThat(body)
                 .doesNotContain("Tarda tres dias [1]");
         assertThat(storedTurns(conversation)).isEqualTo(2);
+    }
+
+    @Test
+    void aCourtesyBetweenTheQuestionAndTheFollowUpDoesNotPolluteTheSearch() {
+        ask(QUESTION, conversation);
+        ChatTestClient.Result thanks = ask("gracias", conversation);
+        assertThat(thanks.events()).extracting(ChatTestClient.Event::name).doesNotContain("sources");
+
+        ChatTestClient.Result followUp = ask(FOLLOW_UP, conversation);
+
+        // The deterministic embedding only matches the exact text "question, newline, follow-up": a hit proves that
+        // the search skipped "gracias" and used the last real question, as LAB-114 requires.
+        assertThat(followUp.events()).extracting(ChatTestClient.Event::name).startsWith("sources");
+        assertThat(storedTurns(conversation)).isEqualTo(3);
     }
 
     @Test

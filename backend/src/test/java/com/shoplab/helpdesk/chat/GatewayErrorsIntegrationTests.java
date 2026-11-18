@@ -32,7 +32,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @Import(EmptyKnowledgeContextConfig.class)
 class GatewayErrorsIntegrationTests {
 
-    private static final String BODY = "{\"message\":\"Hola\"}";
+    private static final String BODY = "{\"message\":\"¿Cuánto tarda un envío?\"}";
     private static final String SECRET = "token-secreto-123";
 
     @RegisterExtension
@@ -113,7 +113,8 @@ class GatewayErrorsIntegrationTests {
         GatewayStubs.stubAnyChat(gateway, GatewayStubs.streaming(GatewayStubs.body("ok")));
         String conversation = UUID.randomUUID().toString();
 
-        new ChatTestClient(port).post("{\"message\":\"Hola\",\"conversationId\":\"" + conversation + "\"}",
+        new ChatTestClient(port).post(
+                "{\"message\":\"¿Cuánto tarda un envío?\",\"conversationId\":\"" + conversation + "\"}",
                 "text/event-stream", "req-corr-1");
 
         gateway.verify(postRequestedFor(urlEqualTo(GatewayStubs.CHAT_PATH))

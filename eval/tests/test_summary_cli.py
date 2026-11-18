@@ -19,10 +19,18 @@ def valid_file(tmp_path: Path) -> Path:
 def test_summary_counts_the_valid_default_set(valid_file: Path, toy_kb: Path) -> None:
     summary = summarize(parse_golden(valid_file).cases, load_corpus(toy_kb))
 
-    assert summary.total == 80
-    assert summary.by_kind == {"answered": 68, "unanswered_topic": 6, "off_topic": 6}
+    assert summary.total == 100
+    assert summary.by_kind == {
+        "answered": 68,
+        "unanswered_topic": 6,
+        "off_topic": 6,
+        "small_talk": 10,
+        "injection": 10,
+    }
     assert list(summary.by_category) == list(CATEGORIES)
-    assert sum(summary.by_category.values()) == 80
+    assert summary.by_category["small_talk"] == 10
+    assert summary.by_category["injection"] == 10
+    assert sum(summary.by_category.values()) == 100
     assert summary.multi_document == 8
     assert summary.uncovered_documents == ()
 
@@ -63,16 +71,18 @@ def test_format_summary_is_one_line_per_fact_and_stable(valid_file: Path, toy_kb
     text = format_summary(summary)
 
     assert text == format_summary(summary)
-    assert "Casos: 80" in text
+    assert "Casos: 100" in text
     assert "answered=68" in text
+    assert "small_talk=10" in text
+    assert "injection=10" in text
     assert "Casos de dos documentos: 8" in text
     assert "Documentos del corpus sin caso: ninguno" in text
     assert "30 %" in text
 
 
 def test_validate_golden_returns_the_summary_and_load_golden_the_cases(valid_file: Path, toy_kb: Path) -> None:
-    assert validate_golden(valid_file, toy_kb).total == 80
-    assert len(load_golden(valid_file, toy_kb)) == 80
+    assert validate_golden(valid_file, toy_kb).total == 100
+    assert len(load_golden(valid_file, toy_kb)) == 100
 
 
 def test_load_golden_raises_with_all_the_failures(tmp_path: Path, toy_kb: Path) -> None:
@@ -88,7 +98,7 @@ def test_cli_prints_the_summary_and_returns_zero(valid_file: Path, toy_kb: Path,
     code = main(["validate", "--golden", str(valid_file), "--kb", str(toy_kb)])
 
     assert code == 0
-    assert "Casos: 80" in capsys.readouterr().out
+    assert "Casos: 100" in capsys.readouterr().out
 
 
 def test_cli_prints_one_failure_per_line_and_returns_one(
