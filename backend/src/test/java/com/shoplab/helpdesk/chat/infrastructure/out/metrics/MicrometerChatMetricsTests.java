@@ -6,6 +6,7 @@ import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
+import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
@@ -36,6 +37,20 @@ class MicrometerChatMetricsTests {
         assertThat(registry.get("shoplab.chat.response").tag("outcome", "completed").timer().count()).isEqualTo(2);
         assertThat(registry.get("shoplab.chat.response").tag("outcome", "error").timer().count()).isEqualTo(1);
         assertThat(registry.get("shoplab.chat.response").tag("outcome", "cancelled").timer().count()).isEqualTo(1);
+    }
+
+    @Test
+    void countsTheTurnsByKindWithTheLowerCaseKindAsTheOnlyTag() {
+        metrics.recordTurn(TurnKind.SMALL_TALK);
+        metrics.recordTurn(TurnKind.SMALL_TALK);
+        metrics.recordTurn(TurnKind.WITH_CONTEXT);
+        metrics.recordTurn(TurnKind.NO_CONTEXT);
+
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "small_talk").counter().count()).isEqualTo(2);
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "with_context").counter().count()).isEqualTo(1);
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "no_context").counter().count()).isEqualTo(1);
+        assertThat(registry.get("shoplab.chat.turns").counters()).hasSize(3)
+                .allSatisfy(counter -> assertThat(counter.getId().getTags()).hasSize(1));
     }
 
     @Test

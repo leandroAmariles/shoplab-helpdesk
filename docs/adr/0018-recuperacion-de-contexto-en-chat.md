@@ -2,6 +2,7 @@
 
 - Estado: aceptado
 - Fecha: 2026-11-01
+- Ampliado por: [ADR-0025](0025-conversacion-de-cortesia-acotada.md) (vía de charla para cortesías, antes de recuperar el contexto)
 
 ## Contexto
 

@@ -62,7 +62,7 @@ class ChatStreamingIntegrationTests {
     void streamsTheWholeAnswerInOrderAndEndsWithDone() {
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.fixtureBody()));
 
-        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = client().post("{\"message\":\"¿Cuánto tarda un envío?\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.header("Content-Type")).startsWith("text/event-stream");
@@ -117,7 +117,7 @@ class ChatStreamingIntegrationTests {
     @Test
     void publishesTheChatMetricsOnThePrometheusEndpoint() throws Exception {
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.fixtureBody()));
-        client().post("{\"message\":\"Hola\"}");
+        client().post("{\"message\":\"¿Cuánto tarda un envío?\"}");
 
         HttpResponse<String> metrics = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/prometheus")).build(),
@@ -171,7 +171,7 @@ class ChatStreamingIntegrationTests {
         GatewayStubs.stubAnyChat(ollama, aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":\"model not found\"}"));
 
-        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = client().post("{\"message\":\"¿Cuánto tarda un envío?\"}");
 
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.header("Content-Type")).startsWith("application/json");
@@ -182,7 +182,8 @@ class ChatStreamingIntegrationTests {
     void theRequestIdSentByTheClientIsEchoedOnSuccess() {
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
 
-        ChatTestClient.Result result = client().post("{\"message\":\"Hola\"}", "text/event-stream", "req-ok-9");
+        ChatTestClient.Result result = client().post("{\"message\":\"¿Cuánto tarda un envío?\"}", "text/event-stream",
+                "req-ok-9");
 
         assertThat(result.header("X-Request-Id")).isEqualTo("req-ok-9");
     }
@@ -204,7 +205,7 @@ class ChatStreamingIntegrationTests {
         await().atMost(Duration.ofSeconds(3)).untilAsserted(
                 () -> assertThat(cancelledResponses()).isEqualTo(cancelledBefore + 1));
         assertThat(responsesWithOutcome("error")).isEqualTo(errorsBefore);
-        ChatTestClient.Result next = client().post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result next = client().post("{\"message\":\"¿Cuánto tarda un envío?\"}");
         assertThat(next.status()).isEqualTo(200);
         assertThat(next.events().get(0).at() / 1_000_000).isLessThan(2000);
     }

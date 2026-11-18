@@ -32,3 +32,11 @@ class InvalidGoldenError(Exception):
     def __init__(self, issues: list[Issue]):
         self.issues = sort_issues(issues)
         super().__init__("\n".join(issue.format() for issue in self.issues))
+
+
+class MeasurementError(Exception):
+    """The retrieval measurement cannot give a reliable result (search down, index incomplete, bad response).
+
+    The message names the cause and, when it applies, the case, the documents or the URL involved. It is never raised
+    for a search that works but does not return the expected document: that is a zero in the metrics.
+    """

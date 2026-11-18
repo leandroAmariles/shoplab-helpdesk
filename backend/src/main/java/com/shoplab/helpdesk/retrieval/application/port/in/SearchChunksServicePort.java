@@ -12,4 +12,10 @@ public interface SearchChunksServicePort {
      * {@code limit} uses the configured one.
      */
     Mono<List<SearchResult>> search(String query, Integer limit);
+
+    /**
+     * The embedding model the search compares with: only chunks with a vector from this model can be found
+     * (ADR-0017). It lets a caller record which model a result belongs to.
+     */
+    String embeddingModel();
 }

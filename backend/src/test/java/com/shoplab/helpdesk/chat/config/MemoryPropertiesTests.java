@@ -11,7 +11,9 @@ class MemoryPropertiesTests {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withInitializer(context -> { })
-            .withConfiguration(UserConfigurations.of(ChatConfig.class));
+            .withConfiguration(UserConfigurations.of(ChatConfig.class))
+            // The prompt has no default in code (it lives in application.yml, which these runners do not load).
+            .withPropertyValues("shoplab.chat.system-prompt=Test system prompt");
 
     @Test
     void withoutConfigurationTheDefaultsApply() {

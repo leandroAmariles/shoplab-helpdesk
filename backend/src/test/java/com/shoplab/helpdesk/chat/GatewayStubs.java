@@ -90,11 +90,13 @@ public final class GatewayStubs {
 
     /**
      * Matches the chat call whose question is exactly {@code userMessage}. The user message is no longer the bare
-     * question (LAB-22): it comes from the context or empty-context template, which end with the question line.
+     * question (LAB-22): it comes from the context or empty-context template, and since LAB-114 the question sits
+     * between the {@code <mensaje_del_cliente>} delimiters.
      */
     public static MappingBuilder chatFor(String userMessage) {
         return post(urlEqualTo(CHAT_PATH)).withRequestBody(matchingJsonPath("$.messages[1].content",
-                matching("(?s).*Pregunta del cliente: " + Pattern.quote(userMessage) + "\\s.*")));
+                matching("(?s).*Pregunta del cliente: <mensaje_del_cliente>\\n" + Pattern.quote(userMessage)
+                        + "\\n</mensaje_del_cliente>\\s.*")));
     }
 
     public static void stubAnyChat(WireMockExtension gateway, ResponseDefinitionBuilder response) {

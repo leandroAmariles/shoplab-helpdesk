@@ -1,5 +1,7 @@
 package com.shoplab.helpdesk.chat.application.usecase;
 
+import static com.shoplab.helpdesk.chat.support.SmallTalkTestSupport.smallTalk;
+import static com.shoplab.helpdesk.chat.support.ChatTestMessages.QUESTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -69,7 +71,8 @@ class StreamChatUseCaseTests {
     private final ConversationMemoryPort memory = mock(ConversationMemoryPort.class);
 
     private ConversationHistory history(MemoryProperties properties) {
-        return new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(), properties, metrics);
+        return new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(), properties, metrics,
+                smallTalk());
     }
 
     private StreamChatUseCase newUseCase(ChatModelPort model) {
@@ -84,7 +87,7 @@ class StreamChatUseCaseTests {
     private StreamChatUseCase newUseCase(ChatModelPort model, RagProperties rag) {
         return new StreamChatUseCase(model, knowledge, new ContextSelector(),
                 history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH, "system"), rag,
-                new NoOpChatTrace());
+                new NoOpChatTrace(), smallTalk());
     }
 
     private StreamChatUseCase useCaseAnswering(Flux<String> answer) {
@@ -104,7 +107,7 @@ class StreamChatUseCaseTests {
     void emitsOneTokenPerFragmentInOrderAndThenDoneWithTheCount() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.just("Ho", "la", " ", "mundo"));
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectNext(new TokenEvent("Ho"), new TokenEvent("la"), new TokenEvent(" "),
                         new TokenEvent("mundo"))
                 .expectNext(new DoneEvent(4))
@@ -115,7 +118,7 @@ class StreamChatUseCaseTests {
     void concatenatingTheTokensGivesTheWholeAnswer() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.just("Hola", " se", "ñor", " 😀"));
 
-        StepVerifier.create(useCase.stream(command("Hola")).ofType(TokenEvent.class).map(TokenEvent::content)
+        StepVerifier.create(useCase.stream(command(QUESTION)).ofType(TokenEvent.class).map(TokenEvent::content)
                         .collectList())
                 .expectNextMatches(parts -> String.join("", parts).equals("Hola señor 😀"))
                 .verifyComplete();
@@ -125,7 +128,7 @@ class StreamChatUseCaseTests {
     void anEmptyAnswerIsOnlyDoneWithZeroFragments() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.empty());
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectNext(new DoneEvent(0))
                 .verifyComplete();
     }
@@ -134,7 +137,7 @@ class StreamChatUseCaseTests {
     void recordsTheFirstTokenOnceAndTheCompletedResponse() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.just("a", "b", "c"));
 
-        StepVerifier.create(useCase.stream(command("Hola"))).expectNextCount(4).verifyComplete();
+        StepVerifier.create(useCase.stream(command(QUESTION))).expectNextCount(4).verifyComplete();
 
         verify(metrics, times(1)).recordFirstToken(any(Duration.class));
         verify(metrics, times(1)).recordResponse(eq(ChatOutcome.COMPLETED), any(Duration.class));
@@ -144,7 +147,7 @@ class StreamChatUseCaseTests {
     void withoutFragmentsThereIsNoFirstTokenButTheResponseIsStillRecorded() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.empty());
 
-        StepVerifier.create(useCase.stream(command("Hola"))).expectNextCount(1).verifyComplete();
+        StepVerifier.create(useCase.stream(command(QUESTION))).expectNextCount(1).verifyComplete();
 
         verify(metrics, never()).recordFirstToken(any(Duration.class));
         verify(metrics, times(1)).recordResponse(eq(ChatOutcome.COMPLETED), any(Duration.class));
@@ -193,7 +196,7 @@ class StreamChatUseCaseTests {
         StreamChatUseCase useCase = useCaseAnswering(Flux.error(
                 ExceptionUtil.technical(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"))));
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectErrorSatisfies(error -> assertThat(error).hasMessage("The chat model is not available"))
                 .verify();
 
@@ -206,7 +209,7 @@ class StreamChatUseCaseTests {
         Flux<String> answer = Flux.concat(Flux.just("uno", "dos"), Flux.error(new IllegalStateException("boom")));
         StreamChatUseCase useCase = useCaseAnswering(answer);
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectNext(new TokenEvent("uno"), new TokenEvent("dos"))
                 .expectNext(new ErrorEvent(ResponseCodeEnum.CHAT_STREAM_FAILED.getCode(),
                         ResponseCodeEnum.CHAT_STREAM_FAILED.getDefaultMessage()))
@@ -222,7 +225,7 @@ class StreamChatUseCaseTests {
                 ExceptionUtil.technical(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, null)));
         StreamChatUseCase useCase = useCaseAnswering(answer);
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectNext(new TokenEvent("uno"))
                 .expectNext(new ErrorEvent(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE.getCode(),
                         ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE.getDefaultMessage()))
@@ -233,7 +236,7 @@ class StreamChatUseCaseTests {
     void aModelFailureBeforeTheFirstFragmentIsModelUnavailable() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.error(new ChatModelException(new IllegalStateException())));
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class)
                         .extracting(e -> ((ChatModelException) e).getResponseCode())
                         .isEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE))
@@ -245,7 +248,7 @@ class StreamChatUseCaseTests {
         Flux<String> answer = Flux.concat(Flux.just("uno"), Flux.error(new ChatModelException(null)));
         StreamChatUseCase useCase = useCaseAnswering(answer);
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .expectNext(new TokenEvent("uno"))
                 .expectNext(new ErrorEvent(ResponseCodeEnum.CHAT_STREAM_FAILED.getCode(),
                         ResponseCodeEnum.CHAT_STREAM_FAILED.getDefaultMessage()))
@@ -272,7 +275,7 @@ class StreamChatUseCaseTests {
         AtomicBoolean modelCancelled = new AtomicBoolean();
         StreamChatUseCase useCase = useCaseAnswering(source.asFlux().doOnCancel(() -> modelCancelled.set(true)));
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .then(() -> source.tryEmitNext("uno"))
                 .expectNext(new TokenEvent("uno"))
                 .thenCancel()
@@ -289,7 +292,7 @@ class StreamChatUseCaseTests {
         TestPublisher<String> model = TestPublisher.create();
         StreamChatUseCase useCase = useCaseAnswering(model.flux());
 
-        StepVerifier.create(useCase.stream(command("Hola")))
+        StepVerifier.create(useCase.stream(command(QUESTION)))
                 .then(() -> model.next("uno"))
                 .expectNext(new TokenEvent("uno"))
                 .thenCancel()
@@ -303,7 +306,7 @@ class StreamChatUseCaseTests {
     void aStreamThatAlreadyCompletedIsNotRecordedAsCancelled() {
         StreamChatUseCase useCase = useCaseAnswering(Flux.just("a"));
 
-        StepVerifier.create(useCase.stream(command("Hola"))).expectNextCount(2).verifyComplete();
+        StepVerifier.create(useCase.stream(command(QUESTION))).expectNextCount(2).verifyComplete();
 
         verify(metrics, never()).recordResponse(eq(ChatOutcome.CANCELLED), any(Duration.class));
     }
@@ -482,10 +485,10 @@ class StreamChatUseCaseTests {
     void withoutContextThereAreNoSourcesInEitherMode() {
         ChatModelPort model = (message, history, context) -> Flux.just("hola");
 
-        StepVerifier.create(newUseCase(model).stream(command("Hola")))
+        StepVerifier.create(newUseCase(model).stream(command(QUESTION)))
                 .expectNext(new TokenEvent("hola"), new DoneEvent(1))
                 .verifyComplete();
-        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command("Hola")))
+        StepVerifier.create(newUseCase(model, fixedMessage("Sin información.")).stream(command(QUESTION)))
                 .expectNext(new TokenEvent("Sin información."), new DoneEvent(1))
                 .verifyComplete();
     }
@@ -589,11 +592,11 @@ class StreamChatUseCaseTests {
 
     @Test
     void answersWithoutContextAreNotJudgedOnCitations() {
-        StepVerifier.create(useCaseAnswering(Flux.just("Hola [1].")).stream(command("Hola")))
+        StepVerifier.create(useCaseAnswering(Flux.just("Hola [1].")).stream(command(QUESTION)))
                 .expectNextCount(2)
                 .verifyComplete();
         StepVerifier.create(newUseCase(mock(ChatModelPort.class), fixedMessage("Sin información."))
-                        .stream(command("Hola")))
+                        .stream(command(QUESTION)))
                 .expectNextCount(2)
                 .verifyComplete();
 
@@ -722,7 +725,7 @@ class StreamChatUseCaseTests {
         when(selector.select(any(), anyDouble(), anyInt())).thenThrow(new IllegalStateException("bug"));
         StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector,
                 history(new MemoryProperties(null, null, null)), metrics,
-                new ChatProperties(MAX_LENGTH, "system"), rag(null, null), new NoOpChatTrace());
+                new ChatProperties(MAX_LENGTH, "system"), rag(null, null), new NoOpChatTrace(), smallTalk());
 
         StepVerifier.create(useCase.stream(command("q"))).expectError(IllegalStateException.class).verify();
 

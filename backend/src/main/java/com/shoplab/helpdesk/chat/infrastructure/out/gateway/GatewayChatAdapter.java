@@ -2,10 +2,12 @@ package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.application.port.out.GenerationScope;
+import com.shoplab.helpdesk.chat.application.port.out.SmallTalkModelPort;
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.config.ChatProperties;
 import com.shoplab.helpdesk.chat.config.GatewayProperties;
 import com.shoplab.helpdesk.chat.config.RagProperties;
+import com.shoplab.helpdesk.chat.config.SmallTalkProperties;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
@@ -13,6 +15,7 @@ import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
+import com.shoplab.helpdesk.chat.domain.model.constants.SmallTalkConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
 import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -64,7 +68,7 @@ import reactor.core.scheduler.Schedulers;
  * the request-id header) so the gateway's logs can be crossed with the backend's and with the traces.
  */
 @Component
-public class GatewayChatAdapter implements ChatModelPort {
+public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
 
     /** The trace prices by provider; the gateway fronts local Ollama models, whose cost in traces is 0 (LAB-64). */
     private static final String PROVIDER = "ollama";
@@ -82,14 +86,17 @@ public class GatewayChatAdapter implements ChatModelPort {
     private final ChatModel chatModel;
     private final String systemPrompt;
     private final String emptyContextTemplate;
+    private final String smallTalkPrompt;
     private final QueryAugmenter augmenter;
     private final ToolCallbackComposer tools;
     private final String primaryModel;
 
     public GatewayChatAdapter(ChatModel chatModel, ChatProperties properties, RagProperties ragProperties,
-            ToolCallbackComposer tools, GatewayProperties gateway) {
+            ToolCallbackComposer tools, GatewayProperties gateway, SmallTalkProperties smallTalk) {
         this.chatModel = chatModel;
         this.systemPrompt = properties.systemPrompt();
+        this.smallTalkPrompt = smallTalk.systemPrompt().replace(SmallTalkConstants.TOPICS_PLACEHOLDER,
+                smallTalk.topics());
         this.emptyContextTemplate = ragProperties.emptyContextTemplate();
         // Only used with context: its own empty-context path would drop the question, see userText.
         this.augmenter = ContextualQueryAugmenter.builder()
@@ -103,12 +110,26 @@ public class GatewayChatAdapter implements ChatModelPort {
     /** Any failure of the model is a typed exception; the use case decides what it means for the stream. */
     @Override
     public Flux<String> streamAnswer(String message, List<ConversationTurn> history, List<ContextFragment> context) {
+        return generate(() -> messages(message, history, context), true);
+    }
+
+    /**
+     * The answer to a courtesy: its own minimal instructions and the message, nothing else. No history, no fragments
+     * and no tools, so the only customer text that reaches this prompt is a courtesy of the closed vocabulary.
+     */
+    @Override
+    public Flux<String> streamReply(String message) {
+        return generate(() -> List.of(new SystemMessage(smallTalkPrompt), new UserMessage(PromptData.wrap(message))),
+                false);
+    }
+
+    private Flux<String> generate(Supplier<List<Message>> promptMessages, boolean withTools) {
         return Flux.deferContextual(reactorContext -> {
             TurnTrace trace = reactorContext.getOrDefault(TracingConstants.TURN_TRACE_KEY, TurnTrace.NONE);
             String conversationId = reactorContext.getOrDefault(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, null);
             String requestId = reactorContext.getOrDefault(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, null);
-            List<Message> messages = messages(message, history, context);
-            List<ToolCallback> callbacks = tools.compose(trace);
+            List<Message> messages = promptMessages.get();
+            List<ToolCallback> callbacks = withTools ? tools.compose(trace) : List.of();
             ChatOptions options = requestOptions(callbacks, conversationId, requestId);
             Prompt prompt = options == null ? new Prompt(messages) : new Prompt(messages, options);
             GenerationScope generation = startGeneration(trace, messages);
@@ -207,8 +228,8 @@ public class GatewayChatAdapter implements ChatModelPort {
         List<Message> messages = new ArrayList<>();
         messages.add(new SystemMessage(systemPrompt));
         for (ConversationTurn turn : history) {
-            messages.add(new UserMessage(turn.question()));
-            messages.add(new AssistantMessage(turn.answer()));
+            messages.add(new UserMessage(PromptData.wrap(turn.question())));
+            messages.add(new AssistantMessage(PromptData.neutralize(turn.answer())));
         }
         messages.add(new UserMessage(userText(message, context)));
         return messages;
@@ -219,19 +240,21 @@ public class GatewayChatAdapter implements ChatModelPort {
      * question is placed in the empty-context template here.
      */
     private String userText(String message, List<ContextFragment> context) {
+        String delimited = PromptData.wrap(message);
         if (context.isEmpty()) {
-            return emptyContextTemplate.replace(ChatConstants.QUERY_PLACEHOLDER, message);
+            return emptyContextTemplate.replace(ChatConstants.QUERY_PLACEHOLDER, delimited);
         }
         List<Document> documents = IntStream.range(0, context.size())
                 .mapToObj(index -> toDocument(index + 1, context.get(index)))
                 .toList();
-        return augmenter.augment(new Query(message), documents).text();
+        return augmenter.augment(new Query(delimited), documents).text();
     }
 
     private static Document toDocument(int number, ContextFragment fragment) {
         return Document.builder()
-                .text(fragment.text())
-                .metadata(Map.of(NUMBER_KEY, number, TITLE_KEY, fragment.title(), SECTION_KEY, fragment.section()))
+                .text(PromptData.neutralize(fragment.text()))
+                .metadata(Map.of(NUMBER_KEY, number, TITLE_KEY, PromptData.neutralize(fragment.title()),
+                        SECTION_KEY, PromptData.neutralize(fragment.section())))
                 .score(fragment.score())
                 .build();
     }

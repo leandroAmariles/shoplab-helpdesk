@@ -1,5 +1,6 @@
 package com.shoplab.helpdesk.chat.application.usecase;
 
+import static com.shoplab.helpdesk.chat.support.SmallTalkTestSupport.smallTalk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -59,10 +60,10 @@ class StreamChatUseCaseTraceTests {
 
     private StreamChatUseCase useCase(NoContextMode mode) {
         ConversationHistory history = new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(),
-                new MemoryProperties(null, null, null), metrics);
+                new MemoryProperties(null, null, null), metrics, smallTalk());
         return new StreamChatUseCase(model, knowledge, new ContextSelector(), history, metrics,
                 new ChatProperties(4000, "system"),
-                new RagProperties(null, null, null, null, null, mode, null), trace);
+                new RagProperties(null, null, null, null, null, mode, null), trace, smallTalk());
     }
 
     private static ContextFragment fragment(String text, double score) {
@@ -188,6 +189,7 @@ class StreamChatUseCaseTraceTests {
         private final List<RetrievalTrace> retrievals = new ArrayList<>();
         private final List<Integer> historyTurns = new ArrayList<>();
         private int fixedMessageAnswers;
+        private int smallTalkAnswers;
 
         @Override
         public Flux<ChatEvent> traceTurn(StreamChatCommand command, Function<TurnTrace, Flux<ChatEvent>> turn) {
@@ -210,6 +212,11 @@ class StreamChatUseCaseTraceTests {
         @Override
         public void fixedMessageAnswer() {
             fixedMessageAnswers++;
+        }
+
+        @Override
+        public void smallTalkAnswer() {
+            smallTalkAnswers++;
         }
 
         @Override
