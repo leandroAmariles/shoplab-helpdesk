@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from helpers import NO_ANSWER, make_case, valid_default_set, write_golden
+from helpers import NO_ANSWER, make_case, valid_default_set, valid_knowledge_set, write_golden
 from shoplab_eval.constants import GoldenRules
 from shoplab_eval.corpus import load_corpus
 from shoplab_eval.errors import InvalidGoldenError, Issue
@@ -38,7 +38,7 @@ def test_the_minimal_valid_set_has_no_set_issues(tmp_path: Path, toy_kb: Path) -
 
 @pytest.mark.parametrize(("size", "valid"), [(79, False), (80, True), (100, True), (101, False)])
 def test_total_number_of_cases(tmp_path: Path, toy_kb: Path, size: int, valid: bool) -> None:
-    base = valid_default_set()
+    base = valid_knowledge_set()
     cases = base[:size] if size <= len(base) else base + extra_answered(size - len(base), len(base) + 1)
 
     assert ("G-COUNT" in codes(set_issues(tmp_path, toy_kb, cases))) is not valid
@@ -49,7 +49,7 @@ def test_an_empty_file_reports_only_the_count(tmp_path: Path, toy_kb: Path) -> N
 
 
 def test_a_topic_with_fewer_than_twelve_answered_cases(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     index = next(i for i, case in enumerate(cases) if case["category"] == "warranty" and case["expected_documents"])
     cases[index] = {**cases[index], "expected_documents": [], "reference_answer": NO_ANSWER}
 
@@ -60,7 +60,7 @@ def test_a_topic_with_fewer_than_twelve_answered_cases(tmp_path: Path, toy_kb: P
 
 
 def test_fewer_than_twelve_unanswered_cases(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     index = max(i for i, case in enumerate(cases) if case["category"] == "off_topic")
     cases[index] = make_case(
         id=cases[index]["id"], question=cases[index]["question"], category="returns", expected_documents=["returns-01-a"]
@@ -70,7 +70,7 @@ def test_fewer_than_twelve_unanswered_cases(tmp_path: Path, toy_kb: Path) -> Non
 
 
 def test_unanswered_share_above_the_maximum(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     answered = [case for case in cases if case["expected_documents"]]
     unanswered = [case for case in cases if not case["expected_documents"]]
 
@@ -84,7 +84,7 @@ def test_unanswered_share_above_the_maximum(tmp_path: Path, toy_kb: Path) -> Non
 
 
 def test_share_below_the_minimum_with_enough_cases(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set() + extra_answered(20, 81)
+    cases = valid_knowledge_set() + extra_answered(20, 81)
 
     issues = [issue for issue in set_issues(tmp_path, toy_kb, cases) if issue.code == "G-UNANSWERED"]
 
@@ -93,7 +93,7 @@ def test_share_below_the_minimum_with_enough_cases(tmp_path: Path, toy_kb: Path)
 
 
 def test_not_enough_unanswered_of_either_kind(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     # Turn two off-topic cases into topic ones: 8 topic, 4 off topic.
     off_topic = [i for i, case in enumerate(cases) if case["category"] == "off_topic"][:2]
     for index in off_topic:
@@ -106,7 +106,7 @@ def test_not_enough_unanswered_of_either_kind(tmp_path: Path, toy_kb: Path) -> N
 
 
 def test_not_enough_unanswered_of_the_topic(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     topic_unanswered = [
         i for i, case in enumerate(cases) if not case["expected_documents"] and case["category"] != "off_topic"
     ]
@@ -121,7 +121,7 @@ def test_not_enough_unanswered_of_the_topic(tmp_path: Path, toy_kb: Path) -> Non
 
 @pytest.mark.parametrize(("multi", "valid"), [(7, False), (8, True)])
 def test_cases_with_two_documents(tmp_path: Path, toy_kb: Path, multi: int, valid: bool) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     multi_indexes = [i for i, case in enumerate(cases) if len(case["expected_documents"]) == 2]
     for index in multi_indexes[: 8 - multi]:
         cases[index] = {**cases[index], "expected_documents": ["payments-01-a"]}
@@ -134,7 +134,7 @@ def test_a_document_without_cases_is_listed_by_id(tmp_path: Path, toy_kb: Path) 
         {**case, "expected_documents": ["returns-01-a"], "category": "returns"}
         if case["expected_documents"] == ["privacy-01-a"]
         else case
-        for case in valid_default_set()
+        for case in valid_knowledge_set()
     ]
 
     issues = [issue for issue in set_issues(tmp_path, toy_kb, cases) if issue.code == "G-COVERAGE"]
@@ -144,7 +144,7 @@ def test_a_document_without_cases_is_listed_by_id(tmp_path: Path, toy_kb: Path) 
 
 
 def test_two_questions_that_differ_only_in_case_spaces_or_punctuation(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()
+    cases = valid_knowledge_set()
     cases[1] = {**cases[1], "question": "  " + cases[0]["question"].upper() + "!!  "}
 
     issues = [issue for issue in set_issues(tmp_path, toy_kb, cases) if issue.code == "G-DUPLICATE"]
@@ -155,7 +155,7 @@ def test_two_questions_that_differ_only_in_case_spaces_or_punctuation(tmp_path: 
 
 
 def test_all_failures_come_out_together_in_one_error_and_in_a_stable_order(tmp_path: Path, toy_kb: Path) -> None:
-    cases = valid_default_set()[:30]
+    cases = valid_knowledge_set()[:30]
     cases[0] = {**cases[0], "category": "pagos"}
     cases[1] = {**cases[1], "expected_documents": ["no-existe"]}
     path = write_golden(tmp_path / "golden.jsonl", cases)

@@ -64,7 +64,7 @@ class ChatStreamContractTests {
         HttpResponse<byte[]> response = client.send(HttpRequest.newBuilder(url("/api/chat"))
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
-                .POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"Hola\"}")).build(),
+                .POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"¿Cuánto tarda un envío?\"}")).build(),
                 HttpResponse.BodyHandlers.ofByteArray());
 
         assertThat(response.statusCode()).isEqualTo(200);

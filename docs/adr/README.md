@@ -32,6 +32,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0022 | [Trazas de LLM con Langfuse autoalojado por OTLP](0022-trazas-de-llm-con-langfuse-por-otlp.md) | aceptado |
 | 0023 | [Gateway de modelos con LiteLLM](0023-gateway-de-modelos-litellm.md) | aceptado |
 | 0024 | [Métricas de recuperación por HTTP](0024-metricas-de-recuperacion-por-http.md) | aceptado |
+| 0025 | [Conversación de cortesía acotada](0025-conversacion-de-cortesia-acotada.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

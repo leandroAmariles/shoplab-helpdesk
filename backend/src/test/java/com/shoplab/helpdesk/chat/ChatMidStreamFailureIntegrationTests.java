@@ -56,7 +56,7 @@ class ChatMidStreamFailureIntegrationTests {
 
     @Test
     void theClientGetsTheTokensThenAFinalErrorEventAndTheConnectionCloses() {
-        ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"¿Cuánto tarda un envío?\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.text()).isEqualTo("uno dos");

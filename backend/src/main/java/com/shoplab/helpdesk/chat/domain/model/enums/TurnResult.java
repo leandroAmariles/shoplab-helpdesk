@@ -6,6 +6,7 @@ import java.util.Locale;
 public enum TurnResult {
     COMPLETED,
     NO_CONTEXT,
+    SMALL_TALK,
     CANCELLED,
     ERROR;
 

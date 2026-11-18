@@ -6,7 +6,7 @@ from shoplab_eval.constants import CATEGORIES, CONTENT_WORD_MIN_LETTERS, GoldenR
 from shoplab_eval.corpus import CorpusDocument, normalize_text
 from shoplab_eval.golden import GoldenCase
 
-_KINDS = ("answered", "unanswered_topic", "off_topic")
+_KINDS = ("answered", "unanswered_topic", "off_topic", "small_talk", "injection")
 _LOW_OVERLAP_BELOW = 0.5
 
 

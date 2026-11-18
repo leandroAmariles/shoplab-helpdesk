@@ -39,14 +39,18 @@ def measure_retrieval(
     """Searches each case that has expected documents (in the order of the dataset) and measures the ranking.
 
     The cases without expected documents cannot be scored with these metrics: they are not searched and are counted
-    as excluded. The ranking is the order of the search itself, before the selection the chat applies afterwards.
+    as excluded. The conversation cases (courtesies and injection attempts, LAB-114) have no search by design: they
+    are neither searched nor counted. The ranking is the order of the search itself, before the selection the chat
+    applies afterwards.
 
     Raises ``MeasurementError`` when the measurement would not be reliable: an expected document is not indexed (checked
     before the first search), a search fails (the message names the case) or the embedding model changes midway. A
     search that works but does not return the expected document is not an error: it is a zero.
     """
     measurable = [case for case in cases if case.expected_documents]
-    excluded_by_category = Counter(case.category for case in cases if not case.expected_documents)
+    excluded_by_category = Counter(
+        case.category for case in cases if not case.expected_documents and not case.is_conversation
+    )
     if measurable:
         check_index(searcher.list_documents(), {doc for case in measurable for doc in case.expected_documents})
     results: list[CaseResult] = []

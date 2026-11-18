@@ -284,6 +284,19 @@ class LangfuseChatTraceTests {
     }
 
     @Test
+    void aSmallTalkTurnHasItsOwnResultAndNoRetrievalNorGenerationUnderIt() {
+        run(trace(), turn -> {
+            turn.smallTalkAnswer();
+            return Flux.just(new TokenEvent("¡Hola!"), new DoneEvent(1));
+        });
+
+        assertThat(exporter.getFinishedSpanItems()).extracting(SpanData::getName).containsExactly("chat-turn");
+        SpanData root = span("chat-turn");
+        assertThat(meta(root, "result")).isEqualTo("small_talk");
+        assertThat(attr(root, LangfuseAttributes.OBSERVATION_OUTPUT)).isEqualTo("¡Hola!");
+    }
+
+    @Test
     void aCancelledTurnKeepsThePartialAnswerAndIsAWarning() {
         GenerationScope[] open = new GenerationScope[1];
         StepVerifier.create(trace().traceTurn(command(), turn -> {

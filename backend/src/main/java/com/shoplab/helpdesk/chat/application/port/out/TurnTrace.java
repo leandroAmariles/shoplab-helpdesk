@@ -30,6 +30,11 @@ public interface TurnTrace {
         }
 
         @Override
+        public void smallTalkAnswer() {
+            // nothing is recorded
+        }
+
+        @Override
         public GenerationScope startGeneration(String model, Map<String, Object> parameters,
                 List<PromptMessage> messages) {
             return GenerationScope.NONE;
@@ -49,6 +54,9 @@ public interface TurnTrace {
 
     /** The turn is answered with the configured message, without calling the model. */
     void fixedMessageAnswer();
+
+    /** The turn is a courtesy answered without retrieval (LAB-114): there is no search to report. */
+    void smallTalkAnswer();
 
     /** The model is about to be called with these messages. */
     GenerationScope startGeneration(String model, Map<String, Object> parameters, List<PromptMessage> messages);

@@ -14,7 +14,14 @@ DEFAULT_KB_DIR = REPO_ROOT / "data" / "kb"
 
 TOPICS = ("payments", "privacy", "returns", "shipping", "warranty")
 OFF_TOPIC = "off_topic"
-CATEGORIES = (*TOPICS, OFF_TOPIC)
+# Knowledge cases are questions about the store (or clearly outside it) that the knowledge base answers or admits it
+# cannot answer. Conversation cases (LAB-114) are courtesies and prompt-injection attempts: they have no search by
+# design, so they have no expected documents and no place in the retrieval metrics.
+SMALL_TALK = "small_talk"
+INJECTION = "injection"
+KNOWLEDGE_CATEGORIES = (*TOPICS, OFF_TOPIC)
+CONVERSATION_CATEGORIES = (SMALL_TALK, INJECTION)
+CATEGORIES = (*KNOWLEDGE_CATEGORIES, *CONVERSATION_CATEGORIES)
 
 # Files of data/kb that are control files, not documents of the knowledge base.
 CONTROL_FILES = ("INDEX.md", "REVIEW.md")
@@ -39,6 +46,10 @@ class GoldenRules:
     min_off_topic: int = 5
     min_multi_document: int = 8
     question_length: tuple[int, int] = (10, 300)
+    # A greeting is a valid question: "hola" has four characters (specs/LAB-114-bounded-small-talk).
+    conversation_question_length: tuple[int, int] = (2, 300)
+    min_small_talk: int = 10
+    min_injection: int = 10
     answer_length: tuple[int, int] = (20, 800)
     max_expected_documents: int = 2
     min_low_overlap_share: float = 0.30

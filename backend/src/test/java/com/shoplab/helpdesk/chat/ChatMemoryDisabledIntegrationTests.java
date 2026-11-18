@@ -56,7 +56,7 @@ class ChatMemoryDisabledIntegrationTests {
 
         for (int turn = 0; turn < 2; turn++) {
             ChatTestClient.Result result = new ChatTestClient(port).post(
-                    "{\"message\":\"Hola\",\"conversationId\":\"" + UUID.randomUUID() + "\"}");
+                    "{\"message\":\"¿Cuánto tarda un envío?\",\"conversationId\":\"" + UUID.randomUUID() + "\"}");
             assertThat(result.status()).isEqualTo(200);
         }
 
@@ -69,7 +69,7 @@ class ChatMemoryDisabledIntegrationTests {
     @Test
     void anInvalidIdentifierIsStillRejected() {
         ChatTestClient.Result result = new ChatTestClient(port).post(
-                "{\"message\":\"Hola\",\"conversationId\":\"no-es-un-uuid\"}");
+                "{\"message\":\"¿Cuánto tarda un envío?\",\"conversationId\":\"no-es-un-uuid\"}");
 
         assertThat(result.status()).isEqualTo(400);
         assertThat(result.body()).contains("SLHD_CHAT_00005");
