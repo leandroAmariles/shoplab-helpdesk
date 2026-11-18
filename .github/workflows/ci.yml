@@ -47,6 +47,8 @@ jobs:
               - 'data/kb/**'
             eval:
               - 'eval/**'
+              # The dataset validation checks every expected document against the corpus.
+              - 'data/kb/**'
             notebooks:
               - 'notebooks/**'
               # The chunking notebook reuses the chunker of ingest and validates its questions against the corpus.
