@@ -30,7 +30,7 @@ from render_config import render
 
 ALIAS_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 DURATIONS = {"1h", "1d", "7d", "30d"}
-CONSUMERS = {"backend", "ingest"}
+CONSUMERS = {"backend", "ingest", "eval"}
 ENVIRONMENTS = {"local", "dev"}
 PLACEHOLDER_MARKERS = ("change-me", "local")
 # LiteLLM treats an empty model list as "every model"; a key that must reach none gets a name that does not exist.

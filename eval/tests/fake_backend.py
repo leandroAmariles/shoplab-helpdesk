@@ -7,6 +7,7 @@ test patches ``urllib``.
 import json
 import threading
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -20,6 +21,46 @@ DOCUMENTS_PATH = "/api/documents"
 # A handler answers (status, body); a dict or list body is sent as JSON, a str or bytes body as is.
 Reply = tuple[int, object]
 SearchHandler = Callable[[str, int | None], Reply]
+
+CHAT_PATH = "/api/chat"
+
+
+@dataclass
+class ChatReply:
+    """What ``POST /api/chat`` answers: a server-sent event stream (``events``) or a JSON error (``body``).
+
+    ``events`` are ``(name, data)`` pairs; the stream is sent as is, so a list without ``done`` is a cut stream.
+    ``headers`` overrides the response headers (by default ``X-Request-Id`` echoes the request's, like the real filter).
+    """
+
+    status: int = 200
+    events: list[tuple[str, object]] | None = None
+    body: object = None
+    headers: dict[str, str] = field(default_factory=dict)
+
+
+ChatHandler = Callable[[str, dict[str, str]], ChatReply]
+
+
+def sse_text(events: Sequence[tuple[str, object]]) -> str:
+    """The wire format of the chat stream: ``event:`` and a one-line JSON ``data:`` per event, then a blank line."""
+    return "".join(f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n" for name, data in events)
+
+
+def chat_turn(answer: str, sources: Sequence[dict[str, object]] = (), tokens: int = 3) -> ChatReply:
+    """A correct turn: the sources (only when there are any), the answer cut into ``tokens`` pieces, then ``done``."""
+    events: list[tuple[str, object]] = []
+    if sources:
+        events.append(("sources", {"sources": list(sources)}))
+    size = max(1, -(-len(answer) // tokens))
+    pieces = [answer[index : index + size] for index in range(0, len(answer), size)] or [""]
+    events.extend(("token", {"content": piece}) for piece in pieces)
+    events.append(("done", {"fragments": len(pieces)}))
+    return ChatReply(events=events)
+
+
+def source(number: int, title: str, text: str, section: str = "") -> dict[str, object]:
+    return {"number": number, "title": title, "section": section, "text": text}
 
 
 def ok_search(sources_by_query: dict[str, Sequence[str]], model: str = MODEL) -> SearchHandler:
@@ -50,10 +91,14 @@ class FakeBackend:
         self.documents_reply: Reply = (200, [])
         self.search_requests: list[dict[str, str]] = []
         self.document_requests = 0
+        self.chat_handler: ChatHandler = lambda message, headers: chat_turn("Respuesta")
+        self.chat_requests: list[dict[str, object]] = []
+        self.get_headers: list[dict[str, str]] = []  # the headers of every GET (search and document catalog)
         backend = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
+                backend.get_headers.append({name.lower(): value for name, value in self.headers.items()})
                 parts = urlsplit(self.path)
                 params = {key: values[0] for key, values in parse_qs(parts.query, keep_blank_values=True).items()}
                 if parts.path == SEARCH_PATH:
@@ -66,6 +111,29 @@ class FakeBackend:
                 else:
                     status, body = 404, {"code": "SLHD_GENE_00001"}
                 self._send(status, body)
+
+            def do_POST(self) -> None:
+                if urlsplit(self.path).path != CHAT_PATH:
+                    self._send(404, {"code": "SLHD_GENE_00001"})
+                    return
+                raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                headers = {name.lower(): value for name, value in self.headers.items()}
+                payload = json.loads(raw.decode("utf-8")) if raw else {}
+                backend.chat_requests.append({"headers": headers, "body": payload})
+                reply = backend.chat_handler(str(payload.get("message", "")), headers)
+                if reply.events is None:
+                    self._send(reply.status, reply.body if reply.body is not None else {})
+                    return
+                stream = sse_text(reply.events).encode("utf-8")
+                self.send_response(reply.status)
+                self.send_header("Content-Type", "text/event-stream;charset=UTF-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("X-Request-Id", reply.headers.get("X-Request-Id", headers.get("x-request-id", "")))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(stream)
+                self.wfile.flush()
+                self.close_connection = True
 
             def _send(self, status: int, body: object) -> None:
                 if isinstance(body, str):

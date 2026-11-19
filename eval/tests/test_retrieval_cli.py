@@ -239,3 +239,31 @@ def test_the_usage_error_gives_the_rejected_value_and_the_accepted_range(
     assert "51" in depth_message
     assert "1" in depth_message
     assert "50" in depth_message
+
+
+# --- the Host header of the ingress of DEV --------------------------------------------------------------------
+
+
+def test_the_host_header_reaches_the_search_and_the_catalog(
+    backend: FakeBackend, dataset: tuple[Path, Path], tmp_path: Path
+) -> None:
+    golden, kb = dataset
+    _serve_the_expected_documents(backend, golden)
+
+    code = main(["retrieval", "--base-url", backend.url, "--golden", str(golden), "--kb", str(kb),
+                 "--out", str(tmp_path / "out"), "--host-header", "shoplab.localtest.me"])  # fmt: skip
+
+    assert code == 0
+    assert {headers["host"] for headers in backend.get_headers} == {"shoplab.localtest.me"}
+
+
+def test_a_host_header_that_is_not_a_host_is_a_usage_error_for_retrieval_too(
+    backend: FakeBackend, dataset: tuple[Path, Path], tmp_path: Path
+) -> None:
+    golden, kb = dataset
+
+    code = main(["retrieval", "--base-url", backend.url, "--golden", str(golden), "--kb", str(kb),
+                 "--out", str(tmp_path / "out"), "--host-header", "dos palabras"])  # fmt: skip
+
+    assert code == 2
+    assert backend.get_headers == []

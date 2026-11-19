@@ -84,6 +84,7 @@ def env(gateway):
         "GATEWAY_ENVIRONMENT": "local",
         "LITELLM_KEY_BACKEND": "sk-shoplab-backend-local",
         "LITELLM_KEY_INGEST": "sk-shoplab-ingest-local",
+        "LITELLM_KEY_EVAL": "sk-shoplab-eval-local",
         "BOOTSTRAP_TIMEOUT": "2",
     }
 
@@ -95,7 +96,7 @@ def _run(env, path=KEYS_YAML):
 def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsys):
     assert _run(env) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out == ["created alias=backend-local", "created alias=ingest-local"]
+    assert out == ["created alias=backend-local", "created alias=ingest-local", "created alias=eval-local"]
     assert "sk-shoplab" not in " ".join(out)
     backend = gateway.keys["sk-shoplab-backend-local"]
     assert backend["models"] == ["chat", "chat-fallback", "embeddings"]
@@ -103,12 +104,30 @@ def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsy
     assert backend["budget_duration"] == "1d"
 
 
+def test_eval_key_only_reaches_the_judge_and_the_embeddings(gateway, env):
+    """LAB-29: the evaluation key cannot call the assistant's chat models, and has a budget of its own."""
+    _run(env)
+    evaluation = gateway.keys["sk-shoplab-eval-local"]
+    assert evaluation["models"] == ["embeddings", "judge"]
+    assert evaluation["key_alias"] == "eval-local"
+    assert evaluation["max_budget"] > 0
+
+
+def test_eval_key_is_not_allowed_the_cloud_model_even_with_a_provider_key(gateway, env):
+    _run({**env, "CLOUD_PROVIDER_API_KEY": "provider-key"})
+    assert "chat-cloud" not in gateway.keys["sk-shoplab-eval-local"]["models"]
+
+
 def test_second_run_is_idempotent(gateway, env, capsys):
     _run(env)
     capsys.readouterr()
     assert _run(env) == 0
-    assert capsys.readouterr().out.splitlines() == ["unchanged alias=backend-local", "unchanged alias=ingest-local"]
-    assert sum(call == "POST /key/generate" for call in gateway.calls) == 2
+    assert capsys.readouterr().out.splitlines() == [
+        "unchanged alias=backend-local",
+        "unchanged alias=ingest-local",
+        "unchanged alias=eval-local",
+    ]
+    assert sum(call == "POST /key/generate" for call in gateway.calls) == 3
     assert "POST /key/update" not in gateway.calls
 
 
@@ -181,6 +200,13 @@ def test_missing_key_value_is_rejected(gateway, env, capsys):
     assert gateway.keys == {}
 
 
+def test_missing_eval_key_value_is_rejected(gateway, env, capsys):
+    del env["LITELLM_KEY_EVAL"]
+    assert _run(env) == 1
+    assert "LITELLM_KEY_EVAL" in capsys.readouterr().err
+    assert gateway.keys == {}
+
+
 def test_placeholder_values_are_rejected_in_dev(gateway, env, capsys):
     assert _run({**env, "GATEWAY_ENVIRONMENT": "dev"}) == 1
     assert "placeholder" in capsys.readouterr().err
@@ -193,6 +219,7 @@ def test_real_looking_values_are_accepted_in_dev(gateway, env, capsys):
         "GATEWAY_ENVIRONMENT": "dev",
         "LITELLM_KEY_BACKEND": "sk-9f8e7d6c5b4a39281706f5e4d3c2b1a0",
         "LITELLM_KEY_INGEST": "sk-0a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "LITELLM_KEY_EVAL": "sk-5c4b3a2918070615e4d3c2b1a0f9e8d7",
     }
     assert _run(dev) == 0
     assert "created alias=backend-dev" in capsys.readouterr().out

@@ -25,3 +25,11 @@ keys:
     budget_duration: 1d
     # ingest no llama a modelos hoy: la clave existe y esta presupuestada, pero sin acceso a ningun modelo.
     models: []
+  - alias: eval-${GATEWAY_ENVIRONMENT}
+    consumer: eval
+    key_env: LITELLM_KEY_EVAL
+    max_budget: 5.00
+    budget_duration: 1d
+    # Evaluacion de calidad de respuesta (LAB-29): solo el juez y los embeddings de AnswerRelevancy. No llama a `chat` ni a
+    # `chat-cloud`: medir no gasta el presupuesto del backend ni puede salir a un proveedor externo.
+    models: [judge, embeddings]

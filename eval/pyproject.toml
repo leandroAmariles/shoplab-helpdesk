@@ -13,6 +13,15 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
 ]
+# Juez de la calidad de respuesta (LAB-29, research R1). Versión fijada: las puntuaciones solo son comparables entre
+# ejecuciones con la misma biblioteca. Arrastra unas 95 dependencias, por eso solo la importa quality_judge.py.
+quality = [
+    "ragas==0.4.4",
+]
+
+[tool.uv]
+# `uv sync --frozen` (CI y README) sigue bastando: el grupo `quality` se instala por defecto.
+default-groups = ["dev", "quality"]
 
 [build-system]
 requires = ["hatchling"]
@@ -24,7 +33,10 @@ packages = ["src/shoplab_eval"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "--cov=shoplab_eval --cov-fail-under=80"
+addopts = "--cov=shoplab_eval --cov-fail-under=80 -m 'not judge'"
+markers = [
+    "judge: usa el juez real a través del gateway; no se ejecuta por defecto (uv run pytest -m judge)",
+]
 
 [tool.ruff]
 line-length = 121

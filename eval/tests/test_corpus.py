@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from shoplab_eval.constants import DEFAULT_KB_DIR
-from shoplab_eval.corpus import load_corpus, normalize_text
+from shoplab_eval.corpus import load_corpus, normalize_text, title_index
 
 
 def test_load_corpus_skips_control_files_and_pdfs(toy_kb: Path) -> None:
@@ -41,6 +41,56 @@ def test_document_without_topic_fails_naming_the_file(toy_kb: Path) -> None:
 
     with pytest.raises(ValueError, match=r"returns-02-x\.md.*topic"):
         load_corpus(toy_kb)
+
+
+def _write_titled(kb: Path, doc_id: str, title: str, topic: str = "payments") -> None:
+    front = f"---\ntitle: {title}\ntopic: {topic}\ntype: policy\nlanguage: es\nscope: x\n---\n"
+    (kb / f"{doc_id}.md").write_text(front + "Texto.\n", encoding="utf-8")
+
+
+def test_document_exposes_its_title_without_surrounding_spaces(toy_kb: Path) -> None:
+    _write_titled(toy_kb, "payments-02-b", "  Pago en cuotas  ")
+
+    corpus = load_corpus(toy_kb)
+
+    assert corpus["payments-02-b"].title == "Pago en cuotas"
+    assert corpus["payments-01-a"].title == "payments-01-a"
+
+
+def test_title_index_maps_each_title_to_its_document_id(toy_kb: Path) -> None:
+    _write_titled(toy_kb, "payments-02-b", "Pago en cuotas")
+
+    index = title_index(load_corpus(toy_kb))
+
+    assert index["Pago en cuotas"] == "payments-02-b"
+    assert index["returns-01-a"] == "returns-01-a"
+    assert len(index) == 6
+
+
+def test_a_title_shared_by_two_documents_names_both_ids(toy_kb: Path) -> None:
+    _write_titled(toy_kb, "payments-02-b", "Mismo título")
+    _write_titled(toy_kb, "payments-03-c", "Mismo título")
+
+    with pytest.raises(ValueError, match=r"payments-02-b.*payments-03-c"):
+        title_index(load_corpus(toy_kb))
+
+
+@pytest.mark.parametrize("front_title", ["", "title:", "title: ''", "title: 12"])
+def test_document_without_a_usable_title_fails_naming_the_file(toy_kb: Path, front_title: str) -> None:
+    front = f"---\n{front_title}\ntopic: returns\n---\nTexto.\n"
+    (toy_kb / "returns-02-x.md").write_text(front, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"returns-02-x\.md.*title"):
+        load_corpus(toy_kb)
+
+
+def test_real_corpus_titles_are_unique_and_resolve_to_ids() -> None:
+    corpus = load_corpus(DEFAULT_KB_DIR)
+
+    index = title_index(corpus)
+
+    assert len(index) == len(corpus)
+    assert index["Pago en cuotas"] == "payments-02-installments"
 
 
 def test_missing_directory_fails_with_a_clear_message(tmp_path: Path) -> None:
