@@ -84,6 +84,17 @@ class GatewayChatAdapterSmallTalkTests {
     }
 
     @Test
+    void dropsTheDelimiterTheModelEchoesAroundItsReply() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("<mensaje_", "del_cliente>\nHola, ",
+                "gracias por contactar con ShopLab\n</mensaje_del", "_cliente>")));
+
+        StepVerifier.create(adapter.streamReply("hola").collectList())
+                .assertNext(parts -> assertThat(String.join("", parts))
+                        .isEqualTo("\nHola, gracias por contactar con ShopLab\n"))
+                .verifyComplete();
+    }
+
+    @Test
     void offersNoToolsAndNoOtherMessages() {
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("ok")));
 

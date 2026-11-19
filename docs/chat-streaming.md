@@ -173,6 +173,10 @@ no se usa para completar la búsqueda de la pregunta siguiente («hola» no cont
   inerte lo que imite un delimitador o un rol (`</contexto>`, `<|im_start|>`, `[INST]`, `<<SYS>>`, líneas de guiones). Lo hace
   el código, no las plantillas: cambiar `context-template` o `system-prompt` no lo quita. El prompt de sistema por defecto
   prohíbe además revelar, resumir o traducir sus instrucciones y su configuración.
+- **El delimitador no llega al cliente.** Algunos modelos pequeños devuelven su respuesta envuelta en
+  `<mensaje_del_cliente>…</mensaje_del_cliente>`. `DelimiterEchoFilter` quita esas etiquetas del stream antes de que lleguen
+  al cliente, a la traza y a las citas, aunque el modelo las emita partidas entre fragmentos; un `<` que no acaba en etiqueta
+  se emite intacto.
 - **Es una mitigación, no una garantía.** Los guardrails formales y la limitación de ritmo son de LAB-66. Decisión y
   alternativas: [ADR-0025](adr/0025-conversacion-de-cortesia-acotada.md); especificación en
   `specs/LAB-114-bounded-small-talk/`.
