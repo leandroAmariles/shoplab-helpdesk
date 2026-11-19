@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.19.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.18.0...v0.19.0) (2026-11-19)
+
+
+### Features
+
+* **chat:** [LAB-114] conversación natural acotada (saludos y cortesías) ([#131](https://github.com/leandroAmariles/shoplab-helpdesk/issues/131)) ([5fae385](https://github.com/leandroAmariles/shoplab-helpdesk/commit/5fae385de183083667a7e63f5a30e280e424e973))
+* **eval:** [LAB-28] métricas de recuperación (hit rate, MRR, recall) ([#129](https://github.com/leandroAmariles/shoplab-helpdesk/issues/129)) ([a3d556c](https://github.com/leandroAmariles/shoplab-helpdesk/commit/a3d556cd07938cdd0290aca0df2d0887d7daad32))
+* **eval:** [LAB-29] métricas de calidad de respuesta (fidelidad, relevancia, precisión del contexto) ([#132](https://github.com/leandroAmariles/shoplab-helpdesk/issues/132)) ([6ba06d7](https://github.com/leandroAmariles/shoplab-helpdesk/commit/6ba06d72eea9db0479f6ceb2a445d8ffca371c4d))
+
 ## [0.18.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.17.0...v0.18.0) (2026-11-18)
 
 
