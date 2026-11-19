@@ -56,3 +56,24 @@ def test_a_trailing_slash_in_the_base_url_makes_no_difference(backend: FakeBacke
     client = KnowledgeSearchClient(backend.url + "/", timeout=5)
 
     assert [hit.source for hit in client.search("q", 5).hits] == ["a.md"]
+
+
+# --- the Host header of the ingress of DEV --------------------------------------------------------------------
+
+
+def test_with_a_host_header_the_search_and_the_catalog_carry_it(backend: FakeBackend) -> None:
+    backend.documents_reply = (200, [])
+    client = KnowledgeSearchClient(backend.url, host_header="shoplab.localtest.me")
+
+    client.search("pregunta", 5)
+    client.list_documents()
+
+    assert [headers["host"] for headers in backend.get_headers] == ["shoplab.localtest.me"] * 2
+
+
+def test_without_a_host_header_the_host_is_the_one_of_the_url(backend: FakeBackend) -> None:
+    backend.documents_reply = (200, [])
+
+    KnowledgeSearchClient(backend.url).list_documents()
+
+    assert backend.get_headers[0]["host"] == backend.url.removeprefix("http://")

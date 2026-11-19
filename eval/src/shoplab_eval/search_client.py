@@ -52,9 +52,12 @@ class Searcher(Protocol):
 class KnowledgeSearchClient:
     """The real ``Searcher``: ``GET /api/knowledge/search`` and ``GET /api/documents`` of the backend."""
 
-    def __init__(self, base_url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> None:
+    def __init__(
+        self, base_url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS, host_header: str | None = None
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.host_header = host_header
 
     def search(self, query: str, limit: int) -> SearchResponse:
         url, body = self._get_json(SEARCH_PATH, {"query": query, "limit": limit})
@@ -74,7 +77,10 @@ class KnowledgeSearchClient:
     def _get_json(self, path: str, params: dict[str, Any]) -> tuple[str, Any]:
         """The URL asked and the JSON of its answer; any failure is a ``MeasurementError`` that names the cause."""
         url = f"{self.base_url}{path}" + (f"?{urlencode(params)}" if params else "")
-        request = urllib.request.Request(url, headers={"Accept": "application/json"})
+        headers = {"Accept": "application/json"}
+        if self.host_header:
+            headers["Host"] = self.host_header
+        request = urllib.request.Request(url, headers=headers)
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 return url, json.loads(response.read().decode("utf-8"))

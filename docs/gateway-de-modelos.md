@@ -59,6 +59,30 @@ Ollama; si falta, el gateway lo avisa al arrancar con una línea `WARN model_mis
 
 `notebooks/` sigue usando Ollama directamente: son experimentos y nunca los importa código de producción.
 
+## Juez de evaluación (`judge`)
+
+La evaluación de calidad de respuesta (LAB-29, [`eval/README.md`](../eval/README.md)) pide a un modelo que puntúe cada
+respuesta del asistente. Ese **juez** es otro nombre lógico del gateway, `judge`, con su propia clave virtual `eval`
+(solo llama a `judge` y a `embeddings`, con presupuesto propio, así que medir no gasta el del backend ni puede salir a un
+proveedor externo).
+
+| Nombre lógico | Variable | Defecto |
+|---|---|---|
+| `judge` | `LITELLM_JUDGE_MODEL` (o `OLLAMA_JUDGE_MODEL`) | `qwen2.5:7b` |
+
+- **No es el modelo del chat.** `llama3.2:3b` no sirve de juez: con salida estructurada devuelve el esquema JSON en lugar de
+  rellenarlo y las tres métricas fallan (`specs/LAB-29-answer-quality-metrics/validation.md`, S-1). `qwen2.5:7b` sí
+  discrimina (fidelidad, relevancia y precisión del contexto en los pares de calibración) y cabe en una GPU de 12 GB junto al
+  chat y los embeddings.
+- **Ollama solo lo descarga si lo pides**, igual que el modelo de respaldo: pon `OLLAMA_JUDGE_MODEL=qwen2.5:7b` en `infra/.env`
+  y `docker compose -f infra/docker-compose.yml up -d ollama` (unos 4,7 GB). Sin la variable el gateway arranca igual, pero
+  avisa con `WARN model_missing … name=judge` y la evaluación falla al llamar al juez.
+- **Cambiar de juez no toca código**: `LITELLM_JUDGE_MODEL=<otro modelo de Ollama> docker compose -f infra/docker-compose.yml up
+  -d litellm`. El nombre lógico sigue siendo `judge`, así que el resultado de la evaluación registra también el modelo real
+  detrás (`judge_underlying_model`, que la clave `eval` lee de `GET /model/info`): dos resultados solo son comparables si
+  coinciden.
+- **Sin fallback**: caer a otro modelo cambiaría las puntuaciones sin avisar.
+
 ## Demostrar el fallback (menos de 5 minutos, sin claves de nube)
 
 1. Define el modelo de respaldo **antes del primer arranque**, para que Ollama lo descargue:
@@ -83,7 +107,7 @@ fallback (otra dimensión corrompería el índice).
 
 ## Claves virtuales y presupuestos
 
-Cada consumidor (`backend`, `ingest`) tiene una clave por entorno (`backend-local`, `backend-dev`…) con un presupuesto en USD
+Cada consumidor (`backend`, `ingest` y `eval`) tiene una clave por entorno (`backend-local`, `backend-dev`…) con un presupuesto en USD
 de referencia y un periodo de reinicio (por defecto `1d`), definidos en `keys.yaml`. Los modelos, incluso los locales, tienen
 un precio de referencia en `config.yaml` (no es dinero real), así que el gasto sube y el presupuesto se puede ejercitar sin
 nube. Para cambiar un presupuesto, edita `keys.yaml` y ejecuta:

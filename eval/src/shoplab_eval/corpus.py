@@ -10,10 +10,15 @@ from shoplab_eval.constants import CONTROL_FILES, DEFAULT_KB_DIR
 
 @dataclass(frozen=True)
 class CorpusDocument:
-    """A document of the knowledge base: its id (file name without ``.md``), topic and normalized body."""
+    """A document of the knowledge base: its id (file name without ``.md``), topic, title and normalized body.
+
+    The title is the one the chat shows in its ``sources`` event (LAB-23): it is how a delivered fragment is traced
+    back to the document id of the golden dataset (LAB-29).
+    """
 
     id: str
     topic: str
+    title: str
     text: str
 
 
@@ -54,4 +59,21 @@ def _read_document(path: Path) -> CorpusDocument:
     topic = meta.get("topic") if isinstance(meta, dict) else None
     if not isinstance(topic, str) or not topic.strip():
         raise ValueError(f"{path.name}: el front matter no tiene 'topic'")
-    return CorpusDocument(id=path.stem, topic=topic.strip(), text=normalize_text(raw[end + 5 :]))
+    title = meta.get("title") if isinstance(meta, dict) else None
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError(f"{path.name}: el front matter no tiene 'title'")
+    return CorpusDocument(id=path.stem, topic=topic.strip(), title=title.strip(), text=normalize_text(raw[end + 5 :]))
+
+
+def title_index(corpus: dict[str, CorpusDocument]) -> dict[str, str]:
+    """Maps each document title to its id. A title shared by two documents is an error: a fragment is not traceable."""
+    index: dict[str, str] = {}
+    for document in corpus.values():
+        other = index.get(document.title)
+        if other is not None:
+            raise ValueError(
+                f"El título {document.title!r} lo comparten {other} y {document.id}: un fragmento entregado por el chat "
+                "no se podría asociar a un único documento"
+            )
+        index[document.title] = document.id
+    return index

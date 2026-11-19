@@ -18,6 +18,22 @@ model_list:
       id: chat-primary
       input_cost_per_token: ${LITELLM_CHAT_PRIMARY_INPUT_COST:-0.00000015}
       output_cost_per_token: ${LITELLM_CHAT_PRIMARY_OUTPUT_COST:-0.0000006}
+  # Juez de la evaluacion de calidad de respuesta (LAB-29). Nombre logico propio: cambiar el modelo que juzga no toca al chat.
+  # Por defecto qwen2.5:7b: la verificacion S-1 mostro que llama3.2:3b (el chat) NO rellena las salidas estructuradas del
+  # juez (devuelve el esquema JSON en vez de los valores en casi todas las llamadas) y qwen2.5:7b si, con las tres metricas
+  # discriminando (specs/LAB-29-answer-quality-metrics/validation.md). LITELLM_JUDGE_MODEL lo cambia y OLLAMA_JUDGE_MODEL
+  # es el que descarga Ollama. SIN fallback: caer a otro modelo cambiaria las puntuaciones sin avisar. Solo lo puede
+  # llamar la clave virtual `eval` (keys.yaml).
+  - model_name: judge
+    litellm_params:
+      model: ollama_chat/${LITELLM_JUDGE_MODEL:-${OLLAMA_JUDGE_MODEL:-qwen2.5:7b}}
+      api_base: ${OLLAMA_API_BASE:-http://ollama:11434}
+      num_ctx: ${LITELLM_NUM_CTX:-8192}
+      keep_alive: ${LITELLM_KEEP_ALIVE:-30m}
+    model_info:
+      id: judge-primary
+      input_cost_per_token: ${LITELLM_CHAT_PRIMARY_INPUT_COST:-0.00000015}
+      output_cost_per_token: ${LITELLM_CHAT_PRIMARY_OUTPUT_COST:-0.0000006}
   # Chat: respaldo local (mas pequeno). No es un nombre que pida el backend: solo es destino del fallback (FR-013).
   - model_name: chat-fallback
     litellm_params:

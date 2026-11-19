@@ -44,6 +44,50 @@ def test_only_chat_falls_back_and_only_to_the_local_fallback(config):
     assert "chat-cloud" not in flattened
 
 
+def test_judge_model_exists_and_never_falls_back(config):
+    """LAB-29: the evaluation judge is a logical name of its own; a silent fallback would change the scores."""
+    names = {entry["model_name"] for entry in config["model_list"]}
+    assert "judge" in names
+    rules = config["router_settings"]["fallbacks"]
+    flattened = {name for rule in rules for key, targets in rule.items() for name in [key, *targets]}
+    assert "judge" not in flattened
+
+
+def test_judge_defaults_to_a_stronger_local_model_than_the_chat_one_and_is_overridable():
+    """S-1 (LAB-29): the 3B chat model cannot fill the structured outputs of the judge; qwen2.5:7b can."""
+
+    def models(env):
+        return {e["model_name"]: e["litellm_params"]["model"] for e in _render(env)["model_list"]}
+
+    default = models({})
+    assert default["judge"] == "ollama_chat/qwen2.5:7b"
+    assert default["chat"] == "ollama_chat/llama3.2:3b"
+    # The model the Ollama container downloads is the one the gateway judges with.
+    assert models({"OLLAMA_JUDGE_MODEL": "qwen2.5:14b"})["judge"] == "ollama_chat/qwen2.5:14b"
+    # LITELLM_JUDGE_MODEL wins, and moving the chat model never moves the judge.
+    overridden = models({"LITELLM_JUDGE_MODEL": "llama3.1:8b", "OLLAMA_JUDGE_MODEL": "other"})
+    assert overridden["judge"] == "ollama_chat/llama3.1:8b"
+    assert models({"OLLAMA_CHAT_MODEL": "other:1b"})["judge"] == "ollama_chat/qwen2.5:7b"
+
+
+def test_judge_has_the_same_context_window_as_chat(config):
+    by_name = {e["model_name"]: e["litellm_params"] for e in config["model_list"]}
+    assert by_name["judge"]["num_ctx"] == by_name["chat"]["num_ctx"]
+    assert by_name["judge"]["api_base"] == by_name["chat"]["api_base"]
+
+
+def test_eval_key_is_wired_in_compose_and_env_example():
+    compose = (INFRA / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "LITELLM_KEY_EVAL" in compose
+    assert "LITELLM_JUDGE_MODEL" in compose
+    assert "OLLAMA_JUDGE_MODEL" in compose
+    env_example = (INFRA / ".env.example").read_text(encoding="utf-8")
+    assert "LITELLM_KEY_EVAL=" in env_example
+    assert "LITELLM_JUDGE_MODEL=" in env_example
+    assert "OLLAMA_JUDGE_MODEL=" in env_example
+    assert "SHOPLAB_EVAL_JUDGE_API_KEY" in env_example
+
+
 def test_cloud_model_exists_only_with_its_key():
     names_without = {e["model_name"] for e in _render({})["model_list"]}
     names_with = {

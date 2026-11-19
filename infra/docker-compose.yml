@@ -52,6 +52,8 @@ services:
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-bge-m3}
       # Modelo de respaldo del gateway: solo se descarga si se define (FR-013). Vacio = no se descarga nada.
       OLLAMA_FALLBACK_MODEL: ${OLLAMA_FALLBACK_MODEL:-}
+      # Modelo del juez de la evaluacion (LAB-29, qwen2.5:7b): como el de respaldo, solo se descarga si se define.
+      OLLAMA_JUDGE_MODEL: ${OLLAMA_JUDGE_MODEL:-}
     # Sin `ports`: solo `litellm` llega a Ollama (FR-002). La red `models` es la unica que comparte con el gateway.
     networks:
       - models
@@ -64,7 +66,8 @@ services:
         - >-
           ollama list | grep -qF "$${OLLAMA_CHAT_MODEL}" &&
           ollama list | grep -qF "$${OLLAMA_EMBED_MODEL}" &&
-          { [ -z "$${OLLAMA_FALLBACK_MODEL}" ] || ollama list | grep -qF "$${OLLAMA_FALLBACK_MODEL}"; }
+          { [ -z "$${OLLAMA_FALLBACK_MODEL}" ] || ollama list | grep -qF "$${OLLAMA_FALLBACK_MODEL}"; } &&
+          { [ -z "$${OLLAMA_JUDGE_MODEL}" ] || ollama list | grep -qF "$${OLLAMA_JUDGE_MODEL}"; }
       interval: 10s
       timeout: 10s
       retries: 5
@@ -103,6 +106,8 @@ services:
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-}
       LITELLM_CHAT_PRIMARY_MODEL: ${LITELLM_CHAT_PRIMARY_MODEL:-}
       LITELLM_CHAT_FALLBACK_MODEL: ${LITELLM_CHAT_FALLBACK_MODEL:-}
+      # Juez de la evaluacion de calidad (LAB-29): vacio = OLLAMA_JUDGE_MODEL o qwen2.5:7b.
+      LITELLM_JUDGE_MODEL: ${LITELLM_JUDGE_MODEL:-}
       LITELLM_EMBED_MODEL: ${LITELLM_EMBED_MODEL:-}
       LITELLM_CHAT_PRIMARY_INPUT_COST: ${LITELLM_CHAT_PRIMARY_INPUT_COST:-}
       LITELLM_CHAT_PRIMARY_OUTPUT_COST: ${LITELLM_CHAT_PRIMARY_OUTPUT_COST:-}
@@ -147,6 +152,7 @@ services:
       GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-local}
       LITELLM_KEY_BACKEND: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
       LITELLM_KEY_INGEST: ${LITELLM_KEY_INGEST:-sk-shoplab-ingest-local}
+      LITELLM_KEY_EVAL: ${LITELLM_KEY_EVAL:-sk-shoplab-eval-local}
       CLOUD_PROVIDER_API_KEY: ${CLOUD_PROVIDER_API_KEY:-}
     volumes:
       - ./litellm:/app/shoplab:ro
