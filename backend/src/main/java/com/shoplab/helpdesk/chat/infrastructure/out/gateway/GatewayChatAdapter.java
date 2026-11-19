@@ -148,6 +148,7 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
                     .mapNotNull(response -> response.getResult() == null ? null
                             : response.getResult().getOutput().getText())
                     .filter(fragment -> !fragment.isEmpty())
+                    .transform(DelimiterEchoFilter::strip)
                     .doOnNext(fragment -> {
                         if (firstFragment.compareAndSet(false, true)) {
                             generation.firstToken();
