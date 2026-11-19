@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.1...v0.19.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **chat:** [LAB-114] quita del stream el delimitador que el modelo repite ([#145](https://github.com/leandroAmariles/shoplab-helpdesk/issues/145)) ([7f8b1a8](https://github.com/leandroAmariles/shoplab-helpdesk/commit/7f8b1a8e53892688c581c5b313f021987ad09279))
+
 ## [0.19.1](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.0...v0.19.1) (2026-11-19)
 
 
