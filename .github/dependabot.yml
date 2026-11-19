@@ -16,6 +16,11 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # @angular/* packages pin each other with exact peer dependencies; separate PRs fail `npm ci` with ERESOLVE.
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
 
   # pip reads pyproject.toml but does not update uv.lock; Trivy still scans uv.lock.
   - package-ecosystem: pip
@@ -79,6 +84,10 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # The Python version follows requires-python in ingest/pyproject.toml, not Dependabot.
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker
     directory: /infra
