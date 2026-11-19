@@ -62,7 +62,24 @@ El CI ejecuta `ruff` y `pytest` en `data/kb-tools`, y una de las pruebas valida 
 `--require-reviewed`: un PR que toque el corpus no pasa hasta que todos los documentos estén revisados. Las reglas
 (`KB001` a `KB011`) están en [`data/kb-tools/README.md`](../data/kb-tools/README.md).
 
+## Subir documentos desde la aplicación
+
+Desde LAB-25 (ADR-0021) un documento del corpus se carga en la base de conocimiento del asistente desde la pantalla
+**Documentos** (`/documentos`), sin comandos:
+
+1. Elige uno o varios PDF o Markdown (o arrástralos). Cada archivo admite hasta 10 MB y se suben de uno en uno, con
+   el porcentaje enviado y luego «Procesando…» mientras se trocea.
+2. Al terminar, la subida indica los chunks generados y si **actualizó** un documento con el mismo nombre (lo
+   reemplaza; no se duplica).
+3. La lista de la base de conocimiento muestra cada documento con su estado: **Pendiente** (se están calculando sus
+   embeddings), **Indexado** (el asistente ya puede citarlo) o **Error** (con la causa). Mientras haya pendientes, la
+   lista se actualiza sola.
+
+El archivo de `data/kb/` sigue siendo la fuente: si cambias una política, cámbiala aquí primero (con su revisión) y
+después vuelve a subirla. Un documento en **Error** por una caída del modelo de embeddings se reindexa solo; si el
+documento está mal (sin texto, dañado), la subida lo rechaza con la causa y no guarda nada.
+
 ## Qué no incluye
 
-Ingesta, troceado, embeddings y búsqueda sobre el corpus; respuestas del asistente con citas; varios idiomas; y una
-interfaz de administración de políticas.
+Respuestas del asistente con citas (las da `chat`); varios idiomas; y borrar, descargar o editar documentos desde la
+pantalla (solo se sube, se reemplaza y se consulta).

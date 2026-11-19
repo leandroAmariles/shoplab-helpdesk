@@ -20,7 +20,7 @@ contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verific
 ├── api/             lo que publica a otros módulos: herramientas del agente (@Tool) y tipos públicos
 ├── domain/          modelo, constantes, enums, excepciones; sin Spring AI, Kafka, JPA ni Reactor
 ├── application/     puertos y casos de uso; aquí sí se usan Mono y Flux
-├── infrastructure/  adaptadores (REST, Ollama, JDBC, métricas); aísla lo bloqueante
+├── infrastructure/  adaptadores (REST, gateway de modelos, JDBC, métricas); aísla lo bloqueante
 └── config/          cableado, propiedades y el `ModuleSchema` del módulo
 ```
 
@@ -69,7 +69,7 @@ mientras tanto no participan en la búsqueda, que filtra `embedding IS NOT NULL`
 detrás de `EmbeddingPort`; `ingest` no conoce ningún modelo. `V4__document_index_status.sql` añade a `document` el
 estado de indexado (`PENDING`, `INDEXED`, `ERROR` con `index_error`). Tras una ingesta el documento queda `PENDING` y
 `IndexDocumentsServicePort.indexPending(retryFailed)` calcula los vectores por lotes y los guarda por documento, todo o
-nada, con el nombre del modelo (`spring.ai.ollama.embedding.options.model` / `OLLAMA_EMBED_MODEL`). Para cambiar de
+nada, con el nombre del modelo real (`shoplab.retrieval.embedding.model-name` / `SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME`; el backend pide al gateway el nombre lógico `embeddings`). Para cambiar de
 modelo se cambia esa variable y se arranca con `shoplab.retrieval.embedding.reindex-on-startup=true` (o `force`), o se
 llama a `ReindexDocumentsServicePort.reindex(force)`; no se vuelve a llamar a `ingest`. `SearchChunksServicePort`
 calcula el embedding de la consulta y busca solo entre chunks con vector del modelo configurado. Ajustes en
@@ -80,9 +80,21 @@ por similitud entre los chunks del modelo configurado. `chat` es el único consu
 `KnowledgeSearchAdapter` y la traduce a su propio `ContextFragment`; no accede a las tablas ni a clases internas de
 `retrieval`.
 
+**Memoria de la conversación (LAB-24, ADR-0020).** El esquema `chat` tiene la tabla `conversation_turn` (una fila por turno:
+pregunta y respuesta completa, por `conversation_id`), que solo lee y escribe `chat` a través de `ConversationMemoryPort`.
+Contiene texto libre del cliente: no se registra ni se mide, y todavía no tiene caducidad ni borrado.
+
 **Citas (LAB-23, ADR-0019).** `KnowledgeChunk` lleva también `title`, el título legible del documento (columna
 `document.title`, sin migración); `chat` lo entrega al cliente en el evento `sources` junto a la sección y el texto del
 fragmento.
+
+**Subida y lista de documentos (LAB-25, ADR-0021).** `retrieval` publica `POST /api/documents` (multipart, parte
+`file`, hasta `shoplab.retrieval.upload.max-bytes` = 10 MiB) y `GET /api/documents` en `DocumentController`. La subida
+reutiliza `IngestDocumentServicePort` (responde `201` si el documento es nuevo y `200` si reemplaza a uno del mismo
+nombre) y los embeddings los dispara el evento de siempre; el documento queda `PENDING`. La lista sale de
+`ListDocumentsServicePort` → `DocumentCatalogPort` (`JdbcDocumentCatalogAdapter`): estado, causa del último error y
+chunks guardados por documento, el más reciente primero. Métricas `retrieval.upload{outcome}` y
+`retrieval.documents{status}`. La pantalla es `/documentos` del frontend.
 
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,

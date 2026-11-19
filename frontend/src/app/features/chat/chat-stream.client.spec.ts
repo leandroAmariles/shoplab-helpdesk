@@ -81,6 +81,18 @@ describe('ChatStreamClient', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('sends the conversation id with the message when there is one', async () => {
+    fetchMock.mockResolvedValue(okResponse(bytesStream(sse(['done', { fragments: 0 }]))));
+
+    await collect(client.stream('¿y si es internacional?', '3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11'));
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      message: '¿y si es internacional?',
+      conversationId: '3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11',
+    });
+  });
+
   it('does not call the backend until subscribed', () => {
     client.stream('Hola');
 

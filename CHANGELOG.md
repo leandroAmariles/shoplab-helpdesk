@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.19.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.18.0...v0.19.0) (2026-11-19)
+
+
+### Features
+
+* **chat:** [LAB-114] conversación natural acotada (saludos y cortesías) ([#131](https://github.com/leandroAmariles/shoplab-helpdesk/issues/131)) ([5fae385](https://github.com/leandroAmariles/shoplab-helpdesk/commit/5fae385de183083667a7e63f5a30e280e424e973))
+* **eval:** [LAB-28] métricas de recuperación (hit rate, MRR, recall) ([#129](https://github.com/leandroAmariles/shoplab-helpdesk/issues/129)) ([a3d556c](https://github.com/leandroAmariles/shoplab-helpdesk/commit/a3d556cd07938cdd0290aca0df2d0887d7daad32))
+* **eval:** [LAB-29] métricas de calidad de respuesta (fidelidad, relevancia, precisión del contexto) ([#132](https://github.com/leandroAmariles/shoplab-helpdesk/issues/132)) ([6ba06d7](https://github.com/leandroAmariles/shoplab-helpdesk/commit/6ba06d72eea9db0479f6ceb2a445d8ffca371c4d))
+
+## [0.18.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.17.0...v0.18.0) (2026-11-18)
+
+
+### Features
+
+* **chat:** [LAB-84] gateway de modelos con LiteLLM ([#126](https://github.com/leandroAmariles/shoplab-helpdesk/issues/126)) ([5fd7cc1](https://github.com/leandroAmariles/shoplab-helpdesk/commit/5fd7cc1afc6d7fd5069512f43262497f16ff223a))
+* **eval:** [LAB-27] dataset golden de preguntas y respuestas ([#128](https://github.com/leandroAmariles/shoplab-helpdesk/issues/128)) ([3bb4690](https://github.com/leandroAmariles/shoplab-helpdesk/commit/3bb4690be24ae0d828ac1f4c2fb72455dd4a596d))
+
+## [0.17.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.16.0...v0.17.0) (2026-11-12)
+
+
+### Features
+
+* **chat:** [LAB-64] trazas de LLM con Langfuse autoalojado ([#114](https://github.com/leandroAmariles/shoplab-helpdesk/issues/114)) ([2c92ef4](https://github.com/leandroAmariles/shoplab-helpdesk/commit/2c92ef49ad23510af6e8fdc297b4c88a803df74a))
+
+## [0.16.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.15.0...v0.16.0) (2026-11-10)
+
+
+### Features
+
+* **notebooks:** [LAB-26] notebook comparativo de estrategias de chunking ([#112](https://github.com/leandroAmariles/shoplab-helpdesk/issues/112)) ([9b78ecb](https://github.com/leandroAmariles/shoplab-helpdesk/commit/9b78ecb3737758507b9062a4f5533d4662126266))
+
+## [0.15.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.14.0...v0.15.0) (2026-11-10)
+
+
+### Features
+
+* **retrieval:** [LAB-25] pantalla de administración de documentos ([#110](https://github.com/leandroAmariles/shoplab-helpdesk/issues/110)) ([27a9dd7](https://github.com/leandroAmariles/shoplab-helpdesk/commit/27a9dd702d016889b1ecf77f2765ac66573825e0))
+
+## [0.14.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.13.0...v0.14.0) (2026-11-07)
+
+
+### Features
+
+* **chat:** [LAB-24] memoria de la conversación ([#107](https://github.com/leandroAmariles/shoplab-helpdesk/issues/107)) ([24a3cd3](https://github.com/leandroAmariles/shoplab-helpdesk/commit/24a3cd3862702d0545382b266a757a59ac103bbf))
+
 ## [0.13.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.12.0...v0.13.0) (2026-11-04)
 
 

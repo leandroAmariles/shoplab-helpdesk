@@ -1,0 +1,252 @@
+### LAB-25 — Pantalla de administración de documentos: casos de prueba de la API (`/api/documents`)
+#
+# Se ejecutan de arriba abajo (IntelliJ HTTP Client / VS Code REST Client) con el stack local en marcha:
+#   docker compose -f infra/docker-compose.yml up   (Postgres+pgvector, Ollama, ingest :8000)
+#   cd backend && mvn spring-boot:run                (puerto 8080)
+# Los archivos de prueba son del corpus del proyecto (data/kb, LAB-18); nunca datos reales de clientes.
+#
+# Not covered here (no se alcanzan por HTTP o son de la pantalla):
+#   - US2 (progreso, «procesando», cancelar, reintentar) y FR-008/FR-009/FR-015: comportamiento del navegador;
+#     cubiertos por documents-store.spec.ts / upload-list.spec.ts y quickstart.md §1 y §4.
+#   - US3 escenario 3 y FR-011 (refresco sin recargar): sondeo de la pantalla; documents-store.spec.ts.
+#   - US4 (navegación, 360 px): app.routes.spec.ts y quickstart.md §4.
+#   - US1 escenario 5 / 503 SLHD_RETR_00004: requiere parar `ingest` (`docker compose stop ingest`) y repetir
+#     «FR-001 / US1-1»; se espera 503 SLHD_RETR_00004 y que la lista no cambie.
+#   - 502 SLHD_RETR_00005 y 503 SLHD_DBAS_00001: fallos de `ingest` o de la base; DocumentControllerTests.
+#   - FR-013 (BlockHound) y FR-014 (métricas sin nombres): DocumentUploadIntegrationTests y
+#     MicrometerUploadMetricsTests; las métricas se pueden ver con la última petición de este archivo.
+#   - Límite del lector multipart (> 11 MB): DocumentUploadIntegrationTests (un archivo así no cabe aquí).
+
+@baseUrl = http://localhost:8080
+@kb = ../../data/kb
+
+### FR-005 / US3-4 — Lista antes de subir (estado de partida) — expects 200 con un array (vacío si la base está vacía)
+GET {{baseUrl}}/api/documents
+Accept: application/json
+
+> {%
+    client.test("200 con un array", () => {
+        client.assert(response.status === 200, "status " + response.status);
+        client.assert(Array.isArray(response.body), "el cuerpo no es un array");
+    });
+%}
+
+### FR-001, FR-003 / US1-1, US1-2 — Subir un Markdown válido nuevo — expects 201, status PENDING, chunkCount >= 1, replaced=false
+# Si el documento ya existía de una ejecución anterior, la respuesta es 200 con replaced=true (ver el caso siguiente).
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="returns-01-return-policy.md"
+Content-Type: text/markdown
+
+< {{kb}}/returns-01-return-policy.md
+--lab25--
+
+> {%
+    client.test("201 nuevo (o 200 si ya existía) y pendiente", () => {
+        client.assert(response.status === 201 || response.status === 200, "status " + response.status);
+        client.assert(response.body.status === "PENDING", "status " + response.body.status);
+        client.assert(response.body.chunkCount >= 1, "chunkCount " + response.body.chunkCount);
+        client.assert(response.body.name === "returns-01-return-policy.md", "name " + response.body.name);
+    });
+    client.global.set("documentId", response.body.id);
+%}
+
+### US1-3 / Edge «mismo documento dos veces» — Subir el mismo nombre otra vez — expects 200, replaced=true, mismo id
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="returns-01-return-policy.md"
+Content-Type: text/markdown
+
+< {{kb}}/returns-01-return-policy.md
+--lab25--
+
+> {%
+    client.test("200 reemplazo con el mismo id", () => {
+        client.assert(response.status === 200, "status " + response.status);
+        client.assert(response.body.replaced === true, "replaced " + response.body.replaced);
+        client.assert(response.body.id === client.global.get("documentId"), "el id cambió");
+    });
+%}
+
+### FR-001 / US1-1 — Subir un PDF válido — expects 201 (o 200 si ya existía), status PENDING
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="shipping-01-delivery-times.pdf"
+Content-Type: application/pdf
+
+< {{kb}}/shipping-01-delivery-times.pdf
+--lab25--
+
+> {%
+    client.test("PDF ingerido y pendiente", () => {
+        client.assert(response.status === 201 || response.status === 200, "status " + response.status);
+        client.assert(response.body.status === "PENDING", "status " + response.body.status);
+    });
+%}
+
+### Edge «nombre con ruta» — La ruta del nombre se descarta y se guarda solo el último segmento — expects 200/201, name sin ruta
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="carpeta/sub/returns-01-return-policy.md"
+Content-Type: text/markdown
+
+< {{kb}}/returns-01-return-policy.md
+--lab25--
+
+> {%
+    client.test("nombre sin ruta", () => {
+        client.assert(response.body.name === "returns-01-return-policy.md", "name " + response.body.name);
+    });
+%}
+
+### FR-005, FR-006 / US3-1, US3-5 — Lista tras subir — expects 200; el documento aparece PENDING o INDEXED con chunks > 0, el más reciente primero
+GET {{baseUrl}}/api/documents
+Accept: application/json
+
+> {%
+    client.test("aparece el documento subido con sus chunks", () => {
+        client.assert(response.status === 200, "status " + response.status);
+        const row = response.body.find(d => d.name === "returns-01-return-policy.md");
+        client.assert(row !== undefined, "no está en la lista");
+        client.assert(row.status === "PENDING" || row.status === "INDEXED", "status " + row.status);
+        client.assert(row.chunkCount > 0, "chunkCount " + row.chunkCount);
+        client.assert(response.body[0].name === "returns-01-return-policy.md", "no es el más reciente");
+        for (let i = 1; i < response.body.length; i++) {
+            client.assert(response.body[i - 1].updatedAt >= response.body[i].updatedAt, "orden por updatedAt roto");
+        }
+    });
+%}
+
+### FR-002 / US3-3 — Tras unos segundos (embeddings), el documento queda INDEXED — expects INDEXED con indexedAt y error null
+# Repetir esta petición si los embeddings aún no han terminado (la pantalla lo hace sola cada 3 s).
+GET {{baseUrl}}/api/documents
+Accept: application/json
+
+> {%
+    client.test("indexado sin error", () => {
+        const row = response.body.find(d => d.name === "returns-01-return-policy.md");
+        client.assert(row.status === "INDEXED", "status " + row.status + " (repetir si sigue PENDING)");
+        client.assert(row.indexedAt !== null, "indexedAt nulo");
+        client.assert(row.error === null, "error " + row.error);
+    });
+%}
+
+### FR-004 / US1-4 — Formato no admitido (.txt) — expects 415 SLHD_RETR_00001 y nada guardado
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="lab25-notas.txt"
+Content-Type: text/plain
+
+Notas en texto plano.
+--lab25--
+
+> {%
+    client.test("415 SLHD_RETR_00001", () => {
+        client.assert(response.status === 415, "status " + response.status);
+        client.assert(response.body.code === "SLHD_RETR_00001", "code " + response.body.code);
+    });
+%}
+
+### FR-004 / US1-4 — Archivo vacío — expects 422 SLHD_RETR_00003 y nada guardado
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="lab25-vacio.md"
+Content-Type: text/markdown
+
+--lab25--
+
+> {%
+    client.test("422 SLHD_RETR_00003", () => {
+        client.assert(response.status === 422, "status " + response.status);
+        client.assert(response.body.code === "SLHD_RETR_00003", "code " + response.body.code);
+    });
+%}
+
+### FR-004 / Edge «contenido que no corresponde a su extensión» — Texto con extensión .pdf — expects 422 SLHD_RETR_00003 (o 415 según ingest)
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="lab25-falso.pdf"
+Content-Type: application/pdf
+
+Esto no es un PDF.
+--lab25--
+
+> {%
+    client.test("rechazado por ingest", () => {
+        client.assert(response.status === 422 || response.status === 415, "status " + response.status);
+        client.assert(["SLHD_RETR_00003", "SLHD_RETR_00001"].includes(response.body.code), "code " + response.body.code);
+    });
+%}
+
+### FR-004 / Edge «nombre no válido» — Nombre que es solo una carpeta — expects 422 SLHD_RETR_00003
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="file"; filename="carpeta/"
+Content-Type: text/markdown
+
+# Titulo
+--lab25--
+
+> {%
+    client.test("422 SLHD_RETR_00003", () => {
+        client.assert(response.status === 422, "status " + response.status);
+        client.assert(response.body.code === "SLHD_RETR_00003", "code " + response.body.code);
+    });
+%}
+
+### FR-012 / contrato — Sin la parte «file» — expects 400 SLHD_GENE_00002
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab25
+
+--lab25
+Content-Disposition: form-data; name="otro"
+
+x
+--lab25--
+
+> {%
+    client.test("400 SLHD_GENE_00002", () => {
+        client.assert(response.status === 400, "status " + response.status);
+        client.assert(response.body.code === "SLHD_GENE_00002", "code " + response.body.code);
+    });
+%}
+
+### SC-002 — Ningún rechazo dejó datos: los nombres rechazados no están en la lista — expects 200 sin lab25-*
+GET {{baseUrl}}/api/documents
+Accept: application/json
+
+> {%
+    client.test("sin restos de los rechazos", () => {
+        const leftovers = response.body.filter(d => d.name.startsWith("lab25-") || d.name === "carpeta/" || d.name === "");
+        client.assert(leftovers.length === 0, "quedaron: " + leftovers.map(d => d.name).join(", "));
+    });
+%}
+
+### FR-014 — Métricas de subida y de documentos por estado, sin nombres como etiqueta — expects retrieval_upload_seconds_count{outcome=...} y retrieval_documents{status=...}
+GET {{baseUrl}}/actuator/prometheus
+
+> {%
+    client.test("métricas presentes y sin nombres de documento", () => {
+        client.assert(response.status === 200, "status " + response.status);
+        client.assert(response.body.includes('retrieval_upload_seconds_count{application="helpdesk-backend",outcome="ok"}'), "falta outcome=ok");
+        client.assert(response.body.includes('outcome="rejected"'), "falta outcome=rejected");
+        client.assert(response.body.includes("retrieval_documents{"), "falta retrieval_documents");
+        client.assert(!response.body.includes("returns-01-return-policy"), "un nombre de documento aparece en las métricas");
+    });
+%}

@@ -84,6 +84,28 @@ class ChatControllerTests {
     }
 
     @Test
+    void copiesTheConversationIdToTheCommandWithoutJudgingIt() {
+        when(streamChat.stream(any())).thenReturn(Flux.just(new DoneEvent(0)));
+
+        chat("{\"message\":\"Hola\",\"conversationId\":\"anything-the-use-case-will-judge\"}");
+
+        ArgumentCaptor<StreamChatCommand> captor = ArgumentCaptor.forClass(StreamChatCommand.class);
+        verify(streamChat).stream(captor.capture());
+        assertThat(captor.getValue().conversationId()).isEqualTo("anything-the-use-case-will-judge");
+    }
+
+    @Test
+    void aRequestWithoutConversationIdHasNoneInTheCommand() {
+        when(streamChat.stream(any())).thenReturn(Flux.just(new DoneEvent(0)));
+
+        chat("{\"message\":\"Hola\"}");
+
+        ArgumentCaptor<StreamChatCommand> captor = ArgumentCaptor.forClass(StreamChatCommand.class);
+        verify(streamChat).stream(captor.capture());
+        assertThat(captor.getValue().conversationId()).isNull();
+    }
+
+    @Test
     void generatesARequestIdWhenTheClientSendsNone() {
         when(streamChat.stream(any())).thenReturn(Flux.just(new DoneEvent(0)));
 

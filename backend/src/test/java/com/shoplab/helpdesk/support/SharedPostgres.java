@@ -16,7 +16,8 @@ public final class SharedPostgres {
     private static final DockerImageName IMAGE = DockerImageName.parse("pgvector/pgvector:0.8.7-pg16")
             .asCompatibleSubstituteFor("postgres");
 
-    private static final int MAX_CONNECTIONS = 300;
+    /** Each class with its own WireMock port is a new context with its own pool: LAB-114 added several (was 300). */
+    private static final int MAX_CONNECTIONS = 600;
 
     private static PostgreSQLContainer container;
 

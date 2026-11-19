@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Hexagonal Architecture — separates business rules from delivery and infrastructure concerns.
+description: Hexagonal Architecture — Context Skill
 ---
 
 # Hexagonal Architecture — Context Skill
@@ -216,3 +216,4 @@ public class ServiceConfiguration {
 | > 5 dependencies in use case | Apply the Facade pattern |
 | Direct SLF4J in the domain | Use your structured/masking logger |
 | Domain port returning transport DTOs | Use domain commands, results, and value objects |
+

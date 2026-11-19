@@ -5,6 +5,7 @@ compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: spec-kit-core
   source: git:commands/speckit.git.remote.md
+model: sonnet
 ---
 
 # Detect Git Remote URL

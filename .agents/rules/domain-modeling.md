@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Domain modeling in this project requires strict object boundaries.
+description: ## What this pattern is
 ---
 
 ## What this pattern is
@@ -67,3 +67,4 @@ public UserProfile fromMapBad(Map<String, Object> data) {
 *   **Adapters (Inbound):** Receive standard DTOs. Map them to Domain objects using MapStruct before passing to the use case.
 *   **Domain (Use Cases):** Operate purely on Domain objects with explicit attributes. No knowledge of Jackson, Gson, or raw Maps.
 *   **Adapters (Outbound):** Map Domain objects to external DTOs or Entities using MapStruct before interacting with external systems or DBs.
+

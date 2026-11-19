@@ -1,4 +1,12 @@
 <section class="chat">
+  <div class="toolbar">
+    <button mat-stroked-button type="button" aria-label="Nueva conversación"
+            [disabled]="!store.canStartNewConversation()" (click)="onNewConversation()">
+      <mat-icon>add_comment</mat-icon>
+      Nueva conversación
+    </button>
+  </div>
+
   <div class="history" #history role="log" aria-live="polite" aria-label="Conversación"
        [attr.aria-busy]="store.isStreaming()" (scroll)="onScroll()">
     @if (store.messages().length === 0) {

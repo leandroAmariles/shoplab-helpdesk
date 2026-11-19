@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
+import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
@@ -38,6 +40,20 @@ class MicrometerChatMetricsTests {
     }
 
     @Test
+    void countsTheTurnsByKindWithTheLowerCaseKindAsTheOnlyTag() {
+        metrics.recordTurn(TurnKind.SMALL_TALK);
+        metrics.recordTurn(TurnKind.SMALL_TALK);
+        metrics.recordTurn(TurnKind.WITH_CONTEXT);
+        metrics.recordTurn(TurnKind.NO_CONTEXT);
+
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "small_talk").counter().count()).isEqualTo(2);
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "with_context").counter().count()).isEqualTo(1);
+        assertThat(registry.get("shoplab.chat.turns").tag("kind", "no_context").counter().count()).isEqualTo(1);
+        assertThat(registry.get("shoplab.chat.turns").counters()).hasSize(3)
+                .allSatisfy(counter -> assertThat(counter.getId().getTags()).hasSize(1));
+    }
+
+    @Test
     void recordsTheContextRetrievalTimeByOutcomeAndTheFragmentsDelivered() {
         metrics.recordContext(ContextOutcome.WITH_CONTEXT, 3, Duration.ofMillis(120));
         metrics.recordContext(ContextOutcome.WITH_CONTEXT, 1, Duration.ofMillis(80));
@@ -68,6 +84,33 @@ class MicrometerChatMetricsTests {
         assertThat(registry.get("shoplab.chat.citations").tag("outcome", "none").counter().count()).isEqualTo(1.0);
         assertThat(registry.find("shoplab.chat.citations").meters())
                 .allSatisfy(meter -> assertThat(meter.getId().getTags()).hasSize(1));
+    }
+
+    @Test
+    void theHistoryHandedToTheModelIsMeasuredAndTheTrimsAreCounted() {
+        metrics.recordHistory(0, false);
+        metrics.recordHistory(4, false);
+        metrics.recordHistory(10, true);
+
+        assertThat(registry.get("shoplab.chat.history.messages").summary().count()).isEqualTo(3);
+        assertThat(registry.get("shoplab.chat.history.messages").summary().totalAmount()).isEqualTo(14.0);
+        assertThat(registry.get("shoplab.chat.history.trimmed").counter().count()).isEqualTo(1.0);
+    }
+
+    @Test
+    void memoryFailuresAreCountedByOperationAndNothingElse() {
+        metrics.recordMemoryFailure(MemoryOperation.READ);
+        metrics.recordMemoryFailure(MemoryOperation.READ);
+        metrics.recordMemoryFailure(MemoryOperation.WRITE);
+
+        assertThat(registry.get("shoplab.chat.memory.failures").tag("operation", "read").counter().count())
+                .isEqualTo(2.0);
+        assertThat(registry.get("shoplab.chat.memory.failures").tag("operation", "write").counter().count())
+                .isEqualTo(1.0);
+        assertThat(registry.find("shoplab.chat.memory.failures").meters())
+                .allSatisfy(meter -> assertThat(meter.getId().getTags()).hasSize(1));
+        assertThat(registry.find("shoplab.chat.history.messages").meters())
+                .allSatisfy(meter -> assertThat(meter.getId().getTags()).isEmpty());
     }
 
     @Test

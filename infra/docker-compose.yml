@@ -3,8 +3,13 @@
 # Uso: docker compose -f infra/docker-compose.yml up -d --wait
 #
 # Perfiles:
-#   core           postgres + ollama + ingest. Siempre activo (sin clave `profiles:`); `--profile core` es no-op.
-#   llmops         reservado, sin servicios todavia (llega en una fase posterior).
+#   core           postgres + ollama + litellm (gateway de modelos, LAB-84) + su postgres + ingest. Siempre activo
+#                  (sin clave `profiles:`); `--profile core` es no-op. Toda llamada a un modelo pasa por `litellm`
+#                  (puerto 4000, API compatible con OpenAI): `ollama` ya no publica puerto y solo comparte la red
+#                  `models` con el gateway. Para publicarlo (Ollama del host que usa el cluster DEV, mediciones):
+#                  anadir `-f infra/docker-compose.ollama-host.yml`.
+#   llmops         langfuse (LAB-64): web, worker y sus almacenes (postgres, clickhouse, redis, minio) con prefijo
+#                  `langfuse-`. Interfaz en http://localhost:3001. Activar: --profile llmops.
 #   observability  prometheus + grafana (LAB-102): Prometheus recoge el backend que corre en el host (puerto 8080)
 #                  y Grafana arranca con el origen de datos y los dashboards de infra/observability/.
 #                  Activar: --profile observability.
@@ -45,8 +50,13 @@ services:
     environment:
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-bge-m3}
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      # Modelo de respaldo del gateway: solo se descarga si se define (FR-013). Vacio = no se descarga nada.
+      OLLAMA_FALLBACK_MODEL: ${OLLAMA_FALLBACK_MODEL:-}
+      # Modelo del juez de la evaluacion (LAB-29, qwen2.5:7b): como el de respaldo, solo se descarga si se define.
+      OLLAMA_JUDGE_MODEL: ${OLLAMA_JUDGE_MODEL:-}
+    # Sin `ports`: solo `litellm` llega a Ollama (FR-002). La red `models` es la unica que comparte con el gateway.
+    networks:
+      - models
     volumes:
       - ollama_models:/root/.ollama
       - ./ollama/entrypoint.sh:/entrypoint.sh:ro
@@ -55,12 +65,101 @@ services:
         - CMD-SHELL
         - >-
           ollama list | grep -qF "$${OLLAMA_CHAT_MODEL}" &&
-          ollama list | grep -qF "$${OLLAMA_EMBED_MODEL}"
+          ollama list | grep -qF "$${OLLAMA_EMBED_MODEL}" &&
+          { [ -z "$${OLLAMA_FALLBACK_MODEL}" ] || ollama list | grep -qF "$${OLLAMA_FALLBACK_MODEL}"; } &&
+          { [ -z "$${OLLAMA_JUDGE_MODEL}" ] || ollama list | grep -qF "$${OLLAMA_JUDGE_MODEL}"; }
       interval: 10s
       timeout: 10s
       retries: 5
       start_period: 600s
     restart: unless-stopped
+
+  # Gateway de modelos (LAB-84): unico punto de salida hacia Ollama y hacia cualquier proveedor cloud. Estado propio
+  # (claves virtuales y gasto) en su postgres, sin mezclar tablas con la aplicacion (ADR-0002).
+  litellm-postgres:
+    image: ${LITELLM_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${LITELLM_POSTGRES_PASSWORD:-change-me-local-only}
+    volumes:
+      - litellm_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  litellm:
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:v1.109.1}
+    entrypoint: ["sh", "/app/shoplab/entrypoint.sh"]
+    environment:
+      DATABASE_URL: postgresql://litellm:${LITELLM_POSTGRES_PASSWORD:-change-me-local-only}@litellm-postgres:5432/litellm
+      # Marcadores SOLO para uso local; LiteLLM exige el formato `sk-...`.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-shoplab-master-local-only}
+      DISABLE_ADMIN_UI: "true"
+      GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-local}
+      # Una cadena vacia cuenta como no definida: render_config.py usa entonces el valor por defecto de config.yaml.
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-}
+      LITELLM_CHAT_PRIMARY_MODEL: ${LITELLM_CHAT_PRIMARY_MODEL:-}
+      LITELLM_CHAT_FALLBACK_MODEL: ${LITELLM_CHAT_FALLBACK_MODEL:-}
+      # Juez de la evaluacion de calidad (LAB-29): vacio = OLLAMA_JUDGE_MODEL o qwen2.5:7b.
+      LITELLM_JUDGE_MODEL: ${LITELLM_JUDGE_MODEL:-}
+      LITELLM_EMBED_MODEL: ${LITELLM_EMBED_MODEL:-}
+      LITELLM_CHAT_PRIMARY_INPUT_COST: ${LITELLM_CHAT_PRIMARY_INPUT_COST:-}
+      LITELLM_CHAT_PRIMARY_OUTPUT_COST: ${LITELLM_CHAT_PRIMARY_OUTPUT_COST:-}
+      LITELLM_CHAT_FALLBACK_INPUT_COST: ${LITELLM_CHAT_FALLBACK_INPUT_COST:-}
+      LITELLM_CHAT_FALLBACK_OUTPUT_COST: ${LITELLM_CHAT_FALLBACK_OUTPUT_COST:-}
+      LITELLM_EMBED_INPUT_COST: ${LITELLM_EMBED_INPUT_COST:-}
+      # Proveedor cloud opcional (FR-011): sin CLOUD_PROVIDER_API_KEY el modelo `chat-cloud` no existe.
+      CLOUD_PROVIDER_API_KEY: ${CLOUD_PROVIDER_API_KEY:-}
+      CLOUD_PROVIDER_MODEL: ${CLOUD_PROVIDER_MODEL:-}
+      CLOUD_PROVIDER_API_BASE: ${CLOUD_PROVIDER_API_BASE:-}
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    networks:
+      - default
+      - models
+    volumes:
+      - ./litellm:/app/shoplab:ro
+    depends_on:
+      litellm-postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    restart: unless-stopped
+
+  # Crea o actualiza las claves virtuales de keys.yaml y termina (servicio de un solo disparo, idempotente).
+  litellm-bootstrap:
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:v1.109.1}
+    entrypoint: ["python", "/app/shoplab/bootstrap_keys.py", "/app/shoplab/keys.yaml"]
+    environment:
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-shoplab-master-local-only}
+      GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-local}
+      LITELLM_KEY_BACKEND: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
+      LITELLM_KEY_INGEST: ${LITELLM_KEY_INGEST:-sk-shoplab-ingest-local}
+      LITELLM_KEY_EVAL: ${LITELLM_KEY_EVAL:-sk-shoplab-eval-local}
+      CLOUD_PROVIDER_API_KEY: ${CLOUD_PROVIDER_API_KEY:-}
+    volumes:
+      - ./litellm:/app/shoplab:ro
+    depends_on:
+      litellm:
+        condition: service_healthy
+    restart: "no"
 
   # Parseo y troceado de documentos (LAB-20). Sin estado y sin acceso a la base de datos: entrega los chunks al modulo
   # retrieval del backend, que es quien los guarda.
@@ -128,8 +227,179 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # ---- Perfil llmops (LAB-64): Langfuse v4 autoalojado --------------------------------------------------------------
+  # Interfaz en http://localhost:${LANGFUSE_PORT:-3001} (3000 es de Grafana). Los almacenes no publican puertos al host
+  # (solo MinIO, en loopback, para la carga de medios desde el navegador). Credenciales: marcadores SOLO para uso local.
+  langfuse-postgres:
+    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    profiles: [llmops]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LANGFUSE_POSTGRES_PASSWORD:-change-me-local-only}
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  langfuse-clickhouse:
+    image: ${LANGFUSE_CLICKHOUSE_IMAGE:-docker.io/clickhouse/clickhouse-server:26.3.62.3}
+    profiles: [llmops]
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-change-me-local-only}
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  langfuse-redis:
+    image: ${LANGFUSE_REDIS_IMAGE:-docker.io/redis:7.4.6}
+    profiles: [llmops]
+    command: >
+      --requirepass ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+      --maxmemory-policy noeviction
+    volumes:
+      - langfuse_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+    restart: unless-stopped
+
+  langfuse-minio:
+    image: ${LANGFUSE_MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:fb893e36fc369d41e92f678b17ec27378fa5bf0576aeef7ac15460c13629ab5a}
+    profiles: [llmops]
+    # El bucket `langfuse` es el directorio /data/langfuse: se crea antes de arrancar el servidor.
+    entrypoint: sh
+    command:
+      - -c
+      - mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+    ports:
+      - "127.0.0.1:${LANGFUSE_MINIO_PORT:-9092}:9000"
+    volumes:
+      - langfuse_minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  langfuse-worker:
+    image: ${LANGFUSE_WORKER_IMAGE:-docker.langfuse.com/langfuse/langfuse-worker:4.77.0}
+    profiles: [llmops]
+    environment: &langfuse-env
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3001}
+      DATABASE_URL: postgresql://postgres:${LANGFUSE_POSTGRES_PASSWORD:-change-me-local-only}@langfuse-postgres:5432/postgres
+      SALT: ${LANGFUSE_SALT:-change-me-local-only}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-change-me-local-only}
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-change-me-local-only}
+      REDIS_TLS_ENABLED: "false"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:-change-me-local-only}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+    depends_on: &langfuse-depends
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+    healthcheck:
+      # Langfuse escucha en la direccion del contenedor, no en 127.0.0.1.
+      test: ["CMD-SHELL", "wget -q --spider http://$${HOSTNAME}:3030/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  langfuse-web:
+    image: ${LANGFUSE_WEB_IMAGE:-docker.langfuse.com/langfuse/langfuse:4.77.0}
+    profiles: [llmops]
+    depends_on: *langfuse-depends
+    ports:
+      - "${LANGFUSE_PORT:-3001}:3000"
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-local-only}
+      # El navegador sube los medios a MinIO por el puerto publicado en el host.
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:${LANGFUSE_MINIO_PORT:-9092}
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://langfuse-minio:9000
+      # Organizacion, proyecto, usuario y claves creados al arrancar (sin alta manual en la interfaz).
+      LANGFUSE_INIT_ORG_ID: shoplab
+      LANGFUSE_INIT_ORG_NAME: ShopLab
+      LANGFUSE_INIT_PROJECT_ID: shoplab-helpdesk
+      LANGFUSE_INIT_PROJECT_NAME: shoplab-helpdesk
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PUBLIC_KEY:-pk-lf-shoplab-local}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_SECRET_KEY:-sk-lf-shoplab-local}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@shoplab.local}
+      LANGFUSE_INIT_USER_NAME: admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-change-me-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://$${HOSTNAME}:3000/api/public/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
 volumes:
   pgdata:
   ollama_models:
+  litellm_postgres_data:
   prometheus_data:
   grafana_data:
+  langfuse_postgres_data:
+  langfuse_clickhouse_data:
+  langfuse_clickhouse_logs:
+  langfuse_minio_data:
+  langfuse_redis_data:
+
+# `models` aisla a Ollama: solo `ollama` y `litellm` estan en ella; `ingest`, `postgres` y el resto solo en `default`.
+networks:
+  default: {}
+  models: {}

@@ -1,0 +1,139 @@
+### LAB-28 · Métricas de retrieval: casos HTTP del backend (IntelliJ HTTP Client / VS Code REST Client)
+#
+# Cubre lo alcanzable por HTTP: el endpoint de búsqueda que usa la medición y el catálogo de documentos que usa su
+# comprobación previa. Necesita el stack local levantado y los documentos de data/kb indexados. Se ejecutan de arriba abajo.
+#
+# Not covered here (no se alcanzan por HTTP; los cubren las pruebas de eval/ y el quickstart):
+#   - US1 escenarios 1 a 7 (cálculo de hit rate@k, recall@k y MRR, posiciones, documentos repetidos, exclusión de casos
+#     sin respuesta): son de la herramienta de línea de comandos (eval/tests/test_retrieval_metrics.py y test_retrieval_run.py).
+#   - US2 (resumen y detalle en CSV, determinismo, caracteres): eval/tests/test_retrieval_report.py y quickstart §3 a §5.
+#   - US3 escenarios 1 a 6 (códigos de salida, no escribir CSV, k inválido, dataset inválido): eval/tests/test_retrieval_cli.py.
+#     Aquí solo se comprueba lo que el backend responde (422 y forma de la respuesta).
+#
+# Nota: el puerto por defecto del backend es 8080 (server.port de application.yml). Si otro servicio local ya lo usa,
+# arranca el backend con --server.port=<otro> y cambia baseUrl. La búsqueda no requiere autenticación hoy (ADR-0024).
+
+@baseUrl = http://localhost:8080
+
+### FR-002 / FR-003 / contrato "Respuesta 200" — expects 200 con model y results ordenados del más cercano al más lejano
+# ¿Cuántos días tengo para devolver un pedido?
+GET {{baseUrl}}/api/knowledge/search?query=%C2%BFCu%C3%A1ntos%20d%C3%ADas%20tengo%20para%20devolver%20un%20pedido%3F&limit=10
+Accept: application/json
+
+> {%
+  client.test("responde 200", function () {
+    client.assert(response.status === 200, "status esperado 200");
+  });
+  client.test("informa el modelo de embeddings (FR-012)", function () {
+    client.assert(typeof response.body.model === "string" && response.body.model.length > 0, "falta model");
+  });
+  client.test("results es una lista de como máximo 10 fragmentos", function () {
+    client.assert(Array.isArray(response.body.results) && response.body.results.length <= 10, "results inválido");
+  });
+  client.test("el primer fragmento trae source, title, section, position, score y text", function () {
+    var hit = response.body.results[0];
+    ["source", "title", "section", "position", "score", "text"].forEach(function (key) {
+      client.assert(hit !== undefined && key in hit, "falta " + key);
+    });
+  });
+  client.test("no expone identificadores internos", function () {
+    var hit = response.body.results[0];
+    client.assert(hit !== undefined && !("chunkId" in hit) && !("documentId" in hit), "se expone un id interno");
+  });
+  client.test("los fragmentos vienen del más cercano al más lejano", function () {
+    var scores = response.body.results.map(function (hit) { return hit.score; });
+    var sorted = scores.slice().sort(function (a, b) { return b - a; });
+    client.assert(JSON.stringify(scores) === JSON.stringify(sorted), "el orden no es por cercanía");
+  });
+%}
+
+### FR-008 / contrato "limit" — límite inferior: limit=1 — expects 200 con como máximo 1 fragmento
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20devolucion&limit=1
+
+> {%
+  client.test("como máximo 1 fragmento", function () {
+    client.assert(response.status === 200 && response.body.results.length <= 1, "más de 1 fragmento");
+  });
+%}
+
+### FR-008 / FR-004 "profundidad de la medición" — límite superior: limit=50 — expects 200 con como máximo 50 fragmentos
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20devolucion&limit=50
+
+> {%
+  client.test("como máximo 50 fragmentos", function () {
+    client.assert(response.status === 200 && response.body.results.length <= 50, "más de 50 fragmentos");
+  });
+%}
+
+### Contrato "limit" — fuera del rango: limit=51 se acota a 50 — expects 200 con como máximo 50 fragmentos
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20devolucion&limit=51
+
+> {%
+  client.test("se acota a 50", function () {
+    client.assert(response.status === 200 && response.body.results.length <= 50, "no se acotó a 50");
+  });
+%}
+
+### Contrato "limit" — fuera del rango: limit=0 se acota a 1 — expects 200 con como máximo 1 fragmento
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20devolucion&limit=0
+
+> {%
+  client.test("se acota a 1", function () {
+    client.assert(response.status === 200 && response.body.results.length <= 1, "no se acotó a 1");
+  });
+%}
+
+### Contrato "limit" — sin valor usa el límite por defecto (5) — expects 200 con como máximo 5 fragmentos
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20devolucion
+
+> {%
+  client.test("usa el límite por defecto", function () {
+    client.assert(response.status === 200 && response.body.results.length <= 5, "más de 5 fragmentos");
+  });
+%}
+
+### Edge "Tildes y eñes" — una consulta con ¿?, tildes y eñe llega intacta — expects 200
+# ¿Qué garantía cubre una reparación del año pasado?
+GET {{baseUrl}}/api/knowledge/search?query=%C2%BFQu%C3%A9%20garant%C3%ADa%20cubre%20una%20reparaci%C3%B3n%20del%20a%C3%B1o%20pasado%3F&limit=5
+
+> {%
+  client.test("responde 200 con la forma esperada", function () {
+    client.assert(response.status === 200 && Array.isArray(response.body.results), "respuesta inesperada");
+  });
+%}
+
+### Contrato "Errores" — consulta en blanco — expects 422 SLHD_RETR_00009
+GET {{baseUrl}}/api/knowledge/search?query=%20%20&limit=5
+
+> {%
+  client.test("422 con el código de consulta inválida", function () {
+    client.assert(response.status === 422, "status esperado 422");
+    client.assert(response.body.code === "SLHD_RETR_00009", "código esperado SLHD_RETR_00009");
+  });
+%}
+
+### Contrato "Errores" — consulta ausente — expects 422 SLHD_RETR_00009
+GET {{baseUrl}}/api/knowledge/search?limit=5
+
+> {%
+  client.test("422 con el código de consulta inválida", function () {
+    client.assert(response.status === 422, "status esperado 422");
+    client.assert(response.body.code === "SLHD_RETR_00009", "código esperado SLHD_RETR_00009");
+  });
+%}
+
+### FR-014 "comprobación previa del índice" — el catálogo informa el nombre y el estado de cada documento — expects 200
+# La medición exige que cada documento esperado esté en estado INDEXED antes de buscar.
+GET {{baseUrl}}/api/documents
+Accept: application/json
+
+> {%
+  client.test("responde 200 con una lista", function () {
+    client.assert(response.status === 200 && Array.isArray(response.body), "se esperaba una lista");
+  });
+  client.test("cada documento trae name y status", function () {
+    response.body.forEach(function (doc) {
+      client.assert("name" in doc && "status" in doc, "falta name o status");
+    });
+  });
+%}

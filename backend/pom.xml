@@ -11,7 +11,7 @@
 
     <groupId>com.shoplab</groupId>
     <artifactId>helpdesk-backend</artifactId>
-    <version>0.13.0</version>
+    <version>0.19.0</version>
     <name>helpdesk-backend</name>
     <description>ShopLab Helpdesk modular monolith (Spring Modulith + Spring AI)</description>
 
@@ -82,11 +82,20 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-ollama</artifactId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-rag</artifactId>
+        </dependency>
+        <!-- LAB-64: OpenTelemetry solo como formato de transporte de las trazas de LLM hacia Langfuse (ADR-0022). -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
         </dependency>
 
         <dependency>
@@ -129,6 +138,11 @@
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
             <version>3.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-testing</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -234,7 +234,7 @@ class ModuleSchemasIntegrationTests {
 
     @Test
     void theOtherModulesKeepTheirHistory() {
-        assertThat(appliedVersionsOf("chat")).containsExactly("1");
+        assertThat(appliedVersionsOf("chat")).containsExactly("1", "2");
         assertThat(appliedVersionsOf("tickets")).containsExactly("1");
         assertThat(appliedVersionsOf("orders")).containsExactly("1", "2");
         assertThat(appliedVersionsOf("catalog")).containsExactly("1", "2");

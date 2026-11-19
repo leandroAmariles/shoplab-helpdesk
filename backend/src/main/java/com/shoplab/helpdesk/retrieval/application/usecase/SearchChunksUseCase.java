@@ -7,6 +7,7 @@ import com.shoplab.helpdesk.retrieval.application.port.out.EmbeddingStorePort;
 import com.shoplab.helpdesk.retrieval.config.EmbeddingProperties;
 import com.shoplab.helpdesk.retrieval.domain.model.SearchResult;
 import com.shoplab.helpdesk.retrieval.domain.model.constants.RetrievalConstants;
+import com.shoplab.helpdesk.retrieval.domain.model.enums.EmbeddingPurpose;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import java.time.Duration;
@@ -45,12 +46,17 @@ public class SearchChunksUseCase implements SearchChunksServicePort {
                     : Math.max(1, Math.min(limit, RetrievalConstants.MAX_SEARCH_LIMIT));
             long startedAt = System.nanoTime();
             String model = embedding.modelName();
-            return embedding.embed(List.of(query))
+            return embedding.embed(List.of(query), EmbeddingPurpose.SEARCH_QUERY)
                     .flatMap(vectors -> store.search(vectors.get(0), model, effectiveLimit))
                     .flatMap(results -> results.isEmpty() ? warnIfModelChanged(model).thenReturn(results)
                             : Mono.just(results))
                     .doFinally(signal -> metrics.recordSearch(Duration.ofNanos(System.nanoTime() - startedAt)));
         });
+    }
+
+    @Override
+    public String embeddingModel() {
+        return embedding.modelName();
     }
 
     /** An empty answer after a model change that was not reindexed is explained in the log, not hidden. */

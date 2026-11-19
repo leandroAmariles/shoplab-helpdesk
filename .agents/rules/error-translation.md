@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Error Translation — standardizes how technical and business failures become HTTP responses.
+description: Error Translation — Context Skill
 ---
 
 # Error Translation — Context Skill
@@ -214,3 +214,4 @@ return providerClient.execute(request)
 | Validation errors without attributes map | Populate `ErrorDto.attributes` |
 | Using project-specific prefixes in shared docs | Use `<SERVICE>` placeholders |
 | Special-casing every exception unnecessarily | Reuse generic handlers unless response must change |
+

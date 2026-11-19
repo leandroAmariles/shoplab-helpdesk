@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Observability — safe logging, trace propagation, execution markers, and runtime monitoring.
+description: Observability — Context Skill
 ---
 
 # Observability — Context Skill
@@ -202,3 +202,4 @@ management:
 | `traceparent` not configured | Add to `app.reactive-context.headers` |
 | Using DEBUG for major milestones | Use INFO for milestones |
 | ERROR log without stacktrace or identifiers | Include exception and safe correlation fields |
+

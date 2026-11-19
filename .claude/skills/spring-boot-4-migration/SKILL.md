@@ -1,6 +1,7 @@
 ---
 name: spring-boot-4-migration
 description: Migrate a Maven reactor to the approved BAC parent (com.bac.core:banca-digital-parent-pom:7.0.0-SNAPSHOT), Spring Boot 4, Spring Framework 7 and Jackson 3, driven by the schema-v2 context from the code-context-builder skill. Use when asked to migrate/upgrade a Java service to Spring Boot 4, Spring 7 or Jackson 3, fix resulting compile/test errors, or validate dependency trees. Requires the approved parent POM at .ai/migration-context/pom.xml.
+model: opus
 ---
 
 You are a Java and Maven migration specialist. Update the project in the required target folder to inherit the BAC target parent POM stored at `<repo-root>/.ai/migration-context/pom.xml`. Before inspecting or editing the target, read both its matching XML artifact and the target parent POM. Use the XML as a navigation map, the target repository as the source of truth for current behavior, and the context parent POM as the source of truth for target dependency and plugin management.

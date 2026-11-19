@@ -8,6 +8,7 @@ import com.shoplab.helpdesk.retrieval.domain.model.ChunkEmbedding;
 import com.shoplab.helpdesk.retrieval.domain.model.ChunkToEmbed;
 import com.shoplab.helpdesk.retrieval.domain.model.IndexingSummary;
 import com.shoplab.helpdesk.retrieval.domain.model.PendingDocument;
+import com.shoplab.helpdesk.retrieval.domain.model.enums.EmbeddingPurpose;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.IndexOutcome;
 import com.shoplab.helpdesk.retrieval.domain.model.enums.IndexScope;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
@@ -86,7 +87,7 @@ public class DocumentEmbedder {
 
     private Flux<ChunkEmbedding> embedBatch(List<ChunkToEmbed> batch) {
         long startedAt = System.nanoTime();
-        return embedding.embed(batch.stream().map(ChunkToEmbed::text).toList())
+        return embedding.embed(batch.stream().map(ChunkToEmbed::text).toList(), EmbeddingPurpose.DOCUMENT_INDEX)
                 .doOnSuccess(vectors -> metrics.recordBatch(IndexOutcome.INDEXED, elapsedSince(startedAt)))
                 .doOnError(error -> metrics.recordBatch(IndexOutcome.FAILED, elapsedSince(startedAt)))
                 .flatMapMany(vectors -> {

@@ -3,7 +3,7 @@ package com.shoplab.helpdesk.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
-import com.shoplab.helpdesk.chat.infrastructure.out.ollama.OllamaChatAdapter;
+import com.shoplab.helpdesk.chat.infrastructure.out.gateway.GatewayChatAdapter;
 import com.shoplab.helpdesk.chat.support.EmptyKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
@@ -25,14 +25,14 @@ import reactor.test.StepVerifier;
 @Import(EmptyKnowledgeContextConfig.class)
 class ChatMidStreamFailureIntegrationTests {
 
-    private static final RawOllamaServer OLLAMA = new RawOllamaServer(List.of(
-            "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"uno \"},\"done\":false}",
-            "{\"model\":\"llama3.2:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"dos\"},\"done\":false}"),
+    private static final RawGatewayServer OLLAMA = new RawGatewayServer(List.of(
+            GatewayStubs.chunk("uno "),
+            GatewayStubs.chunk("dos")),
             200);
 
     @DynamicPropertySource
     static void rawOllama(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", OLLAMA::baseUrl);
+        registry.add("spring.ai.openai.base-url", OLLAMA::baseUrl);
     }
 
     @AfterAll
@@ -44,11 +44,11 @@ class ChatMidStreamFailureIntegrationTests {
     private int port;
 
     @Autowired
-    private OllamaChatAdapter adapter;
+    private GatewayChatAdapter adapter;
 
     @Test
     void theAdapterSignalsAModelExceptionAfterTheFragmentsAlreadyEmitted() {
-        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of()))
+        StepVerifier.create(adapter.streamAnswer("Hola", java.util.List.of(), java.util.List.of()))
                 .expectNext("uno ", "dos")
                 .expectErrorSatisfies(error -> assertThat(error).isInstanceOf(ChatModelException.class))
                 .verify();
@@ -56,7 +56,7 @@ class ChatMidStreamFailureIntegrationTests {
 
     @Test
     void theClientGetsTheTokensThenAFinalErrorEventAndTheConnectionCloses() {
-        ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"Hola\"}");
+        ChatTestClient.Result result = new ChatTestClient(port).post("{\"message\":\"¿Cuánto tarda un envío?\"}");
 
         assertThat(result.status()).isEqualTo(200);
         assertThat(result.text()).isEqualTo("uno dos");

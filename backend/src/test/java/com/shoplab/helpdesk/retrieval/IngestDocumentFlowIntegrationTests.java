@@ -118,7 +118,9 @@ class IngestDocumentFlowIntegrationTests {
         IngestedDocument first = useCase.ingest(new IngestDocumentCommand(SOURCE, CONTENT)).block();
         IngestedDocument second = useCase.ingest(new IngestDocumentCommand(SOURCE, CONTENT)).block();
 
-        assertThat(second).isEqualTo(first);
+        assertThat(second).usingRecursiveComparison().ignoringFields("replaced").isEqualTo(first);
+        assertThat(first.replaced()).isFalse();
+        assertThat(second.replaced()).isTrue();
         assertThat(documents()).isEqualTo(1);
         assertThat(chunks()).isEqualTo(2);
     }

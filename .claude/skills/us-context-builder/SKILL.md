@@ -1,6 +1,7 @@
 ---
 name: us-context-builder
 description: Given an Azure DevOps work item URL (User Story, Bug, Task), fetch its title, description, acceptance criteria, discussion, links and images through the REST API and write a self-contained Markdown context file under .ai/us-context/US<id>/context.md. Use when the user shares a dev.azure.com/_workitems/edit/<id> link, or before /speckit-specify or /opsx-propose so the spec starts from the real US instead of a pasted summary.
+model: sonnet
 ---
 
 # us-context-builder — Usage Instructions

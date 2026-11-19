@@ -33,7 +33,17 @@ prints them, with values, as a YAML block to paste in. If there are none, it pri
 5. **Secrets.** For passwords, tokens, keys, client secrets, emit an env placeholder
    (`${SERVICE_API_KEY}`) — never a literal value — and add a `# secret` comment.
 6. **Output.** If there is at least one property, print a single fenced `yaml` block with the nested
-   structure, a short trailing comment per key when the purpose is not obvious, and nothing else.
+   structure, a short trailing comment per key when the purpose is not obvious, and nothing else:
+
+   ```yaml
+   payments:
+     invoice-export:
+       enabled: true
+       batch-size: 500
+       api-key: ${PAYMENTS_API_KEY} # secret
+   ```
+
+   If there are none, output **no text at all** (no "no new properties" message, no empty block).
 
 ## Guardrails
 

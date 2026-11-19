@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.shoplab.helpdesk.retrieval.application.port.out.DocumentParserPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.IngestMetricsPort;
 import com.shoplab.helpdesk.retrieval.application.port.out.KnowledgeBasePort;
+import com.shoplab.helpdesk.retrieval.application.port.out.UploadMetricsPort;
 import com.shoplab.helpdesk.retrieval.domain.model.DocumentIngestedEvent;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
 import com.shoplab.helpdesk.retrieval.domain.model.IngestedDocument;
@@ -38,13 +39,64 @@ class IngestDocumentUseCaseTests {
     private static final byte[] CONTENT = "# Politica".getBytes(java.nio.charset.StandardCharsets.UTF_8);
     private static final ParsedDocument PARSED = new ParsedDocument("politica.md", "Politica", DocumentFormat.MARKDOWN,
             List.of(new ParsedChunk(0, "Politica", "Politica")));
-    private static final IngestedDocument STORED = new IngestedDocument(UUID.randomUUID(), "politica.md", "Politica", 1);
+    private static final IngestedDocument STORED = new IngestedDocument(UUID.randomUUID(), "politica.md", "Politica", 1,
+            false);
 
     private final DocumentParserPort parser = mock(DocumentParserPort.class);
     private final KnowledgeBasePort knowledgeBase = mock(KnowledgeBasePort.class);
     private final IngestMetricsPort metrics = mock(IngestMetricsPort.class);
+    private final UploadMetricsPort uploadMetrics = mock(UploadMetricsPort.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-    private final IngestDocumentUseCase useCase = new IngestDocumentUseCase(parser, knowledgeBase, metrics, events);
+    private final IngestDocumentUseCase useCase = new IngestDocumentUseCase(parser, knowledgeBase, metrics,
+            uploadMetrics, events);
+
+    @Test
+    void anUploadThatIsStoredIsMeasuredAsOk() {
+        when(parser.parse("politica.md", CONTENT)).thenReturn(Mono.just(PARSED));
+        when(knowledgeBase.replaceDocument(PARSED)).thenReturn(Mono.just(STORED));
+
+        useCase.ingest(new IngestDocumentCommand("politica.md", CONTENT, "req-1")).block();
+
+        verify(uploadMetrics).recordUpload(eq(IngestOutcome.OK), any(Duration.class));
+    }
+
+    @Test
+    void anUploadOfAnInvalidDocumentIsMeasuredAsRejected() {
+        StepVerifier.create(useCase.ingest(new IngestDocumentCommand("politica.md", new byte[0], "req-2")))
+                .expectError(BusinessException.class).verify();
+
+        verify(uploadMetrics).recordUpload(eq(IngestOutcome.REJECTED), any(Duration.class));
+    }
+
+    @Test
+    void anUploadRejectedByTheParserIsMeasuredAsRejected() {
+        when(parser.parse("politica.md", CONTENT))
+                .thenReturn(Mono.error(ExceptionUtil.business(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT)));
+
+        StepVerifier.create(useCase.ingest(new IngestDocumentCommand("politica.md", CONTENT)))
+                .expectError(BusinessException.class).verify();
+
+        verify(uploadMetrics).recordUpload(eq(IngestOutcome.REJECTED), any(Duration.class));
+    }
+
+    @Test
+    void anUploadThatFailsToBeStoredIsMeasuredAsFailed() {
+        when(parser.parse("politica.md", CONTENT)).thenReturn(Mono.just(PARSED));
+        when(knowledgeBase.replaceDocument(PARSED)).thenReturn(Mono.error(
+                ExceptionUtil.technical(ResponseCodeEnum.DATABASE_UNAVAILABLE, new IllegalStateException())));
+
+        StepVerifier.create(useCase.ingest(new IngestDocumentCommand("politica.md", CONTENT)))
+                .expectError(TechnicalException.class).verify();
+
+        verify(uploadMetrics).recordUpload(eq(IngestOutcome.FAILED), any(Duration.class));
+    }
+
+    @Test
+    void theLoggedNameHasNoControlCharactersAndABoundedLength() {
+        assertThat(IngestDocumentUseCase.loggable("a\nb\rc.md")).isEqualTo("a_b_c.md");
+        assertThat(IngestDocumentUseCase.loggable("x".repeat(300))).hasSize(203).endsWith("...");
+        assertThat(IngestDocumentUseCase.loggable(null)).isNull();
+    }
 
     @Test
     void parsesTheDocumentAndStoresWhatTheParserReturned() {

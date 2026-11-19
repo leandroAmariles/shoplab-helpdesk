@@ -22,7 +22,7 @@ class ChatModelDownIntegrationTests {
 
     @DynamicPropertySource
     static void closedPort(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", () -> "http://localhost:1");
+        registry.add("spring.ai.openai.base-url", () -> "http://localhost:1/v1");
     }
 
     @LocalServerPort
@@ -31,7 +31,7 @@ class ChatModelDownIntegrationTests {
     @Test
     void respondsServiceUnavailableAsJsonWhenTheClientAsksForAnEventStream() {
         ChatTestClient.Result result = new ChatTestClient(port)
-                .post("{\"message\":\"Hola\"}", "text/event-stream", "req-down-1");
+                .post("{\"message\":\"¿Cuánto tarda un envío?\"}", "text/event-stream", "req-down-1");
 
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.header("Content-Type")).startsWith("application/json");
@@ -42,7 +42,7 @@ class ChatModelDownIntegrationTests {
     @Test
     void respondsServiceUnavailableToAClientThatAcceptsAnything() {
         ChatTestClient.Result result = new ChatTestClient(port)
-                .post("{\"message\":\"Hola\"}", "*/*", null);
+                .post("{\"message\":\"¿Cuánto tarda un envío?\"}", "*/*", null);
 
         assertThat(result.status()).isEqualTo(503);
         assertThat(result.body()).contains(UNAVAILABLE_BODY);
@@ -51,7 +51,7 @@ class ChatModelDownIntegrationTests {
     @Test
     void aClientThatOnlyAcceptsJsonIsNotAcceptable() {
         ChatTestClient.Result result = new ChatTestClient(port)
-                .post("{\"message\":\"Hola\"}", "application/json", null);
+                .post("{\"message\":\"¿Cuánto tarda un envío?\"}", "application/json", null);
 
         assertThat(result.status()).isEqualTo(406);
     }
@@ -59,7 +59,7 @@ class ChatModelDownIntegrationTests {
     @Test
     void theRequestIdIsReturnedAlsoOnErrors() {
         ChatTestClient.Result result = new ChatTestClient(port)
-                .post("{\"message\":\"Hola\"}", "text/event-stream", "req-down-2");
+                .post("{\"message\":\"¿Cuánto tarda un envío?\"}", "text/event-stream", "req-down-2");
 
         assertThat(result.header("X-Request-Id")).isEqualTo("req-down-2");
     }

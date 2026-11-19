@@ -1,0 +1,35 @@
+# Claves virtuales del gateway (LAB-84): una por consumidor y entorno, con presupuesto y periodo de reinicio.
+# bootstrap_keys.py las crea/actualiza al arrancar (idempotente). El VALOR de cada clave nunca vive aqui: lo da la
+# variable de entorno indicada en `key_env` (compose: .env; clúster: ExternalSecret).
+# El presupuesto es en USD de referencia y se mide con los precios de config.yaml (tambien para modelos locales).
+
+environment: ${GATEWAY_ENVIRONMENT}
+
+keys:
+  - alias: backend-${GATEWAY_ENVIRONMENT}
+    consumer: backend
+    key_env: LITELLM_KEY_BACKEND
+    max_budget: 5.00
+    budget_duration: 1d
+    # `chat-fallback` es solo el destino del fallback: el backend nunca lo pide, pero LiteLLM omite el fallback si la
+    # clave no puede llamarlo (verificado contra el gateway real).
+    models: [chat, chat-fallback, embeddings]
+    # El proveedor cloud solo se permite si hay clave de proveedor (FR-011, FR-012).
+    models_when:
+      - env: CLOUD_PROVIDER_API_KEY
+        models: [chat-cloud]
+  - alias: ingest-${GATEWAY_ENVIRONMENT}
+    consumer: ingest
+    key_env: LITELLM_KEY_INGEST
+    max_budget: 1.00
+    budget_duration: 1d
+    # ingest no llama a modelos hoy: la clave existe y esta presupuestada, pero sin acceso a ningun modelo.
+    models: []
+  - alias: eval-${GATEWAY_ENVIRONMENT}
+    consumer: eval
+    key_env: LITELLM_KEY_EVAL
+    max_budget: 5.00
+    budget_duration: 1d
+    # Evaluacion de calidad de respuesta (LAB-29): solo el juez y los embeddings de AnswerRelevancy. No llama a `chat` ni a
+    # `chat-cloud`: medir no gasta el presupuesto del backend ni puede salir a un proveedor externo.
+    models: [judge, embeddings]

@@ -1,0 +1,247 @@
+{
+  "meta": {
+    "format_version": 1,
+    "generated_at": "2026-11-10T23:31:44Z",
+    "embed_model": "bge-m3",
+    "embed_model_digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+    "corpus_documents": 24,
+    "params": {
+      "chunk_size": 1000,
+      "chunk_overlap": 100,
+      "top_k": 4,
+      "breakpoint_percentile": 80,
+      "min_chunk_chars": 200
+    }
+  },
+  "summary": {
+    "fixed": {
+      "chunk_count": 48,
+      "size_min": 225,
+      "size_mean": 771.4,
+      "size_max": 1000,
+      "hit_rate": 0.9,
+      "mrr": 0.8167,
+      "misses": 2
+    },
+    "headings": {
+      "chunk_count": 138,
+      "size_min": 72,
+      "size_mean": 242.3,
+      "size_max": 731,
+      "hit_rate": 0.85,
+      "mrr": 0.6542,
+      "misses": 3
+    },
+    "semantic": {
+      "chunk_count": 59,
+      "size_min": 191,
+      "size_mean": 582.4,
+      "size_max": 997,
+      "hit_rate": 0.85,
+      "mrr": 0.7625,
+      "misses": 3
+    }
+  },
+  "rows": [
+    {
+      "id": "Q01",
+      "topic": "payments",
+      "document": "payments-02-installments",
+      "rank": {
+        "fixed": 1,
+        "headings": 2,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q02",
+      "topic": "payments",
+      "document": "payments-03-boleto-and-vouchers",
+      "rank": {
+        "fixed": 1,
+        "headings": 3,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q03",
+      "topic": "payments",
+      "document": "payments-04-payment-issues",
+      "rank": {
+        "fixed": null,
+        "headings": null,
+        "semantic": null
+      }
+    },
+    {
+      "id": "Q04",
+      "topic": "payments",
+      "document": "payments-04-payment-issues",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q05",
+      "topic": "privacy",
+      "document": "privacy-04-cookies",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 2
+      }
+    },
+    {
+      "id": "Q06",
+      "topic": "privacy",
+      "document": "privacy-02-data-collection-and-use",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q07",
+      "topic": "privacy",
+      "document": "privacy-03-data-rights",
+      "rank": {
+        "fixed": 1,
+        "headings": 2,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q08",
+      "topic": "privacy",
+      "document": "privacy-01-privacy-policy",
+      "rank": {
+        "fixed": 1,
+        "headings": 2,
+        "semantic": 2
+      }
+    },
+    {
+      "id": "Q09",
+      "topic": "returns",
+      "document": "returns-02-return-process",
+      "rank": {
+        "fixed": 1,
+        "headings": 4,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q10",
+      "topic": "returns",
+      "document": "returns-02-return-process",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 4
+      }
+    },
+    {
+      "id": "Q11",
+      "topic": "returns",
+      "document": "returns-03-refunds",
+      "rank": {
+        "fixed": 2,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q12",
+      "topic": "returns",
+      "document": "returns-04-exchanges-and-cancellations",
+      "rank": {
+        "fixed": 1,
+        "headings": 2,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q13",
+      "topic": "shipping",
+      "document": "shipping-02-shipping-costs",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q14",
+      "topic": "shipping",
+      "document": "shipping-01-delivery-times",
+      "rank": {
+        "fixed": null,
+        "headings": 1,
+        "semantic": null
+      }
+    },
+    {
+      "id": "Q15",
+      "topic": "shipping",
+      "document": "shipping-04-delivery-issues",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q16",
+      "topic": "shipping",
+      "document": "shipping-03-order-tracking",
+      "rank": {
+        "fixed": 2,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q17",
+      "topic": "warranty",
+      "document": "warranty-02-extended-warranty",
+      "rank": {
+        "fixed": 1,
+        "headings": 2,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q18",
+      "topic": "warranty",
+      "document": "warranty-03-warranty-claims",
+      "rank": {
+        "fixed": 1,
+        "headings": 1,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q19",
+      "topic": "warranty",
+      "document": "warranty-03-warranty-claims",
+      "rank": {
+        "fixed": 1,
+        "headings": null,
+        "semantic": 1
+      }
+    },
+    {
+      "id": "Q20",
+      "topic": "warranty",
+      "document": "warranty-02-extended-warranty",
+      "rank": {
+        "fixed": 3,
+        "headings": null,
+        "semantic": null
+      }
+    }
+  ]
+}

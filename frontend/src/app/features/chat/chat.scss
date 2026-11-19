@@ -13,6 +13,11 @@
   margin: 0 auto;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .history {
   display: flex;
   flex: 1;

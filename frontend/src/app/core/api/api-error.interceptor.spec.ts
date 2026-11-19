@@ -1,8 +1,8 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ApiError } from './api-error';
+import { ApiError, HANDLES_OWN_ERRORS } from './api-error';
 import { apiErrorInterceptor } from './api-error.interceptor';
 
 describe('apiErrorInterceptor', () => {
@@ -65,6 +65,53 @@ describe('apiErrorInterceptor', () => {
       message: 'El servidor respondió con un error (500).',
     });
     expect(open).toHaveBeenCalledOnce();
+  });
+
+  it('exposes the code and message of the backend error body', async () => {
+    const result = failure('/api/documents');
+
+    controller
+      .expectOne('/api/documents')
+      .flush(
+        { code: 'SLHD_RETR_00003', message: 'The document is empty' },
+        { status: 422, statusText: 'Unprocessable Content' },
+      );
+
+    const error = (await result) as ApiError;
+    expect(error).toEqual({
+      kind: 'http',
+      status: 422,
+      message: 'El servidor respondió con un error (422).',
+      code: 'SLHD_RETR_00003',
+      detail: 'The document is empty',
+    });
+  });
+
+  it('ignores a body that does not follow the error contract', async () => {
+    const result = failure('/api/documents');
+
+    controller
+      .expectOne('/api/documents')
+      .flush({ code: 42 }, { status: 413, statusText: 'Payload Too Large' });
+
+    const error = (await result) as ApiError;
+    expect(error.code).toBeUndefined();
+    expect(error.detail).toBeUndefined();
+  });
+
+  it('does not open the snack bar when the caller shows the error itself', async () => {
+    const result = new Promise<unknown>((resolve) => {
+      http
+        .get('/api/documents', { context: new HttpContext().set(HANDLES_OWN_ERRORS, true) })
+        .subscribe({ error: resolve });
+    });
+
+    controller
+      .expectOne('/api/documents')
+      .flush({ code: 'SLHD_DBAS_00001', message: 'down' }, { status: 503, statusText: 'Unavailable' });
+
+    expect(((await result) as ApiError).code).toBe('SLHD_DBAS_00001');
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('ignores requests that are not under /api', async () => {

@@ -1,6 +1,7 @@
 ---
 name: migracion
 description: End-to-end Spring Boot 4 migration orchestrator. Use whenever the user simply asks to migrate a Java/Maven service to Spring Boot 4, Spring 7, Jackson 3 or the BAC parent ("migra este repo", "haz la migración", "migrate to Spring Boot 4"). Collects the missing inputs, installs the tooling if needed, then runs code-context-builder followed by spring-boot-4-migration, gating each step on the previous one.
+model: opus
 ---
 
 # migracion — Spring Boot 4 migration orchestrator

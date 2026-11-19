@@ -17,7 +17,7 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | `backend/` | Spring Boot 4 + Spring Modulith + Spring AI 2.0 |
 | `ingest/` | Servicio FastAPI de ingesta |
 | `eval/` | Dataset golden y evaluación |
-| `notebooks/` | Experimentos |
+| `notebooks/` | Experimentos: [comparativo de estrategias de chunking](notebooks/README.md) |
 | `data/` | Políticas, FAQs y scripts de carga |
 | `infra/` | docker compose, Keycloak, observabilidad |
 | `docs/` | Guías por fase y ADRs |
@@ -100,7 +100,7 @@ npm run build              # genera frontend/dist/browser
 
 La app usa componentes standalone, signals y Angular Material (ver `docs/adr/0013-biblioteca-ui-angular-material.md`). El proxy de desarrollo (`frontend/proxy.conf.json`) evita configurar CORS: levanta el backend (`./mvnw spring-boot:run`) y llama a rutas relativas `/api/...`. Para apuntar a otro backend basta con cambiar el `target` de ese archivo.
 
-**Chat (`/chat`)**: con el backend en `localhost:8080` y el modelo cargado, `npm start` en `frontend/` y abre `http://localhost:4200/chat`. La pantalla envía `POST /api/chat` y lee la respuesta como SSE con `fetch` (el navegador no permite `EventSource` con `POST`; ver `docs/adr/0014-markdown-seguro-en-el-chat.md`). Las respuestas del asistente se muestran como Markdown saneado: **solo** `core/markdown/markdown-renderer.ts` puede confiar en HTML (`bypassSecurityTrustHtml`), y ESLint falla si otro archivo lo intenta. La conversación vive en memoria de la pestaña y se pierde al recargar. Límite conocido: la imagen de contenedor aún no enruta `/api` al backend (lo resuelve el ingreso del clúster), así que el chat se prueba en desarrollo con el proxy.
+**Chat (`/chat`)**: con el backend en `localhost:8080` y el modelo cargado, `npm start` en `frontend/` y abre `http://localhost:4200/chat`. La pantalla envía `POST /api/chat` y lee la respuesta como SSE con `fetch` (el navegador no permite `EventSource` con `POST`; ver `docs/adr/0014-markdown-seguro-en-el-chat.md`). Las respuestas del asistente se muestran como Markdown saneado: **solo** `core/markdown/markdown-renderer.ts` puede confiar en HTML (`bypassSecurityTrustHtml`), y ESLint falla si otro archivo lo intenta. La conversación visible vive en memoria de la pestaña y se pierde al recargar; el servidor recuerda cada conversación por un UUID que genera la pantalla (`docs/adr/0020-memoria-de-conversacion-en-tabla-propia.md`), y «Nueva conversación» empieza otra. Límite conocido: la imagen de contenedor aún no enruta `/api` al backend (lo resuelve el ingreso del clúster), así que el chat se prueba en desarrollo con el proxy.
 
 Los pasos de arranque de `ingest/` se documentan cuando tenga código.
 
@@ -143,12 +143,12 @@ La dimensión del embedding fija el tamaño de la columna `vector(n)` en las his
 
 | Perfil | Servicios | Estado |
 | --- | --- | --- |
-| `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` | Siempre activo |
-| `llmops` | — | Reservado |
+| `core` | `postgres` (PostgreSQL 16 + pgvector), `ollama` (sin puerto publicado), `litellm` (gateway de modelos, puerto 4000), `litellm-postgres` y `litellm-bootstrap` (crea las claves virtuales y termina), `ingest` | Siempre activo |
+| `llmops` | `langfuse-web`, `langfuse-worker`, `langfuse-postgres`, `langfuse-clickhouse`, `langfuse-redis`, `langfuse-minio` (trazas de LLM, LAB-64) | Opcional: `--profile llmops` |
 | `observability` | `prometheus`, `grafana` (métricas del backend y dashboards, LAB-102) | Opcional: `--profile observability` |
 | `kafka` | — | Reservado (F4) |
 
-Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores. El perfil `observability` ya tiene servicios (ver más abajo).
+Activar un perfil reservado (`--profile <nombre>`) no produce errores; sus servicios llegan en historias posteriores. Los perfiles `observability` y `llmops` ya tienen servicios (ver más abajo).
 
 ### Operar el entorno
 
@@ -164,17 +164,67 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 | Reiniciar desde cero | `docker compose -f infra/docker-compose.yml down -v` |
 
 - **Salud:** `ollama` solo pasa a `healthy` cuando el modelo de chat y el de embeddings están descargados; `postgres`, cuando acepta conexiones y la extensión `vector` existe.
-- **Cambiar de modelo:** define `OLLAMA_CHAT_MODEL` u `OLLAMA_EMBED_MODEL` en `infra/.env` y vuelve a ejecutar `up -d --wait`. El modelo anterior sigue en el disco; se elimina con `down -v`.
-- **Puerto ocupado:** cambia `POSTGRES_PORT`, `OLLAMA_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
-- **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y Ollama en `http://localhost:11434`; las credenciales de ejemplo están en `infra/.env.example`.
+- **Cambiar de modelo:** define `LITELLM_CHAT_PRIMARY_MODEL` o `LITELLM_EMBED_MODEL` (o `OLLAMA_CHAT_MODEL` / `OLLAMA_EMBED_MODEL` si hay que descargarlos) en `infra/.env` y ejecuta `up -d litellm`; el backend no se reinicia. El modelo anterior sigue en el disco; se elimina con `down -v`. Ver [`docs/gateway-de-modelos.md`](docs/gateway-de-modelos.md).
+- **Puerto ocupado:** cambia `POSTGRES_PORT`, `LITELLM_PORT`, `PROMETHEUS_PORT` o `GRAFANA_PORT` en `infra/.env`.
+- **Conexión:** PostgreSQL en `localhost:5432` (usuario y base `shoplab`) y el gateway de modelos en `http://localhost:4000/v1` (el backend habla solo con él, con su clave virtual; **Ollama ya no publica puerto**: solo lo alcanza el gateway, y para depurarlo se añade `-f infra/docker-compose.ollama-host.yml`); las credenciales de ejemplo están en `infra/.env.example`.
+- **Gateway de modelos (LAB-84):** fallback entre dos modelos locales (`OLLAMA_FALLBACK_MODEL`), presupuesto por clave virtual, coste y tokens por conversación en los logs del gateway y un proveedor cloud opcional (desactivado sin clave). Guía: [`docs/gateway-de-modelos.md`](docs/gateway-de-modelos.md) y [ADR-0023](docs/adr/0023-gateway-de-modelos-litellm.md).
+
+### Langfuse (perfil `llmops`)
+
+`docker compose -f infra/docker-compose.yml --profile llmops up -d --wait` levanta Langfuse v4 autoalojado con sus almacenes (PostgreSQL, ClickHouse, Redis y MinIO) para inspeccionar cada turno del chat. La interfaz queda en `http://localhost:3001` (el 3000 es de Grafana; se cambia con `LANGFUSE_PORT`). Arranca ya inicializado: organización, proyecto `shoplab-helpdesk`, usuario `admin@shoplab.local` (contraseña `LANGFUSE_INIT_USER_PASSWORD`, por defecto `change-me-local-only`, solo válida en local) y las claves `pk-lf-shoplab-local` / `sk-lf-shoplab-local`. Es opcional y pesado: en reposo usa unos 3 GB de RAM (la web de Langfuse ~1,6 GB, el worker ~0,7 GB, ClickHouse ~0,4 GB); medición en `specs/LAB-64-langfuse-llm-traces/validation.md`. Sin el perfil no arranca ninguno de sus contenedores. Los datos viven en volúmenes con nombre (`langfuse_*`) y sobreviven a reinicios. Para que el backend envíe trazas, ver «Trazas de LLM».
 
 ### Observabilidad local (perfil `observability`)
 
 `docker compose -f infra/docker-compose.yml --profile observability up -d --wait` levanta Prometheus (`http://localhost:9090`) y Grafana (`http://localhost:3000`, usuario `admin`, contraseña `GRAFANA_ADMIN_PASSWORD`, por defecto `change-me-local-only` y solo válida en local). Prometheus recoge `/actuator/prometheus` del backend que corre en el host en el puerto 8080; Grafana arranca con el origen de datos y los dashboards de `infra/observability/`. Sin el perfil no arranca nada de esto. Detalle, dashboards, alerta y cómo borrar solo sus datos: [docs/observabilidad.md](docs/observabilidad.md).
 
+### Trazas de LLM
+
+Cada turno del chat puede dejar una traza en Langfuse (LAB-64, ADR-0022). **Está apagado por defecto**: sin la variable no se crea ningún exportador ni se abre ninguna conexión.
+
+**Activarlo en local** (con el perfil `llmops` levantado):
+
+```bash
+SHOPLAB_CHAT_TRACING_ENABLED=true SHOPLAB_CHAT_TRACING_PUBLIC_KEY=pk-lf-shoplab-local SHOPLAB_CHAT_TRACING_SECRET_KEY=sk-lf-shoplab-local ./mvnw spring-boot:run
+```
+
+Las demás variables (`SHOPLAB_CHAT_TRACING_ENDPOINT`, `_ENVIRONMENT`, `_MAX_CONTENT_CHARACTERS`, `_QUEUE_SIZE`, `_BATCH_SIZE`, `_SCHEDULE_DELAY`, `_EXPORT_TIMEOUT`, `_SHUTDOWN_TIMEOUT`) tienen valores por defecto en `backend/src/main/resources/application.yml`. Con `enabled=true` y las claves vacías el backend arranca igualmente, avisa en el log (sin valores) y no envía nada.
+
+**Cómo leer una traza.** En `http://localhost:3001`, proyecto `shoplab-helpdesk`, cada turno es una traza `chat-turn` con:
+
+| Paso | Qué muestra |
+|---|---|
+| `chat-turn` (raíz) | la pregunta, la respuesta, `result` (`completed`, `no_context`, `cancelled` o `error`), el `X-Request-Id`, los turnos de memoria usados y el tiempo hasta el primer token; en un error, `error_code` y `failed_stage`. La conversación se agrupa en una sesión por su `conversationId` |
+| `retrieval` | el texto buscado y los fragmentos entregados al modelo con fuente, título, sección y **puntuación**, más cuántos candidatos hubo |
+| `generation` | el modelo y sus parámetros, el prompt completo (`system`, historial y pregunta con contexto), la respuesta, los tokens de entrada y salida, el coste y el tiempo hasta el primer token |
+| `tool:<nombre>` | por cada herramienta que el modelo llamó: argumentos, resultado y duración |
+
+Un uso de tokens que el modelo no informó aparece como desconocido, nunca como cero. El nombre exacto de cada atributo está en `specs/LAB-64-langfuse-llm-traces/contracts/trace-schema.md`.
+
+**Precios.** El coste sale de la tabla `shoplab.chat.tracing.pricing` (USD por millón de tokens, por nombre exacto de modelo y, si no, por proveedor). Los modelos locales de Ollama valen 0. Para un modelo de pago añade una entrada, por ejemplo:
+
+```yaml
+shoplab.chat.tracing.pricing.claude-sonnet-5-5:
+  input-per-million: 3.0
+  output-per-million: 15.0
+```
+
+Un modelo sin precio no tiene coste en su traza (no se inventa).
+
+**Encontrar la traza de una petición.** El identificador de la traza es `SHA-256(X-Request-Id)` en hexadecimal, sus primeros 32 caracteres:
+
+```bash
+printf '%s' "<X-Request-Id>" | sha256sum | cut -c1-32
+```
+
+Con ese id, la interfaz abre `http://localhost:3001/project/shoplab-helpdesk/traces/<traceId>`.
+
+> **Datos.** Las trazas contienen la conversación completa (preguntas, respuestas, fragmentos y prompt). Úsalas solo con datos públicos o de prueba: la base de conocimiento actual lo es. Si activas el envío con datos reales, Langfuse los guarda.
+
+**Ambiente DEV.** El backend de dev envía las trazas al Langfuse del clúster y este no tiene Ingress; se abre con `kubectl -n shoplab-dev port-forward svc/langfuse-web 3001:3000` y luego `http://localhost:3001` (detalles y secretos en `docs/observability.md` del repositorio `shoplab-infra`).
+
 ## Integración continua
 
-El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`).
+El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`, `notebooks/`).
 
 - **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración con PostgreSQL desechable vía Testcontainers y gate de cobertura de líneas ≥ 80 %). Después comprueba que `docs/modulos/` (generada por `ModularityTests`) coincide con lo versionado. El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
 - **Qodana (backend):** el job `qodana` analiza `backend/` con el linter JVM Community (`backend/qodana.yaml`) y falla si aparecen problemas **nuevos** de severidad alta o crítica respecto al baseline `backend/qodana.sarif.json`. Los hallazgos se ven en *Security > Code scanning*, en el comentario del PR y en el artefacto `qodana-report`; en PRs desde forks solo queda el artefacto. No requiere `QODANA_TOKEN`.
@@ -184,7 +234,7 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
 - **Seguridad (Trivy):** el job `trivy` escanea todo el repo (dependencias Maven/npm/Python, secretos y configuración) en cada PR y en cada push a `main`, y falla ante hallazgos HIGH o CRITICAL con corrección disponible. Los hallazgos se ven en *Security > Code scanning* (categoría `trivy`) y en el artefacto `trivy-report`; en PRs de forks o de Dependabot solo queda el artefacto. Dependabot abre PRs semanales de actualización (`.github/dependabot.yml`).
   - *Reproducir en local:* `trivy fs . --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --skip-dirs node_modules,target,.venv --ignorefile .trivyignore --exit-code 1`.
   - *Excepción:* añade el id al `.trivyignore` precedido de `Motivo:` y `Responsable: ... | Revisar antes de: AAAA-MM-DD`; nunca sin justificación.
-- **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
+- **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`, `notebooks`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
 - **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
 
 ### Imágenes Docker

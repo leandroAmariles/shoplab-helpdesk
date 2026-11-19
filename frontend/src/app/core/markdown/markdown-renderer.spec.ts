@@ -309,6 +309,22 @@ describe('MarkdownRenderer', () => {
       expect(dom.hasAttribute('onclick')).toBe(false);
     });
 
+    it('renders where crypto.randomUUID is not available (plain HTTP)', () => {
+      const real = globalThis.crypto;
+      vi.stubGlobal('crypto', {
+        getRandomValues: (array: Uint8Array<ArrayBuffer>) => real.getRandomValues(array),
+      });
+
+      try {
+        const dom = mount('Tienes 30 días [1].', { sources });
+
+        expect(buttons(dom)).toHaveLength(1);
+        expect(dom.textContent?.trim()).toBe('Tienes 30 días [1].');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
     it('does not leave internal attributes on the buttons', () => {
       const [button] = buttons(mount('Dato [1]', { sources }));
 

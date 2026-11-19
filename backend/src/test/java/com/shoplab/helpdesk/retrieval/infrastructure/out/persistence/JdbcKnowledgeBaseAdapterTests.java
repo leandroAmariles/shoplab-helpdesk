@@ -144,8 +144,19 @@ class JdbcKnowledgeBaseAdapterTests {
         IngestedDocument first = store(parsed);
         IngestedDocument second = store(parsed);
 
-        assertThat(second).isEqualTo(first);
+        assertThat(second).usingRecursiveComparison().ignoringFields("replaced").isEqualTo(first);
         assertThat(countChunks(first.documentId())).isEqualTo(2);
+    }
+
+    @Test
+    void tellsANewDocumentFromOneThatReplacesTheSameSource() {
+        IngestedDocument first = store(document("test/replaced.md", "Replaced", DocumentFormat.MARKDOWN, "A"));
+        IngestedDocument second = store(document("test/replaced.md", "Replaced", DocumentFormat.MARKDOWN, "A", "B"));
+        IngestedDocument other = store(document("test/other.md", "Other", DocumentFormat.MARKDOWN, "A"));
+
+        assertThat(first.replaced()).isFalse();
+        assertThat(second.replaced()).isTrue();
+        assertThat(other.replaced()).isFalse();
     }
 
     @Test

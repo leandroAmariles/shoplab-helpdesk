@@ -5,6 +5,8 @@ import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
+import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -19,6 +21,8 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
     private final MeterRegistry registry;
     private final Timer firstToken;
     private final DistributionSummary contextFragments;
+    private final DistributionSummary historyMessages;
+    private final Counter historyTrimmed;
 
     public MicrometerChatMetrics(MeterRegistry registry) {
         this.registry = registry;
@@ -28,6 +32,12 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
                 .register(registry);
         this.contextFragments = DistributionSummary.builder(ChatConstants.CONTEXT_FRAGMENTS_METRIC)
                 .description("Fragments of context handed to the model for one answer")
+                .register(registry);
+        this.historyMessages = DistributionSummary.builder(ChatConstants.HISTORY_MESSAGES_METRIC)
+                .description("Messages of the conversation history handed to the model for one answer")
+                .register(registry);
+        this.historyTrimmed = Counter.builder(ChatConstants.HISTORY_TRIMMED_METRIC)
+                .description("Answers for which part of the conversation history was left out by the limits")
                 .register(registry);
     }
 
@@ -44,6 +54,15 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
                 .publishPercentileHistogram()
                 .register(registry)
                 .record(elapsed);
+    }
+
+    @Override
+    public void recordTurn(TurnKind kind) {
+        Counter.builder(ChatConstants.TURNS_METRIC)
+                .description("Chat turns attended, by kind: small talk, with context or without context")
+                .tag(ChatConstants.KIND_TAG, kind.tagValue())
+                .register(registry)
+                .increment();
     }
 
     @Override
@@ -64,6 +83,23 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
         Counter.builder(ChatConstants.CITATIONS_METRIC)
                 .description("Answers given with context, by the quality of their citations")
                 .tag(ChatConstants.OUTCOME_TAG, outcome.tagValue())
+                .register(registry)
+                .increment();
+    }
+
+    @Override
+    public void recordHistory(int messages, boolean trimmed) {
+        historyMessages.record(messages);
+        if (trimmed) {
+            historyTrimmed.increment();
+        }
+    }
+
+    @Override
+    public void recordMemoryFailure(MemoryOperation operation) {
+        Counter.builder(ChatConstants.MEMORY_FAILURES_METRIC)
+                .description("Failures of the conversation memory, by operation")
+                .tag(ChatConstants.OPERATION_TAG, operation.tagValue())
                 .register(registry)
                 .increment();
     }

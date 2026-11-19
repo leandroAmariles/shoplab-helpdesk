@@ -1,6 +1,7 @@
 ---
 name: neo4j-architecture-graph
 description: Discover classes, implementations, dependencies, annotations, Kafka topics (producers/consumers), databases, REST/Feign calls, and change impact with the local Neo4j architecture graph, then verify results in source. Use for architecture discovery and dependency tracing, including across multiple ingested microservices that only interact at runtime (no shared Maven dependency).
+model: sonnet
 ---
 
 # Neo4j Architecture Graph — Usage Instructions

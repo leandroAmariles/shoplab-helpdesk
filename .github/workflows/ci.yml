@@ -21,9 +21,11 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       ingest: ${{ steps.filter.outputs.ingest }}
       eval: ${{ steps.filter.outputs.eval }}
+      notebooks: ${{ steps.filter.outputs.notebooks }}
       olist: ${{ steps.filter.outputs.olist }}
       kb: ${{ steps.filter.outputs.kb }}
       observability: ${{ steps.filter.outputs.observability }}
+      litellm: ${{ steps.filter.outputs.litellm }}
       ci: ${{ steps.filter.outputs.ci }}
       python_matrix: ${{ steps.python.outputs.matrix }}
     steps:
@@ -45,6 +47,13 @@ jobs:
               - 'data/kb/**'
             eval:
               - 'eval/**'
+              # The dataset validation checks every expected document against the corpus.
+              - 'data/kb/**'
+            notebooks:
+              - 'notebooks/**'
+              # The chunking notebook reuses the chunker of ingest and validates its questions against the corpus.
+              - 'ingest/app/**'
+              - 'data/kb/**'
             olist:
               - 'data/olist/**'
               # The loader tests apply the migrations of orders and catalog, so they follow those scripts.
@@ -56,6 +65,11 @@ jobs:
             observability:
               - 'infra/observability/**'
               - 'infra/docker-compose.yml'
+            # Gateway de modelos (LAB-84): su configuracion, scripts y el compose que los monta.
+            litellm:
+              - 'infra/litellm/**'
+              - 'infra/docker-compose*.yml'
+              - 'infra/.env.example'
             ci:
               - '.github/workflows/ci.yml'
       # The matrix context is not available in a job-level `if`, so the Python
@@ -65,15 +79,19 @@ jobs:
         env:
           INGEST: ${{ steps.filter.outputs.ingest }}
           EVAL: ${{ steps.filter.outputs.eval }}
+          NOTEBOOKS: ${{ steps.filter.outputs.notebooks }}
           OLIST: ${{ steps.filter.outputs.olist }}
           KB: ${{ steps.filter.outputs.kb }}
+          LITELLM: ${{ steps.filter.outputs.litellm }}
           CI_CHANGED: ${{ steps.filter.outputs.ci }}
         run: |
           items=()
           if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
           if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
+          if [ "$NOTEBOOKS" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"notebooks"'); fi
           if [ "$OLIST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/olist"'); fi
           if [ "$KB" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/kb-tools"'); fi
+          if [ "$LITELLM" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"infra/litellm"'); fi
           echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
 
   backend:
@@ -274,15 +292,23 @@ jobs:
 
   observability:
     needs: changes
-    if: needs.changes.outputs.observability == 'true' || needs.changes.outputs.ci == 'true'
+    if: >-
+      needs.changes.outputs.observability == 'true' || needs.changes.outputs.litellm == 'true' ||
+      needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: Validate Grafana dashboards
         run: bash infra/observability/check-dashboards.sh
+      - name: Validate the core compose services (model gateway)
+        run: docker compose -f infra/docker-compose.yml config -q
+      - name: Validate the Ollama host override
+        run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.ollama-host.yml config -q
       - name: Validate the compose profile
         run: docker compose -f infra/docker-compose.yml --profile observability config -q
+      - name: Validate the llmops compose profile
+        run: docker compose -f infra/docker-compose.yml --profile llmops config -q
       # Every dashboard JSON must be packaged as a labelled ConfigMap for the cluster (Argo CD reads this path).
       - name: Validate the dashboards kustomization
         run: |

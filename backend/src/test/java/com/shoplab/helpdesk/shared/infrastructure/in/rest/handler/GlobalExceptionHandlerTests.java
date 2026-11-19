@@ -2,6 +2,9 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.domain.exception.ConversationMemoryException;
+import com.shoplab.helpdesk.chat.domain.model.ConversationId;
+import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.exception.TechnicalException;
@@ -9,14 +12,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebInputException;
 
-/** The only place where exceptions become HTTP responses (specs/LAB-12, FR-009; reactive since LAB-111). */
 @WebFluxTest(controllers = GlobalExceptionHandlerTests.ProbeController.class)
 @Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTests.ProbeController.class})
 class GlobalExceptionHandlerTests {
@@ -39,6 +43,22 @@ class GlobalExceptionHandlerTests {
         webTestClient.get().uri("/probe/technical").exchange()
                 .expectStatus().isEqualTo(503)
                 .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
+    }
+
+    @Test
+    void anInvalidConversationIdIsABadRequestWithoutTheValue() {
+        webTestClient.get().uri("/probe/conversation-id").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_CHAT_00005").doesNotContain("not-a-uuid"));
+    }
+
+    @Test
+    void aMemoryFailureIsServiceUnavailableWithoutLeakingItsCause() {
+        webTestClient.get().uri("/probe/memory").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_CHAT_00006").doesNotContain("secret memory detail"));
     }
 
     @Test
@@ -74,6 +94,20 @@ class GlobalExceptionHandlerTests {
                 .expectBody().jsonPath("$.code").isEqualTo("SLHD_GENE_00002");
     }
 
+    @Test
+    void aBodyOverTheLimitIsTooLargeWithTheDocumentCode() {
+        webTestClient.get().uri("/probe/limit").exchange()
+                .expectStatus().isEqualTo(413)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_RETR_00002");
+    }
+
+    @Test
+    void anInputExceptionCausedByTheLimitIsTooLargeToo() {
+        webTestClient.get().uri("/probe/wrapped-limit").exchange()
+                .expectStatus().isEqualTo(413)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_RETR_00002");
+    }
+
     /** Test-only routes that throw each kind of exception; the {@code stream-*} ones only produce event streams. */
     @RestController
     static class ProbeController {
@@ -93,9 +127,31 @@ class GlobalExceptionHandlerTests {
             throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
         }
 
+        @GetMapping("/probe/conversation-id")
+        String conversationId() {
+            return ConversationId.optional("not-a-uuid").orElseThrow().value();
+        }
+
+        @GetMapping("/probe/memory")
+        String memory() {
+            throw new ConversationMemoryException(MemoryOperation.READ,
+                    new IllegalStateException("secret memory detail"));
+        }
+
         @GetMapping("/probe/unexpected")
         String unexpected() {
             throw new IllegalStateException("secret internal detail");
+        }
+
+        @GetMapping("/probe/limit")
+        String limit() {
+            throw new DataBufferLimitException("Exceeded limit on max bytes to buffer : 64");
+        }
+
+        @GetMapping("/probe/wrapped-limit")
+        String wrappedLimit() {
+            throw new ServerWebInputException("Failed to read multipart", null,
+                    new DataBufferLimitException("Too much data"));
         }
 
         @PostMapping("/probe/body")
