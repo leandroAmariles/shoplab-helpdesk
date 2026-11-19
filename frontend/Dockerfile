@@ -12,10 +12,16 @@ USER root
 # in curl/libcurl 8.23.0-r0, and CVE-2026-113351, CVE-2026-117610 and CVE-2026-118370 (HIGH, denial of service in
 # libexpat) in libexpat 2.10.0-r0, CVE-2026-107891 (HIGH, arbitrary code execution via integer overflow in regcomp)
 # in musl/musl-utils 1.2.6-r3, CVE-2026-85091 (HIGH, heap buffer overflow in gz_vacate()) in zlib 1.3.2-r1 and
-# CVE-2026-87636, CVE-2026-9947 (HIGH, type confusion and use after free in XML) in libxslt 1.1.43-r4, but
-# none is in the pinned base digest yet (the latest published one);
+# CVE-2026-121810, CVE-2026-123007, CVE-2026-123633 (CRITICAL) and CVE-2026-113425, CVE-2026-118899,
+# CVE-2026-123634 (HIGH) in nginx 1.30.7-r0, but none is in the pinned base digest yet (the latest published one);
 # remove these upgrades once a Dependabot bump of the base image includes the fixes.
-RUN apk upgrade --no-cache brotli-libs curl libcurl libexpat libxslt musl musl-utils zlib
+# The base image pins nginx and its dynamic modules (geoip, image-filter, njs, xslt) to the same exact version in
+# /etc/apk/world, and Alpine has not published those modules for 1.30.7 yet, so nginx cannot be upgraded while they
+# are installed. This app only serves static files (see nginx.conf: no load_module), so they are removed; that also
+# drops libxslt, libxml2 and the other libraries they pulled in (CVE-2026-87636, CVE-2026-9947 in libxslt).
+RUN apk del --no-cache nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt \
+    && apk add --no-cache -u nginx \
+    && apk upgrade --no-cache brotli-libs curl libcurl libexpat musl musl-utils zlib
 COPY --chown=101:101 nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=101:101 /workspace/dist/browser /usr/share/nginx/html
 USER 101
