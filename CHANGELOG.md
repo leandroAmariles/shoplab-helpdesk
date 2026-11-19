@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.0...v0.19.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **images:** [LAB-78] actualiza nginx del frontend y consolida las dependencias abiertas ([#143](https://github.com/leandroAmariles/shoplab-helpdesk/issues/143)) ([3785ce1](https://github.com/leandroAmariles/shoplab-helpdesk/commit/3785ce152e64d13d0ab22b83dec47a98dfc435f7))
+
 ## [0.19.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.18.0...v0.19.0) (2026-11-19)
 
 
