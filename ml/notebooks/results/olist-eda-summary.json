@@ -1,0 +1,425 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-20T22:32:04Z",
+  "data_scale": "full",
+  "tables": [
+    {
+      "table": "orders.customers",
+      "rows": 99441,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    },
+    {
+      "table": "orders.orders",
+      "rows": 99441,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": [
+        "approved_at",
+        "delivered_to_carrier_at",
+        "delivered_to_customer_at"
+      ]
+    },
+    {
+      "table": "orders.order_items",
+      "rows": 112650,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    },
+    {
+      "table": "orders.order_payments",
+      "rows": 103886,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    },
+    {
+      "table": "orders.order_reviews",
+      "rows": 99224,
+      "key_duplicates": 814,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    },
+    {
+      "table": "catalog.product_categories",
+      "rows": 73,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    },
+    {
+      "table": "catalog.products",
+      "rows": 32951,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": [
+        "category_name",
+        "name_length",
+        "description_length",
+        "photos_count",
+        "weight_g",
+        "length_cm",
+        "height_cm",
+        "width_cm"
+      ]
+    },
+    {
+      "table": "catalog.sellers",
+      "rows": 3095,
+      "key_duplicates": 0,
+      "row_duplicates": 0,
+      "columns_with_unexpected_nulls": []
+    }
+  ],
+  "values": {
+    "payment_type": [
+      {
+        "value": "credit_card",
+        "count": 76795,
+        "share": 0.7392,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-02-installments"
+        ]
+      },
+      {
+        "value": "boleto",
+        "count": 19784,
+        "share": 0.1904,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-03-boleto-and-vouchers"
+        ]
+      },
+      {
+        "value": "voucher",
+        "count": 5775,
+        "share": 0.0556,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-03-boleto-and-vouchers",
+          "returns-03-refunds"
+        ]
+      },
+      {
+        "value": "debit_card",
+        "count": 1529,
+        "share": 0.0147,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-02-installments"
+        ]
+      },
+      {
+        "value": "not_defined",
+        "count": 3,
+        "share": 0.0,
+        "declared_by_policy": false,
+        "mentioned_in": []
+      }
+    ],
+    "order_status": [
+      {
+        "value": "delivered",
+        "count": 96478,
+        "share": 0.9702,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "returns-01-return-policy",
+          "returns-04-exchanges-and-cancellations",
+          "shipping-01-delivery-times",
+          "shipping-03-order-tracking",
+          "shipping-04-delivery-issues"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "shipped",
+        "count": 1107,
+        "share": 0.0111,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "returns-04-exchanges-and-cancellations",
+          "returns-05-faq-returns",
+          "shipping-01-delivery-times",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "canceled",
+        "count": 625,
+        "share": 0.0063,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-03-boleto-and-vouchers",
+          "payments-04-payment-issues",
+          "payments-05-faq-payments",
+          "returns-04-exchanges-and-cancellations",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "unavailable",
+        "count": 609,
+        "share": 0.0061,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "returns-03-refunds",
+          "returns-04-exchanges-and-cancellations",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "invoiced",
+        "count": 314,
+        "share": 0.0032,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "returns-04-exchanges-and-cancellations",
+          "returns-05-faq-returns",
+          "shipping-01-delivery-times",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "processing",
+        "count": 301,
+        "share": 0.003,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "returns-04-exchanges-and-cancellations",
+          "returns-05-faq-returns",
+          "shipping-01-delivery-times",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "created",
+        "count": 5,
+        "share": 0.0001,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-03-boleto-and-vouchers",
+          "returns-04-exchanges-and-cancellations",
+          "returns-05-faq-returns",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      },
+      {
+        "value": "approved",
+        "count": 2,
+        "share": 0.0,
+        "declared_by_policy": true,
+        "mentioned_in": [
+          "payments-01-payment-methods",
+          "payments-03-boleto-and-vouchers",
+          "returns-04-exchanges-and-cancellations",
+          "returns-05-faq-returns",
+          "shipping-01-delivery-times",
+          "shipping-03-order-tracking"
+        ],
+        "covered_by_order_tool": true
+      }
+    ],
+    "absent_from_data": {
+      "payment_type": [],
+      "order_status": []
+    }
+  },
+  "delivery": {
+    "analyzed_orders": 96476,
+    "excluded": {
+      "no_delivery_date": 2965,
+      "delivered_before_purchase": 0,
+      "estimated_before_purchase": 0,
+      "delivered_without_date": 8
+    },
+    "actual_days": {
+      "mean": 12.5587,
+      "median": 10.2178,
+      "p95": 29.276
+    },
+    "estimated_days": {
+      "mean": 23.7378,
+      "median": 23.2313,
+      "p95": 38.4209
+    },
+    "early_pct": 91.8871,
+    "same_day_pct": 0.0,
+    "late_pct": 8.1129
+  },
+  "reviews": {
+    "count": 99224,
+    "score_distribution": {
+      "1": 11424,
+      "2": 3151,
+      "3": 8179,
+      "4": 19142,
+      "5": 57328
+    },
+    "mean_score_by_delay_bucket": {
+      "a tiempo o antes": 4.2942,
+      "1 a 7 días tarde": 3.1839,
+      "más de 7 días tarde": 1.7298
+    }
+  },
+  "findings": [
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.category_name",
+      "area": "quality",
+      "count": 610,
+      "share": 0.0185,
+      "target": "new_task",
+      "action": "Abrir una tarea: 610 productos no tienen categoría, nombre, descripción ni fotos (son los mismos). Decidir si el catálogo los oculta o las respuestas los muestran como «sin categoría»."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.description_length",
+      "area": "quality",
+      "count": 610,
+      "share": 0.0185,
+      "target": "analysis_note",
+      "action": "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.name_length",
+      "area": "quality",
+      "count": 610,
+      "share": 0.0185,
+      "target": "analysis_note",
+      "action": "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.photos_count",
+      "area": "quality",
+      "count": 610,
+      "share": 0.0185,
+      "target": "analysis_note",
+      "action": "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "orders.orders.approved_at",
+      "area": "quality",
+      "count": 14,
+      "share": 0.0001,
+      "target": "LAB-41",
+      "action": "14 pedidos `delivered` no tienen fecha de aprobación: la consulta de pedidos no debe depender de `approved_at` para mostrar el estado."
+    },
+    {
+      "kind": "implausible_range",
+      "subject": "catalog.products.weight_g",
+      "area": "quality",
+      "count": 4,
+      "share": 0.0001,
+      "target": "new_task",
+      "action": "4 productos pesan 0 g: tratarlos como dato faltante en cualquier cálculo que use el peso (envío, modelado de F8)."
+    },
+    {
+      "kind": "implausible_range",
+      "subject": "orders.order_items.shipping_limit_at",
+      "area": "quality",
+      "count": 4,
+      "share": 0.0,
+      "target": "loader",
+      "action": "4 ítems tienen fecha límite de envío en 2020, fuera de la ventana 2016-2018 del dataset: valorar que el cargador de LAB-17 los reporte. No afectan a los tiempos de entrega."
+    },
+    {
+      "kind": "category_without_translation",
+      "subject": "catalog.product_categories.name_en",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0274,
+      "target": "loader",
+      "action": "2 categorías sin traducción (pc_gamer y portateis_cozinha_e_preparadores_de_alimentos): el chat debe mostrar el nombre original; valorar añadir la traducción en el cargador."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.height_cm",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0001,
+      "target": "analysis_note",
+      "action": "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.length_cm",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0001,
+      "target": "analysis_note",
+      "action": "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.weight_g",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0001,
+      "target": "new_task",
+      "action": "Abrir una tarea: 2 productos no tienen peso ni medidas (los mismos en las cuatro columnas). Decidir si se imputan o se excluyen de cualquier cálculo que use el peso."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "catalog.products.width_cm",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0001,
+      "target": "analysis_note",
+      "action": "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+    },
+    {
+      "kind": "unexpected_nulls",
+      "subject": "orders.orders.delivered_to_carrier_at",
+      "area": "quality",
+      "count": 2,
+      "share": 0.0,
+      "target": "LAB-41",
+      "action": "2 pedidos `delivered` no tienen fecha de entrega al transportista: la consulta de pedidos no debe exigirla para mostrar un pedido entregado."
+    },
+    {
+      "kind": "value_not_in_policies",
+      "subject": "payment_type:not_defined",
+      "area": "values",
+      "count": 3,
+      "share": 0.0,
+      "target": "corpus",
+      "action": "Es ruido: solo 3 pagos de importe cero, todos en pedidos `canceled`. Añadir a payments-01 una línea que explique `not_defined` o dejar constancia de que se ignora; el chat no debe presentarlo como método de pago."
+    },
+    {
+      "kind": "delivered_without_date",
+      "subject": "orders.orders.delivered_to_customer_at",
+      "area": "delivery",
+      "count": 8,
+      "share": 0.0001,
+      "target": "LAB-41",
+      "action": "8 pedidos `delivered` no tienen fecha de entrega (7 sí tienen fecha de transportista): la consulta de pedidos debe responder «entregado, fecha no disponible» en lugar de fallar."
+    },
+    {
+      "kind": "date_with_non_delivered_status",
+      "subject": "orders.orders.delivered_to_customer_at",
+      "area": "delivery",
+      "count": 6,
+      "share": 0.0001,
+      "target": "LAB-41",
+      "action": "6 pedidos `canceled` tienen fecha de entrega: el estado manda; la consulta de pedidos debe informar `canceled` y no la fecha."
+    }
+  ]
+}

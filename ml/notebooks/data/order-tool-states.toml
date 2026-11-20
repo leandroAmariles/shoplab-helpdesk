@@ -1,0 +1,19 @@
+# Estados de pedido que mostrará la consulta de pedidos del chat (herramienta `getOrderStatus`, LAB-41).
+#
+# LAB-41 todavía no está implementada y su historia no define un conjunto propio: por ahora se toman los de la tabla
+# «Estados del pedido» de data/kb/shipping-03-order-tracking.md. Mientras coincidan, el contraste del notebook con la
+# consulta de pedidos no aporta información nueva respecto al contraste con las políticas, y el notebook lo dice.
+#
+# Cuando LAB-41 se implemente, este es el ÚNICO archivo que hay que actualizar: la lista de abajo debe ser la de la
+# herramienta real.
+source = "Tabla «Estados del pedido» de data/kb/shipping-03-order-tracking.md; LAB-41 no define otro conjunto todavía"
+states = [
+  "created",
+  "approved",
+  "invoiced",
+  "processing",
+  "shipped",
+  "delivered",
+  "unavailable",
+  "canceled",
+]

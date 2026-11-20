@@ -18,6 +18,7 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | `ingest/` | Servicio FastAPI de ingesta |
 | `eval/` | Dataset golden y evaluación |
 | `notebooks/` | Experimentos: [comparativo de estrategias de chunking](notebooks/README.md) |
+| `ml/` | ML y MLOps (F8): [análisis exploratorio de Olist](ml/README.md) |
 | `data/` | Políticas, FAQs y scripts de carga |
 | `infra/` | docker compose, Keycloak, observabilidad |
 | `docs/` | Guías por fase y ADRs |
@@ -246,7 +247,7 @@ SHOPLAB_CHAT_PROMPTS_PUBLIC_KEY=pk-lf-shoplab-local SHOPLAB_CHAT_PROMPTS_SECRET_
 
 ## Integración continua
 
-El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`, `notebooks/`).
+El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`, `notebooks/`, `ml/`).
 
 - **Backend:** Temurin 21, `./mvnw clean verify` (Checkstyle, PMD, prueba de Modulith, pruebas de integración con PostgreSQL desechable vía Testcontainers y gate de cobertura de líneas ≥ 80 %). Después comprueba que `docs/modulos/` (generada por `ModularityTests`) coincide con lo versionado. El reporte de JaCoCo se sube como artefacto `jacoco-report`, incluso si el job falla.
 - **Qodana (backend):** el job `qodana` analiza `backend/` con el linter JVM Community (`backend/qodana.yaml`) y falla si aparecen problemas **nuevos** de severidad alta o crítica respecto al baseline `backend/qodana.sarif.json`. Los hallazgos se ven en *Security > Code scanning*, en el comentario del PR y en el artefacto `qodana-report`; en PRs desde forks solo queda el artefacto. No requiere `QODANA_TOKEN`.
@@ -256,7 +257,8 @@ El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push
 - **Seguridad (Trivy):** el job `trivy` escanea todo el repo (dependencias Maven/npm/Python, secretos y configuración) en cada PR y en cada push a `main`, y falla ante hallazgos HIGH o CRITICAL con corrección disponible. Los hallazgos se ven en *Security > Code scanning* (categoría `trivy`) y en el artefacto `trivy-report`; en PRs de forks o de Dependabot solo queda el artefacto. Dependabot abre PRs semanales de actualización (`.github/dependabot.yml`).
   - *Reproducir en local:* `trivy fs . --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --skip-dirs node_modules,target,.venv --ignorefile .trivyignore --exit-code 1`.
   - *Excepción:* añade el id al `.trivyignore` precedido de `Motivo:` y `Responsable: ... | Revisar antes de: AAAA-MM-DD`; nunca sin justificación.
-- **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`, `notebooks`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
+- **Frontend y Python:** lint, pruebas y build (Angular) y ruff + pytest (`ingest`, `eval`, `notebooks`, `ml`). Si el componente aún no tiene proyecto, el job termina en verde con un aviso.
+- **Notebook de `ml/`:** el job `ml-notebook` levanta un Postgres, aplica las migraciones de `orders` y `catalog`, carga las fixtures del cargador de Olist y ejecuta el notebook con `nbconvert --execute`; falla si una celda da error. Se ejecuta con una muestra de 3 pedidos (el dataset completo no se descarga en CI). Detalles en [`ml/README.md`](ml/README.md).
 - **Reproducir en local:** `cd backend && ./mvnw -B -ntp clean verify`.
 
 ### Imágenes Docker

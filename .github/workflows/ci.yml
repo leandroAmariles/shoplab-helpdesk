@@ -22,6 +22,7 @@ jobs:
       ingest: ${{ steps.filter.outputs.ingest }}
       eval: ${{ steps.filter.outputs.eval }}
       notebooks: ${{ steps.filter.outputs.notebooks }}
+      ml: ${{ steps.filter.outputs.ml }}
       olist: ${{ steps.filter.outputs.olist }}
       kb: ${{ steps.filter.outputs.kb }}
       observability: ${{ steps.filter.outputs.observability }}
@@ -54,6 +55,15 @@ jobs:
               # The chunking notebook reuses the chunker of ingest and validates its questions against the corpus.
               - 'ingest/app/**'
               - 'data/kb/**'
+            ml:
+              - 'ml/**'
+              # The analysis contrasts the data with the policy corpus.
+              - 'data/kb/**'
+              # The notebook job loads the fixtures of the Olist loader and applies the real migrations of the
+              # orders and catalog schemas, so it follows them.
+              - 'data/olist/**'
+              - 'backend/src/main/resources/db/migration/orders/**'
+              - 'backend/src/main/resources/db/migration/catalog/**'
             olist:
               - 'data/olist/**'
               # The loader tests apply the migrations of orders and catalog, so they follow those scripts.
@@ -80,6 +90,7 @@ jobs:
           INGEST: ${{ steps.filter.outputs.ingest }}
           EVAL: ${{ steps.filter.outputs.eval }}
           NOTEBOOKS: ${{ steps.filter.outputs.notebooks }}
+          ML: ${{ steps.filter.outputs.ml }}
           OLIST: ${{ steps.filter.outputs.olist }}
           KB: ${{ steps.filter.outputs.kb }}
           LITELLM: ${{ steps.filter.outputs.litellm }}
@@ -89,6 +100,7 @@ jobs:
           if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
           if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
           if [ "$NOTEBOOKS" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"notebooks"'); fi
+          if [ "$ML" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ml"'); fi
           if [ "$OLIST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/olist"'); fi
           if [ "$KB" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/kb-tools"'); fi
           if [ "$LITELLM" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"infra/litellm"'); fi
@@ -290,6 +302,61 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: uv run pytest
 
+  # LAB-116: executes the exploratory notebook of ml/ against a real Postgres. The full Olist dataset is CC BY-NC-SA and is
+  # never downloaded in CI, so the database holds only the loader fixtures: this proves that the notebook runs with few
+  # rows and fails the pull request on any error, not that the conclusions saved in the repository still hold.
+  ml-notebook:
+    needs: changes
+    if: needs.changes.outputs.ml == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg16 # the image of infra/docker-compose.yml
+        env:
+          POSTGRES_DB: shoplab
+          POSTGRES_USER: shoplab
+          POSTGRES_PASSWORD: change-me-local-only # local-only value of the compose file, not a secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shoplab -d shoplab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: shoplab
+      PGPASSWORD: change-me-local-only
+      PGDATABASE: shoplab
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            ml/uv.lock
+            data/olist/uv.lock
+      - name: Install the analysis
+        working-directory: ml
+        run: uv sync --frozen
+      - name: Install the Olist loader
+        working-directory: data/olist
+        run: uv sync --frozen
+      - name: Prepare the database (migrations of orders and catalog, and the loader fixtures)
+        run: ml/ci/prepare-database.sh
+      # --output-dir keeps the executed copy out of the working tree: the notebook saved in the repository comes from a
+      # local run with the full dataset and must not be replaced by a run over a handful of rows.
+      - name: Execute the notebook
+        working-directory: ml
+        env:
+          POSTGRES_URL: postgresql://localhost:5432/shoplab
+          POSTGRES_USER: shoplab
+          POSTGRES_PASSWORD: change-me-local-only
+          EDA_MIN_GROUP_ORDERS: "1"
+        run: uv run jupyter nbconvert --to notebook --execute --output-dir "$RUNNER_TEMP" notebooks/olist-eda.ipynb
+
   observability:
     needs: changes
     if: >-
@@ -322,7 +389,7 @@ jobs:
           fi
 
   ci-gate:
-    needs: [changes, backend, qodana, trivy, frontend, python, observability]
+    needs: [changes, backend, qodana, trivy, frontend, python, ml-notebook, observability]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
