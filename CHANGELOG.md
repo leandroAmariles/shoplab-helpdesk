@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.20.0...v0.21.0) (2026-11-20)
+
+
+### Features
+
+* **ml:** [LAB-116] análisis exploratorio de Olist con Pandas y NumPy ([#149](https://github.com/leandroAmariles/shoplab-helpdesk/issues/149)) ([da340f9](https://github.com/leandroAmariles/shoplab-helpdesk/commit/da340f9cbcac6431981783d27d07a8de5ee07711))
+
 ## [0.20.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.2...v0.20.0) (2026-11-20)
 
 
