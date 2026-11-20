@@ -1,0 +1,123 @@
+# Acción propuesta para cada discrepancia que detecta el notebook (sección 12).
+#
+# La búsqueda va de lo específico a lo genérico: primero la clave "tipo:sujeto" y, si no existe, la clave del tipo. Si un
+# hallazgo no tiene ninguna, el notebook falla: ninguna discrepancia puede quedar sin acción.
+#
+# Esto PROPONE, no aplica: crear las tareas en Jira o editar el corpus es trabajo posterior a esta historia.
+# `target` ∈ corpus | LAB-41 | loader | new_task | analysis_note
+
+# -- Por tipo: red de seguridad para que un hallazgo nuevo nunca se quede sin acción ----------------------------------
+
+[value_not_in_policies]
+target = "corpus"
+action = "Decidir si el valor merece documentarse en la política de pagos o de seguimiento; si es ruido, anotarlo aquí."
+
+[policy_value_not_in_data]
+target = "corpus"
+action = "Revisar la política: declara un valor que los datos no tienen; corregir el documento o aclarar que es teórico."
+
+[status_not_in_order_tool]
+target = "LAB-41"
+action = "Añadir el estado a la consulta de pedidos de LAB-41 o decidir cómo debe responder el chat cuando lo encuentre."
+
+[tool_state_not_in_data]
+target = "LAB-41"
+action = "Ajustar la lista de estados de la consulta de pedidos o probarla con datos sintéticos: Olist no tiene ese estado."
+
+[unexpected_nulls]
+target = "new_task"
+action = "Abrir una tarea para decidir si el cargador debe rellenar, descartar o solo reportar esas filas."
+
+[duplicate_rows]
+target = "loader"
+action = "Revisar el cargador de LAB-17: debería descartar o consolidar las filas repetidas."
+
+[orphan_reference]
+target = "new_task"
+action = "Abrir una tarea para decidir si el cargador debe descartar o reportar los ítems que apuntan a ids inexistentes."
+
+[incoherent_dates]
+target = "analysis_note"
+action = "Excluir estos pedidos de los tiempos de entrega (el notebook ya lo hace) y valorar si el cargador debe reportarlos."
+
+[delivered_without_date]
+target = "LAB-41"
+action = "Definir qué responde la consulta de pedidos cuando un pedido está entregado pero no tiene fecha de entrega."
+
+[date_with_non_delivered_status]
+target = "LAB-41"
+action = "Definir qué prevalece en la consulta de pedidos cuando el estado y la fecha de entrega se contradicen."
+
+[implausible_range]
+target = "new_task"
+action = "Abrir una tarea para decidir si el cargador debe normalizar o descartar los valores fuera de rango."
+
+[category_without_translation]
+target = "corpus"
+action = "Mostrar el nombre original de la categoría en el chat y valorar añadir la traducción que falta."
+
+# -- Específicas: curadas a mano sobre la ejecución con el dataset completo (99 441 pedidos) ---------------------------
+
+["unexpected_nulls:catalog.products.category_name"]
+target = "new_task"
+action = "Abrir una tarea: 610 productos no tienen categoría, nombre, descripción ni fotos (son los mismos). Decidir si el catálogo los oculta o las respuestas los muestran como «sin categoría»."
+
+["unexpected_nulls:catalog.products.name_length"]
+target = "analysis_note"
+action = "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+
+["unexpected_nulls:catalog.products.description_length"]
+target = "analysis_note"
+action = "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+
+["unexpected_nulls:catalog.products.photos_count"]
+target = "analysis_note"
+action = "Son los mismos 610 productos sin categoría: se resuelve con la tarea de category_name y no requiere acción propia."
+
+["unexpected_nulls:catalog.products.weight_g"]
+target = "new_task"
+action = "Abrir una tarea: 2 productos no tienen peso ni medidas (los mismos en las cuatro columnas). Decidir si se imputan o se excluyen de cualquier cálculo que use el peso."
+
+["unexpected_nulls:catalog.products.length_cm"]
+target = "analysis_note"
+action = "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+
+["unexpected_nulls:catalog.products.height_cm"]
+target = "analysis_note"
+action = "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+
+["unexpected_nulls:catalog.products.width_cm"]
+target = "analysis_note"
+action = "Son los mismos 2 productos sin peso: se resuelve con la tarea de weight_g y no requiere acción propia."
+
+["unexpected_nulls:orders.orders.approved_at"]
+target = "LAB-41"
+action = "14 pedidos `delivered` no tienen fecha de aprobación: la consulta de pedidos no debe depender de `approved_at` para mostrar el estado."
+
+["unexpected_nulls:orders.orders.delivered_to_carrier_at"]
+target = "LAB-41"
+action = "2 pedidos `delivered` no tienen fecha de entrega al transportista: la consulta de pedidos no debe exigirla para mostrar un pedido entregado."
+
+["implausible_range:catalog.products.weight_g"]
+target = "new_task"
+action = "4 productos pesan 0 g: tratarlos como dato faltante en cualquier cálculo que use el peso (envío, modelado de F8)."
+
+["implausible_range:orders.order_items.shipping_limit_at"]
+target = "loader"
+action = "4 ítems tienen fecha límite de envío en 2020, fuera de la ventana 2016-2018 del dataset: valorar que el cargador de LAB-17 los reporte. No afectan a los tiempos de entrega."
+
+["category_without_translation:catalog.product_categories.name_en"]
+target = "loader"
+action = "2 categorías sin traducción (pc_gamer y portateis_cozinha_e_preparadores_de_alimentos): el chat debe mostrar el nombre original; valorar añadir la traducción en el cargador."
+
+["value_not_in_policies:payment_type:not_defined"]
+target = "corpus"
+action = "Es ruido: solo 3 pagos de importe cero, todos en pedidos `canceled`. Añadir a payments-01 una línea que explique `not_defined` o dejar constancia de que se ignora; el chat no debe presentarlo como método de pago."
+
+["delivered_without_date:orders.orders.delivered_to_customer_at"]
+target = "LAB-41"
+action = "8 pedidos `delivered` no tienen fecha de entrega (7 sí tienen fecha de transportista): la consulta de pedidos debe responder «entregado, fecha no disponible» en lugar de fallar."
+
+["date_with_non_delivered_status:orders.orders.delivered_to_customer_at"]
+target = "LAB-41"
+action = "6 pedidos `canceled` tienen fecha de entrega: el estado manda; la consulta de pedidos debe informar `canceled` y no la fecha."

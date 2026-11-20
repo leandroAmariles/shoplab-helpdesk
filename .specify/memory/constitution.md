@@ -1,6 +1,9 @@
 <!--
 Sync Impact Report (temporary - remove before committing)
-- Version change: 1.0.0 -> 1.0.1 (PATCH, LAB-11): backend stack corrected from Spring Boot 3
+- Version change: 1.0.1 -> 1.0.2 (PATCH, LAB-116): `ml/` (F8: exploratory analysis and classic ML)
+  added to Technology & Architecture Constraints; `notebooks/` clarified as the RAG experiments.
+  No principle redefined; no template or existing spec needs migration.
+- Earlier: 1.0.0 -> 1.0.1 (PATCH, LAB-11): backend stack corrected from Spring Boot 3
   to Spring Boot 4.x + Spring AI 2.0; no principle redefined.
 - Earlier: (template, unversioned) -> 1.0.0
 - Modified principles: none (initial ratification; all placeholders replaced)
@@ -72,7 +75,9 @@ in `docs/adr/` using the template. PostgreSQL 16 + pgvector is the single data s
 - **Backend**: Java 21, Spring Boot 4.x, Spring AI 2.0, Spring Modulith (`backend/`; ADR-0004).
 - **Frontend**: Angular with streaming chat, agent console and admin (`frontend/`).
 - **Ingestion & evaluation**: Python / FastAPI (`ingest/`), golden dataset and metrics (`eval/`),
-  experiments in `notebooks/` (never imported by production code).
+  RAG experiments in `notebooks/` (never imported by production code).
+- **ML (F8)**: exploratory analysis and classic ML in Python over the Olist data (`ml/`, uv project with its own
+  package and notebooks; read-only access to the database; never imported by production code).
 - **Data**: PostgreSQL 16 with pgvector (HNSW) and `tsvector`/GIN for full-text; hybrid search is
   resolved in SQL. Knowledge base and loaders live in `data/`.
 - **Infrastructure**: docker compose, Keycloak and observability stack under `infra/`; Kubernetes
@@ -112,4 +117,4 @@ Runtime guidance lives in `.ai/rules/development-guidelines.md`, `.ai/context/sk
   pull request review MUST verify compliance. Deviations MUST be justified in writing and, if
   lasting, recorded as an ADR.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23
+**Version**: 1.0.2 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-20
