@@ -11,6 +11,7 @@ import com.shoplab.helpdesk.chat.infrastructure.out.prompts.PromptRefresher;
 import com.shoplab.helpdesk.chat.infrastructure.out.prompts.RetiredPromptVariablesCheck;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -104,7 +105,7 @@ public class PromptConfig {
     static class PromptsActiveCondition implements org.springframework.context.annotation.Condition {
 
         @Override
-        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        public boolean matches(@NonNull ConditionContext context, @NonNull AnnotatedTypeMetadata metadata) {
             return properties(context).active();
         }
     }
@@ -113,7 +114,7 @@ public class PromptConfig {
     static class PromptsInactiveCondition implements org.springframework.context.annotation.Condition {
 
         @Override
-        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        public boolean matches(@NonNull ConditionContext context, @NonNull AnnotatedTypeMetadata metadata) {
             return !properties(context).active();
         }
     }

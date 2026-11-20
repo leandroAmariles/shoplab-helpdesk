@@ -106,7 +106,7 @@ public final class LangfusePromptClient {
     /**
      * Creates a prompt of type text with its first version, labelled {@code label}.
      *
-     * @return true when Langfuse created it; false in any other case (it is not retried here)
+     * @return emits {@code true} when Langfuse created it and {@code false} in any other case (it is not retried here)
      */
     public Mono<Boolean> create(String name, String text, String label) {
         Map<String, Object> body = Map.of("name", name, "type", PromptValidator.TEXT_TYPE, "prompt", text,

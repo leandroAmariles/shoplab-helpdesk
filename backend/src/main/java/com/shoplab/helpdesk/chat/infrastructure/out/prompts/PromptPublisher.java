@@ -3,6 +3,7 @@ package com.shoplab.helpdesk.chat.infrastructure.out.prompts;
 import com.shoplab.helpdesk.chat.domain.model.enums.PromptName;
 import com.shoplab.helpdesk.chat.infrastructure.out.prompts.LangfusePromptClient.FetchOutcome;
 import java.util.Collection;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -34,11 +35,10 @@ public final class PromptPublisher {
      * @param candidates the prompts that were not found with the label; each is checked before it is created
      * @return the prompts it created
      */
-    public Mono<Collection<PromptName>> publishMissing(Collection<PromptName> candidates) {
+    public Mono<List<PromptName>> publishMissing(Collection<PromptName> candidates) {
         return Flux.fromIterable(candidates)
                 .concatMap(this::publishIfAbsent)
-                .collectList()
-                .map(created -> (Collection<PromptName>) created);
+                .collectList();
     }
 
     private Mono<PromptName> publishIfAbsent(PromptName name) {
@@ -49,7 +49,7 @@ public final class PromptPublisher {
                     }
                     return client.create(name.langfuseName(), defaults.get(name).text(), label)
                             .flatMap(created -> {
-                                if (Boolean.TRUE.equals(created)) {
+                                if (created) {
                                     LOG.info("Prompt published with its default text: prompt={}",
                                             name.langfuseName());
                                     return Mono.just(name);

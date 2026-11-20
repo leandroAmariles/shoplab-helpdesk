@@ -134,8 +134,8 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
     private Flux<String> generate(List<PromptName> needed,
             Function<Map<PromptName, ResolvedPrompt>, List<Message>> promptMessages, boolean withTools) {
         return Flux.deferContextual(reactorContext -> {
-            PromptOverrides overrides = reactorContext.getOrDefault(PromptConstants.OVERRIDES_CONTEXT_KEY,
-                    PromptOverrides.NONE);
+            PromptOverrides overrides = reactorContext.<PromptOverrides>getOrEmpty(PromptConstants.OVERRIDES_CONTEXT_KEY)
+                    .orElse(PromptOverrides.NONE);
             return resolve(needed, overrides)
                     .flatMapMany(resolved -> generate(reactorContext, needed, resolved, !overrides.isEmpty(),
                             promptMessages.apply(resolved), withTools));

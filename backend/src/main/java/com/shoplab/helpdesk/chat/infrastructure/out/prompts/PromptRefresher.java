@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -57,7 +58,7 @@ public final class PromptRefresher implements ApplicationRunner, DisposableBean 
     }
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(@NonNull ApplicationArguments args) {
         Map<PromptName, RefreshOutcome> outcomes = loadAtStartup();
         if (publishMissing) {
             List<PromptName> missing = outcomes.entrySet().stream()
@@ -80,9 +81,10 @@ public final class PromptRefresher implements ApplicationRunner, DisposableBean 
     void refreshInBackground() {
         try {
             catalog.refreshAll().subscribe(outcomes -> { },
-                    error -> LOG.warn("The refresh of the prompts failed: {}", error.getClass().getSimpleName()));
+                    error -> LOG.warn("A pass of the prompts refresh ended with an error: {}",
+                            error.getClass().getSimpleName()));
         } catch (RuntimeException e) {
-            LOG.warn("The refresh of the prompts failed: {}", e.getClass().getSimpleName());
+            LOG.warn("A pass of the prompts refresh could not be started: {}", e.getClass().getSimpleName());
         }
     }
 

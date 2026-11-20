@@ -117,7 +117,7 @@ public final class CachedPromptCatalog implements PromptCatalogPort {
                 .flatMap(result -> {
                     Optional<ResolvedPrompt> prompt = usable(name, result, version);
                     if (prompt.isEmpty()) {
-                        return Mono.<ResolvedPrompt>error(PromptOverrideException.unavailable());
+                        return Mono.error(PromptOverrideException.unavailable());
                     }
                     synchronized (pinnedVersions) {
                         pinnedVersions.put(key, prompt.get());
