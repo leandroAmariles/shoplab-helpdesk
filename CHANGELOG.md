@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.2...v0.20.0) (2026-11-20)
+
+
+### Features
+
+* **chat:** [LAB-85] prompts versionados en Langfuse ([#147](https://github.com/leandroAmariles/shoplab-helpdesk/issues/147)) ([be7c05b](https://github.com/leandroAmariles/shoplab-helpdesk/commit/be7c05b70810a00bb2a24a4a623c14429164c06f))
+
 ## [0.19.2](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.19.1...v0.19.2) (2026-11-19)
 
 
