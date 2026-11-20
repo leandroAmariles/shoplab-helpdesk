@@ -2,7 +2,9 @@ package com.shoplab.helpdesk.chat.infrastructure.in.rest;
 
 import com.shoplab.helpdesk.chat.application.port.in.StreamChatServicePort;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
+import com.shoplab.helpdesk.chat.domain.model.constants.PromptConstants;
 import com.shoplab.helpdesk.chat.infrastructure.in.rest.dto.ChatRequest;
+import com.shoplab.helpdesk.chat.infrastructure.in.rest.util.PromptOverrideHeader;
 import com.shoplab.helpdesk.chat.infrastructure.in.rest.util.mapper.ChatEventMapper;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
 import org.springframework.http.MediaType;
@@ -11,6 +13,7 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
@@ -20,16 +23,21 @@ import reactor.core.publisher.Flux;
 public class ChatController {
 
     private final StreamChatServicePort streamChat;
+    private final PromptOverrideHeader promptOverrideHeader;
 
-    public ChatController(StreamChatServicePort streamChat) {
+    public ChatController(StreamChatServicePort streamChat, PromptOverrideHeader promptOverrideHeader) {
         this.streamChat = streamChat;
+        this.promptOverrideHeader = promptOverrideHeader;
     }
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<Flux<ServerSentEvent<Object>>> chat(@RequestBody ChatRequest request,
-            @RequestAttribute(name = RequestIdFilter.REQUEST_ATTRIBUTE, required = false) String requestId) {
+            @RequestAttribute(name = RequestIdFilter.REQUEST_ATTRIBUTE, required = false) String requestId,
+            @RequestHeader(name = PromptConstants.VERSIONS_HEADER, required = false) String promptVersions,
+            @RequestHeader(name = PromptConstants.TOKEN_HEADER, required = false) String promptToken) {
         StreamChatCommand command = new StreamChatCommand(request.message(),
-                requestId == null ? RequestIdFilter.newRequestId() : requestId, request.conversationId());
+                requestId == null ? RequestIdFilter.newRequestId() : requestId, request.conversationId(),
+                promptOverrideHeader.parse(promptVersions, promptToken));
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-cache")
                 .header("X-Accel-Buffering", "no")

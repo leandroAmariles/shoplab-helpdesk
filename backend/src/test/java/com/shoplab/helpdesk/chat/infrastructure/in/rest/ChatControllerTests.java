@@ -6,9 +6,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.shoplab.helpdesk.chat.application.port.in.StreamChatServicePort;
+import com.shoplab.helpdesk.chat.config.PromptProperties;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.DoneEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
+import com.shoplab.helpdesk.chat.infrastructure.in.rest.util.PromptOverrideHeader;
 import com.shoplab.helpdesk.shared.exception.ExceptionUtil;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
@@ -16,7 +18,9 @@ import com.shoplab.helpdesk.shared.infrastructure.in.rest.handler.GlobalExceptio
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -28,8 +32,19 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 @WebFluxTest(ChatController.class)
-@Import({RequestIdFilter.class, GlobalExceptionHandler.class})
+@Import({RequestIdFilter.class, GlobalExceptionHandler.class, PromptOverrideHeader.class,
+        ChatControllerTests.NoPromptOverride.class})
 class ChatControllerTests {
+
+    /** The evaluation capability is off by default: no token is configured. */
+    @TestConfiguration
+    static class NoPromptOverride {
+
+        @Bean
+        PromptProperties promptProperties() {
+            return new PromptProperties(null, null, null, null, null, null, null, null, null, null);
+        }
+    }
 
     private static final ParameterizedTypeReference<ServerSentEvent<String>> SSE = new ParameterizedTypeReference<>() {
     };

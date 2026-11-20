@@ -46,6 +46,7 @@ def format_quality_report(report: QualityReport) -> str:
         f"Juez: {info.judge.model} ({info.judge_underlying_model}) · temperatura {_number(info.judge.temperature)} · "
         f"RAGAS {info.ragas_version}",
         f"Asistente: {info.assistant_model} · embeddings: {info.embedding_model} · Langfuse: {info.langfuse}",
+        f"Prompts: {info.prompt_versions}",
         "",
     ]
     lines += ["  ".join(cell.ljust(width) for cell, width in zip(row, widths, strict=True)) for row in [headers, *rows]]
@@ -76,6 +77,7 @@ def summary_csv(report: QualityReport) -> str:
         "assistant_model",
         "embedding_model",
         "langfuse",
+        "prompt_versions",
     ]
     rows = []
     for summary in report.summaries:
@@ -94,6 +96,7 @@ def summary_csv(report: QualityReport) -> str:
             info.assistant_model,
             info.embedding_model,
             info.langfuse,
+            info.prompt_versions,
         ]
         rows.append(row)
     return _csv_text(header, rows)

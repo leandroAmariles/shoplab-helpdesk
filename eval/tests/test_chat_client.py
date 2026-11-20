@@ -209,3 +209,44 @@ def test_without_a_host_header_the_request_carries_the_host_of_the_url(backend: 
     client_for(backend).ask("Pregunta", REQUEST_ID)
 
     assert backend.chat_requests[0]["headers"]["host"] == backend.url.removeprefix("http://")
+
+
+# --- the versions of the prompts an evaluation fixes (LAB-85) --------------------------------------------------
+
+
+def test_with_versions_every_request_carries_them_and_the_token(backend: FakeBackend) -> None:
+    client = SseChatClient(backend.url, timeout=5.0, prompt_versions="chat-system=3,chat-context=2", prompt_token="tok")
+
+    client.ask("Pregunta", REQUEST_ID)
+
+    (request,) = backend.chat_requests
+    assert request["headers"]["x-prompt-versions"] == "chat-system=3,chat-context=2"
+    assert request["headers"]["x-prompt-token"] == "tok"
+    assert request["body"] == {"message": "Pregunta"}  # the versions are never in the body
+
+
+def test_without_versions_neither_header_is_sent(backend: FakeBackend) -> None:
+    client_for(backend).ask("Pregunta", REQUEST_ID)
+
+    (request,) = backend.chat_requests
+    assert "x-prompt-versions" not in request["headers"]
+    assert "x-prompt-token" not in request["headers"]
+
+
+def test_a_403_for_the_versions_explains_the_token_and_never_echoes_it(backend: FakeBackend) -> None:
+    backend.chat_handler = lambda message, headers: ChatReply(status=403, body={"code": "SLHD_CHAT_00008"})
+    client = SseChatClient(backend.url, timeout=5.0, prompt_versions="chat-system=3", prompt_token="tok-secreto")
+
+    with pytest.raises(MeasurementError, match="override-token") as error:
+        client.ask("Pregunta", REQUEST_ID)
+
+    assert "SLHD_CHAT_00008" in str(error.value)
+    assert "tok-secreto" not in str(error.value)
+
+
+def test_a_422_says_that_a_fixed_version_could_not_be_read(backend: FakeBackend) -> None:
+    backend.chat_handler = lambda message, headers: ChatReply(status=422, body={"code": "SLHD_CHAT_00010"})
+    client = SseChatClient(backend.url, timeout=5.0, prompt_versions="chat-system=99", prompt_token="tok")
+
+    with pytest.raises(MeasurementError, match="versiones de prompt fijadas"):
+        client.ask("Pregunta", REQUEST_ID)

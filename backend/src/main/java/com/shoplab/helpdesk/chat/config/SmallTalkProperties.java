@@ -6,7 +6,8 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Settings of the small-talk path under {@code shoplab.chat.small-talk} (LAB-114).
+ * Settings of the small-talk path under {@code shoplab.chat.small-talk} (LAB-114). The instructions of its answer are
+ * the {@code chat-small-talk} prompt (LAB-85), not a setting.
  *
  * <p>The five lists are the closed lexicon of courtesies: a message is small talk only if all of it splits into phrases
  * of these lists. Each list that is empty keeps the built-in one of {@link SmallTalkConstants}; one that is set replaces
@@ -15,8 +16,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param enabled         whether courtesies are answered without retrieval (default {@code true}); {@code false}
  *                        restores the behavior before LAB-114
- * @param systemPrompt    instructions of the small-talk answer; it must contain {@code {topics}}; blank keeps the
- *                        default
  * @param topics          what the assistant says it can help with; blank keeps the default
  * @param greetings       phrases that greet ("hola", "buenas tardes")
  * @param thanks          phrases that thank ("gracias", "thank you")
@@ -25,23 +24,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param capabilities    ways of asking what the assistant can do ("¿qué puedes hacer?", "who are you")
  */
 @ConfigurationProperties("shoplab.chat.small-talk")
-public record SmallTalkProperties(Boolean enabled, String systemPrompt, String topics, List<String> greetings,
-        List<String> thanks, List<String> farewells, List<String> acknowledgments, List<String> capabilities) {
+public record SmallTalkProperties(Boolean enabled, String topics, List<String> greetings, List<String> thanks,
+        List<String> farewells, List<String> acknowledgments, List<String> capabilities) {
 
     public SmallTalkProperties {
         enabled = enabled == null || enabled;
-        systemPrompt = systemPrompt == null || systemPrompt.isBlank()
-                ? SmallTalkConstants.DEFAULT_SYSTEM_PROMPT : systemPrompt;
         topics = topics == null || topics.isBlank() ? SmallTalkConstants.DEFAULT_TOPICS : topics.trim();
         greetings = phrasesOrDefault(greetings, SmallTalkConstants.GREETINGS);
         thanks = phrasesOrDefault(thanks, SmallTalkConstants.THANKS);
         farewells = phrasesOrDefault(farewells, SmallTalkConstants.FAREWELLS);
         acknowledgments = phrasesOrDefault(acknowledgments, SmallTalkConstants.ACKNOWLEDGMENTS);
         capabilities = phrasesOrDefault(capabilities, SmallTalkConstants.CAPABILITIES);
-        if (!systemPrompt.contains(SmallTalkConstants.TOPICS_PLACEHOLDER)) {
-            throw new IllegalArgumentException("shoplab.chat.small-talk.system-prompt must contain "
-                    + SmallTalkConstants.TOPICS_PLACEHOLDER);
-        }
     }
 
     /** The configured phrases without blank entries (an empty value in an environment variable), or the defaults. */

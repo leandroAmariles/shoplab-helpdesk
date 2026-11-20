@@ -1,5 +1,6 @@
 package com.shoplab.helpdesk.chat.infrastructure.out.tracing;
 
+import com.shoplab.helpdesk.chat.infrastructure.support.WarnThrottle;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.common.AttributeKey;

@@ -2,30 +2,36 @@ package com.shoplab.helpdesk.chat.infrastructure.out.gateway;
 
 import com.shoplab.helpdesk.chat.application.port.out.ChatModelPort;
 import com.shoplab.helpdesk.chat.application.port.out.GenerationScope;
+import com.shoplab.helpdesk.chat.application.port.out.PromptCatalogPort;
 import com.shoplab.helpdesk.chat.application.port.out.SmallTalkModelPort;
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
-import com.shoplab.helpdesk.chat.config.ChatProperties;
+import com.shoplab.helpdesk.chat.application.usecase.PromptRenderer;
 import com.shoplab.helpdesk.chat.config.GatewayProperties;
-import com.shoplab.helpdesk.chat.config.RagProperties;
 import com.shoplab.helpdesk.chat.config.SmallTalkProperties;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
+import com.shoplab.helpdesk.chat.domain.model.PromptOverrides;
+import com.shoplab.helpdesk.chat.domain.model.PromptReference;
+import com.shoplab.helpdesk.chat.domain.model.ResolvedPrompt;
 import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
+import com.shoplab.helpdesk.chat.domain.model.constants.PromptConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.SmallTalkConstants;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
+import com.shoplab.helpdesk.chat.domain.model.enums.PromptName;
 import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -37,20 +43,17 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.rag.Query;
-import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
-import org.springframework.ai.rag.generation.augmentation.QueryAugmenter;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.execution.DefaultToolExecutionExceptionProcessor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.ContextView;
 
 /**
  * Talks to the model gateway (an OpenAI-compatible API) through Spring AI; the rest of the module only knows
@@ -60,9 +63,12 @@ import reactor.core.scheduler.Schedulers;
  * <p>It streams from the {@link ChatModel} directly instead of {@code ChatClient.stream()}: the client's terminal
  * advisor re-publishes every stream on {@code Schedulers.boundedElastic()}, which pins one thread per open stream and
  * defeats the point of the reactive web layer (ADR-0011). For the same reason the context is not added by a
- * {@code RetrievalAugmentationAdvisor} (its retrieval is synchronous) but by the {@link QueryAugmenter} that advisor
- * is built on, with fragments the use case already retrieved without blocking. The request sent to the model is the
- * same.
+ * {@code RetrievalAugmentationAdvisor} (its retrieval is synchronous) but rendered here, with fragments the use case
+ * already retrieved without blocking. The request sent to the model is the same.
+ *
+ * <p>The text of the prompts is not here (LAB-85): each turn asks the {@link PromptCatalogPort} for the ones it needs
+ * when it starts and keeps them until it ends, so a change of label never reaches a turn that is in progress. A request
+ * that fixes versions (an evaluation) gets those versions, and fails if one is not available.
  *
  * <p>Each call tells the gateway which conversation and which chat request it belongs to (the {@code user} field and
  * the request-id header) so the gateway's logs can be crossed with the backend's and with the traces.
@@ -78,31 +84,24 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
     private static final String SECTION_KEY = "section";
     private static final String SECTION_SEPARATOR = " › ";
     private static final String FRAGMENT_SEPARATOR = "\n\n";
+    private static final String QUERY_VARIABLE = "query";
+    private static final String CONTEXT_VARIABLE = "context";
     private static final ToolCallingManager TOOL_CALLS = ToolCallingManager.builder()
             .toolExecutionExceptionProcessor(
                     DefaultToolExecutionExceptionProcessor.builder().alwaysThrow(true).build())
             .build();
 
     private final ChatModel chatModel;
-    private final String systemPrompt;
-    private final String emptyContextTemplate;
-    private final String smallTalkPrompt;
-    private final QueryAugmenter augmenter;
+    private final PromptCatalogPort prompts;
+    private final SmallTalkProperties smallTalk;
     private final ToolCallbackComposer tools;
     private final String primaryModel;
 
-    public GatewayChatAdapter(ChatModel chatModel, ChatProperties properties, RagProperties ragProperties,
-            ToolCallbackComposer tools, GatewayProperties gateway, SmallTalkProperties smallTalk) {
+    public GatewayChatAdapter(ChatModel chatModel, PromptCatalogPort prompts, ToolCallbackComposer tools,
+            GatewayProperties gateway, SmallTalkProperties smallTalk) {
         this.chatModel = chatModel;
-        this.systemPrompt = properties.systemPrompt();
-        this.smallTalkPrompt = smallTalk.systemPrompt().replace(SmallTalkConstants.TOPICS_PLACEHOLDER,
-                smallTalk.topics());
-        this.emptyContextTemplate = ragProperties.emptyContextTemplate();
-        // Only used with context: its own empty-context path would drop the question, see userText.
-        this.augmenter = ContextualQueryAugmenter.builder()
-                .promptTemplate(new PromptTemplate(ragProperties.contextTemplate()))
-                .documentFormatter(GatewayChatAdapter::formatDocuments)
-                .build();
+        this.prompts = prompts;
+        this.smallTalk = smallTalk;
         this.tools = tools;
         this.primaryModel = gateway.primaryModel();
     }
@@ -110,7 +109,9 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
     /** Any failure of the model is a typed exception; the use case decides what it means for the stream. */
     @Override
     public Flux<String> streamAnswer(String message, List<ConversationTurn> history, List<ContextFragment> context) {
-        return generate(() -> messages(message, history, context), true);
+        List<PromptName> needed = List.of(PromptName.CHAT_SYSTEM,
+                context.isEmpty() ? PromptName.EMPTY_CONTEXT : PromptName.CONTEXT);
+        return generate(needed, resolved -> messages(message, history, context, resolved), true);
     }
 
     /**
@@ -119,48 +120,79 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
      */
     @Override
     public Flux<String> streamReply(String message) {
-        return generate(() -> List.of(new SystemMessage(smallTalkPrompt), new UserMessage(PromptData.wrap(message))),
-                false);
+        return generate(List.of(PromptName.SMALL_TALK), resolved -> {
+            String instructions = resolved.get(PromptName.SMALL_TALK).text()
+                    .replace(SmallTalkConstants.TOPICS_PLACEHOLDER, smallTalk.topics());
+            return List.of(new SystemMessage(instructions), new UserMessage(PromptData.wrap(message)));
+        }, false);
     }
 
-    private Flux<String> generate(Supplier<List<Message>> promptMessages, boolean withTools) {
+    /**
+     * @param needed         the prompts the turn uses, the main one first (the trace links the generation with it)
+     * @param promptMessages builds the messages from the prompts the turn took when it started
+     */
+    private Flux<String> generate(List<PromptName> needed,
+            Function<Map<PromptName, ResolvedPrompt>, List<Message>> promptMessages, boolean withTools) {
         return Flux.deferContextual(reactorContext -> {
-            TurnTrace trace = reactorContext.getOrDefault(TracingConstants.TURN_TRACE_KEY, TurnTrace.NONE);
-            String conversationId = reactorContext.getOrDefault(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, null);
-            String requestId = reactorContext.getOrDefault(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, null);
-            List<Message> messages = promptMessages.get();
-            List<ToolCallback> callbacks = withTools ? tools.compose(trace) : List.of();
-            ChatOptions options = requestOptions(callbacks, conversationId, requestId);
-            Prompt prompt = options == null ? new Prompt(messages) : new Prompt(messages, options);
-            GenerationScope generation = startGeneration(trace, messages);
-            StringBuffer answer = new StringBuffer();
-            AtomicReference<TokenUsage> usage = new AtomicReference<>(TokenUsage.unknown());
-            AtomicReference<String> servedBy = new AtomicReference<>();
-            AtomicBoolean firstFragment = new AtomicBoolean();
-            return streamResponses(prompt)
-                    .doOnNext(response -> {
-                        usage.accumulateAndGet(usageOf(response), TokenUsage::plus);
-                        String model = response.getMetadata().getModel();
-                        if (!model.isBlank()) {
-                            servedBy.set(model);
-                        }
-                    })
-                    .mapNotNull(response -> response.getResult() == null ? null
-                            : response.getResult().getOutput().getText())
-                    .filter(fragment -> !fragment.isEmpty())
-                    .transform(DelimiterEchoFilter::strip)
-                    .doOnNext(fragment -> {
-                        if (firstFragment.compareAndSet(false, true)) {
-                            generation.firstToken();
-                        }
-                        answer.append(fragment);
-                    })
-                    .onErrorMap(error -> !(error instanceof HelpdeskException), GatewayErrorTranslator::translate)
-                    .doOnError(generation::fail)
-                    .doOnComplete(() -> generation.complete(usage.get(), answer.toString(),
-                            ServedModel.of(servedBy.get(), primaryModel)))
-                    .doOnCancel(() -> generation.cancel(answer.toString()));
+            PromptOverrides overrides = reactorContext.<PromptOverrides>getOrEmpty(PromptConstants.OVERRIDES_CONTEXT_KEY)
+                    .orElse(PromptOverrides.NONE);
+            return resolve(needed, overrides)
+                    .flatMapMany(resolved -> generate(reactorContext, needed, resolved, !overrides.isEmpty(),
+                            promptMessages.apply(resolved), withTools));
         });
+    }
+
+    /**
+     * The prompts of the turn, read once: the version the chat serves now, or the one the request fixes. Nothing here
+     * waits for Langfuse unless a version is fixed, and then a version that is not available is an error.
+     */
+    private Mono<Map<PromptName, ResolvedPrompt>> resolve(List<PromptName> needed, PromptOverrides overrides) {
+        return Flux.fromIterable(needed)
+                .concatMap(name -> overrides.versionOf(name)
+                        .map(version -> prompts.pinned(name, version))
+                        .orElseGet(() -> Mono.fromSupplier(() -> prompts.current(name))))
+                .collectMap(prompt -> prompt.reference().name(), prompt -> prompt,
+                        () -> new EnumMap<>(PromptName.class));
+    }
+
+    private Flux<String> generate(ContextView reactorContext, List<PromptName> needed,
+            Map<PromptName, ResolvedPrompt> resolved, boolean overridden, List<Message> messages,
+            boolean withTools) {
+        TurnTrace trace = reactorContext.getOrDefault(TracingConstants.TURN_TRACE_KEY, TurnTrace.NONE);
+        String conversationId = reactorContext.getOrDefault(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, null);
+        String requestId = reactorContext.getOrDefault(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, null);
+        List<ToolCallback> callbacks = withTools ? tools.compose(trace) : List.of();
+        ChatOptions options = requestOptions(callbacks, conversationId, requestId);
+        Prompt prompt = options == null ? new Prompt(messages) : new Prompt(messages, options);
+        announcePrompts(trace, needed, resolved, overridden);
+        GenerationScope generation = startGeneration(trace, messages);
+        StringBuffer answer = new StringBuffer();
+        AtomicReference<TokenUsage> usage = new AtomicReference<>(TokenUsage.unknown());
+        AtomicReference<String> servedBy = new AtomicReference<>();
+        AtomicBoolean firstFragment = new AtomicBoolean();
+        return streamResponses(prompt)
+                .doOnNext(response -> {
+                    usage.accumulateAndGet(usageOf(response), TokenUsage::plus);
+                    String model = response.getMetadata().getModel();
+                    if (!model.isBlank()) {
+                        servedBy.set(model);
+                    }
+                })
+                .mapNotNull(response -> response.getResult() == null ? null
+                        : response.getResult().getOutput().getText())
+                .filter(fragment -> !fragment.isEmpty())
+                .transform(DelimiterEchoFilter::strip)
+                .doOnNext(fragment -> {
+                    if (firstFragment.compareAndSet(false, true)) {
+                        generation.firstToken();
+                    }
+                    answer.append(fragment);
+                })
+                .onErrorMap(error -> !(error instanceof HelpdeskException), GatewayErrorTranslator::translate)
+                .doOnError(generation::fail)
+                .doOnComplete(() -> generation.complete(usage.get(), answer.toString(),
+                        ServedModel.of(servedBy.get(), primaryModel)))
+                .doOnCancel(() -> generation.cancel(answer.toString()));
     }
 
     private Flux<ChatResponse> streamResponses(Prompt prompt) {
@@ -174,6 +206,21 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMapMany(result -> Flux.just(toolCallResponse)
                         .concatWith(streamResponses(new Prompt(result.conversationHistory(), prompt.getOptions()))));
+    }
+
+    /**
+     * The trace is told which prompts, and which versions of them, the turn took; the first one is the main prompt.
+     * It has to be told before the generation starts, which is where the trace links the version. If it fails the
+     * answer goes on without it.
+     */
+    private static void announcePrompts(TurnTrace trace, List<PromptName> needed,
+            Map<PromptName, ResolvedPrompt> resolved, boolean overridden) {
+        try {
+            List<PromptReference> used = needed.stream().map(name -> resolved.get(name).reference()).toList();
+            trace.promptsUsed(used, overridden);
+        } catch (RuntimeException e) {
+            // A trace never breaks an answer.
+        }
     }
 
     /** The trace is told what is about to be sent; if it fails the answer goes on without it. */
@@ -225,30 +272,29 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
      * The system prompt, the earlier turns as the customer's and the assistant's own messages (never as system text,
      * so nothing said before can replace the rules), and the current question with its context.
      */
-    private List<Message> messages(String message, List<ConversationTurn> history, List<ContextFragment> context) {
+    private List<Message> messages(String message, List<ConversationTurn> history, List<ContextFragment> context,
+            Map<PromptName, ResolvedPrompt> resolved) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemPrompt));
+        messages.add(new SystemMessage(resolved.get(PromptName.CHAT_SYSTEM).text()));
         for (ConversationTurn turn : history) {
             messages.add(new UserMessage(PromptData.wrap(turn.question())));
             messages.add(new AssistantMessage(PromptData.neutralize(turn.answer())));
         }
-        messages.add(new UserMessage(userText(message, context)));
+        messages.add(new UserMessage(userText(message, context, resolved)));
         return messages;
     }
 
-    /**
-     * The augmenter's own empty-context path would replace the question with a fixed text, so without context the
-     * question is placed in the empty-context template here.
-     */
-    private String userText(String message, List<ContextFragment> context) {
+    /** Without context the question goes in the empty-context template; with it, in the context template. */
+    private String userText(String message, List<ContextFragment> context, Map<PromptName, ResolvedPrompt> resolved) {
         String delimited = PromptData.wrap(message);
         if (context.isEmpty()) {
-            return emptyContextTemplate.replace(ChatConstants.QUERY_PLACEHOLDER, delimited);
+            return resolved.get(PromptName.EMPTY_CONTEXT).text().replace(ChatConstants.QUERY_PLACEHOLDER, delimited);
         }
         List<Document> documents = IntStream.range(0, context.size())
                 .mapToObj(index -> toDocument(index + 1, context.get(index)))
                 .toList();
-        return augmenter.augment(new Query(delimited), documents).text();
+        return PromptRenderer.render(resolved.get(PromptName.CONTEXT).text(),
+                Map.of(QUERY_VARIABLE, delimited, CONTEXT_VARIABLE, formatDocuments(documents)));
     }
 
     private static Document toDocument(int number, ContextFragment fragment) {

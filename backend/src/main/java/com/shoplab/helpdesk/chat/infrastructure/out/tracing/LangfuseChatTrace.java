@@ -9,6 +9,7 @@ import com.shoplab.helpdesk.chat.domain.model.ChatEvent.ErrorEvent;
 import com.shoplab.helpdesk.chat.domain.model.ChatEvent.TokenEvent;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
+import com.shoplab.helpdesk.chat.domain.model.PromptReference;
 import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
 import com.shoplab.helpdesk.chat.domain.model.StreamChatCommand;
 import com.shoplab.helpdesk.chat.domain.model.ServedModel;
@@ -48,6 +49,8 @@ import reactor.core.publisher.Flux;
 public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(LangfuseChatTrace.class);
+    private static final String PROMPT_OVERRIDE_KEY = "prompt_override";
+    private static final String PROMPT_METADATA_PREFIX = "prompt.";
     private static final String INSTRUMENTATION = "com.shoplab.helpdesk.chat";
     private static final String PROVIDER_PARAMETER = "provider";
     private static final String INTERNAL_ERROR_CODE = "INTERNAL_ERROR";
@@ -151,6 +154,7 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
         private volatile FailureStage failedStage;
         private volatile Generation generation;
         private volatile Instant firstTokenAt;
+        private volatile List<PromptReference> prompts = List.of();
 
         private Turn(StreamChatCommand command) {
             this.command = command;
@@ -258,6 +262,25 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
         @Override
         public void smallTalkAnswer() {
             smallTalk = true;
+        }
+
+        /**
+         * The prompts the turn took (LAB-85). They are kept for the generation, which links the main one, and written
+         * on the trace as filterable metadata: the version number, or {@code default} when the text did not come from
+         * Langfuse. Only the prompts the turn used are written.
+         */
+        @Override
+        public void promptsUsed(List<PromptReference> used, boolean overridden) {
+            safely("the prompts", () -> {
+                prompts = List.copyOf(used);
+                for (PromptReference prompt : used) {
+                    root.setAttribute(LangfuseAttributes.traceMetadata(prompt.name().traceMetadataKey()),
+                            prompt.asTraceValue());
+                }
+                if (overridden) {
+                    root.setAttribute(LangfuseAttributes.traceMetadata(PROMPT_OVERRIDE_KEY), "true");
+                }
+            });
         }
 
         @Override
@@ -387,6 +410,24 @@ public class LangfuseChatTrace implements ChatTracePort, AutoCloseable {
                 span.setAttribute(LangfuseAttributes.MODEL_NAME, model);
                 span.setAttribute(LangfuseAttributes.MODEL_PARAMETERS, TraceJson.write(modelParameters));
                 span.setAttribute(LangfuseAttributes.OBSERVATION_INPUT, prompt(messages));
+                linkPrompts(span);
+            }
+
+            /**
+             * Langfuse links one prompt to a generation: the main one, the first of the turn, and only when its text
+             * came from Langfuse (with the default text there is no version to link). The others are metadata.
+             */
+            private void linkPrompts(Span generationSpan) {
+                List<PromptReference> used = prompts;
+                for (PromptReference prompt : used) {
+                    generationSpan.setAttribute(LangfuseAttributes.observationMetadata(
+                            PROMPT_METADATA_PREFIX + prompt.name().langfuseName()), prompt.asTraceValue());
+                }
+                if (!used.isEmpty() && !used.get(0).isDefault()) {
+                    PromptReference main = used.get(0);
+                    generationSpan.setAttribute(LangfuseAttributes.PROMPT_NAME, main.name().langfuseName());
+                    generationSpan.setAttribute(LangfuseAttributes.PROMPT_VERSION, main.version().longValue());
+                }
             }
 
             private String prompt(List<PromptMessage> messages) {

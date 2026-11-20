@@ -17,7 +17,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from shoplab_eval.constants import CHAT_PATH, DEFAULT_TURN_TIMEOUT_SECONDS
+from shoplab_eval.constants import (
+    CHAT_PATH,
+    DEFAULT_TURN_TIMEOUT_SECONDS,
+    PROMPT_FORBIDDEN_CODE,
+    PROMPT_TOKEN_ENV,
+    PROMPT_TOKEN_HEADER,
+    PROMPT_UNAVAILABLE_CODE,
+    PROMPT_VERSIONS_HEADER,
+)
 from shoplab_eval.errors import MeasurementError
 
 REQUEST_ID_HEADER = "X-Request-Id"
@@ -66,11 +74,16 @@ class SseChatClient:
         timeout: float = DEFAULT_TURN_TIMEOUT_SECONDS,
         title_to_id: Mapping[str, str] | None = None,
         host_header: str | None = None,
+        prompt_versions: str = "",
+        prompt_token: str = "",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.title_to_id = dict(title_to_id or {})
         self.host_header = host_header
+        # The versions of the prompts that every request fixes (already resolved) and the token that allows it (LAB-85).
+        self.prompt_versions = prompt_versions
+        self.prompt_token = prompt_token
 
     def ask(self, question: str, request_id: str) -> ChatTurn:
         headers = {
@@ -80,6 +93,9 @@ class SseChatClient:
         }
         if self.host_header:
             headers["Host"] = self.host_header
+        if self.prompt_versions:
+            headers[PROMPT_VERSIONS_HEADER] = self.prompt_versions
+            headers[PROMPT_TOKEN_HEADER] = self.prompt_token
         request = urllib.request.Request(
             f"{self.base_url}{CHAT_PATH}",
             data=json.dumps({"message": question}).encode("utf-8"),
@@ -212,7 +228,16 @@ def _http_error_message(request_id: str, error: urllib.error.HTTPError) -> str:
     try:
         body = json.loads(error.read().decode("utf-8"))
         if isinstance(body, dict) and body.get("code"):
-            code = f" ({body['code']})"
+            code = str(body["code"])
     except (ValueError, OSError):
         pass
-    return f"La petición {request_id} falló: el backend respondió {error.code}{code} a {CHAT_PATH}"
+    suffix = f" ({code})" if code else ""
+    message = f"La petición {request_id} falló: el backend respondió {error.code}{suffix} a {CHAT_PATH}"
+    if code == PROMPT_FORBIDDEN_CODE:
+        message += (
+            f". El backend no deja fijar versiones de prompts: define {PROMPT_TOKEN_ENV} con el mismo valor que "
+            "shoplab.chat.prompts.override-token del backend (y activa shoplab.chat.prompts.enabled)"
+        )
+    elif code == PROMPT_UNAVAILABLE_CODE:
+        message += ". El backend no pudo leer de Langfuse una de las versiones de prompt fijadas"
+    return message

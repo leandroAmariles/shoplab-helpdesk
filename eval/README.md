@@ -240,3 +240,27 @@ son solo los que impiden dar un resultado fiable.
 Los números (80–100 casos de conocimiento, 12 con respuesta por tema, 15–25 % sin respuesta, 8 casos de dos documentos…) vienen de
 `specs/LAB-27-golden-dataset/spec.md` y viven en `GoldenRules` (`src/shoplab_eval/constants.py`). Cambiar uno es una decisión
 de la spec: se actualizan los dos a la vez.
+
+## Comparar versiones de un prompt (LAB-85)
+
+Los prompts del chat se versionan en Langfuse (ADR-0027). Para medir una versión **sin mover `production`** y compararla con otra:
+
+```bash
+cd eval
+export SHOPLAB_EVAL_PROMPT_TOKEN=<el SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN del backend>
+export SHOPLAB_EVAL_LANGFUSE_PUBLIC_KEY=pk-lf-shoplab-local SHOPLAB_EVAL_LANGFUSE_SECRET_KEY=sk-lf-shoplab-local
+uv run python -m shoplab_eval quality --prompt chat-system=1 --run-id prompt-a --out results/prompt-a --assistant-model <modelo>
+uv run python -m shoplab_eval quality --prompt chat-system=2 --run-id prompt-b --out results/prompt-b --assistant-model <modelo>
+uv run python -m shoplab_eval compare results/prompt-a/quality-summary.csv results/prompt-b/quality-summary.csv
+```
+
+| Pieza | Qué hace |
+|---|---|
+| `quality --prompt NOMBRE=VALOR` (repetible) | Fija el prompt (`chat-system`, `chat-small-talk`, `chat-context`, `chat-empty-context`) en una versión (número) o en la versión a la que apunta una etiqueta. Antes de preguntar nada comprueba en Langfuse que existe y es de tipo texto; con Langfuse caído o sin claves **falla** (no mide con el texto por defecto). Envía `X-Prompt-Versions` y `X-Prompt-Token` en cada petición |
+| Columna `prompt_versions` | Último campo de `quality-summary.csv`: las versiones medidas, `nombre=versión` separadas por `\|` y en orden alfabético (una etiqueta queda como la versión a la que apuntaba); `production` si no se fijó ninguna |
+| `compare A.csv B.csv [--out comparacion.csv]` | Lee la fila `all` de cada resumen y muestra, por métrica, la media y los casos de cada uno y la diferencia (B − A), los prompts que los distinguen y, si el juez, el modelo del asistente, el de embeddings o el número de casos difieren, la advertencia «No comparables». No consulta ningún modelo, Langfuse ni el backend |
+
+Códigos de salida de `quality --prompt`: `2` uso incorrecto (formato, nombre repetido o desconocido, falta `SHOPLAB_EVAL_PROMPT_TOKEN`),
+`1` Langfuse no responde, una versión no existe o el backend rechaza fijar versiones (403). `compare` sale con `0` aunque advierta
+y con `2` si un resumen no se puede leer. El formato completo está en
+[`specs/LAB-85-versioned-prompts/contracts/eval-compare.md`](../specs/LAB-85-versioned-prompts/contracts/eval-compare.md).

@@ -3,6 +3,8 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.chat.domain.exception.ConversationMemoryException;
+import com.shoplab.helpdesk.chat.domain.exception.PromptOverrideException;
+import com.shoplab.helpdesk.chat.domain.exception.PromptOverrideForbiddenException;
 import com.shoplab.helpdesk.chat.domain.model.ConversationId;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
@@ -108,9 +110,45 @@ class GlobalExceptionHandlerTests {
                 .expectBody().jsonPath("$.code").isEqualTo("SLHD_RETR_00002");
     }
 
+    @Test
+    void fixingPromptVersionsWithoutPermissionIsForbidden() {
+        webTestClient.get().uri("/probe/prompt-forbidden").exchange()
+                .expectStatus().isForbidden()
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00008");
+    }
+
+    @Test
+    void aMalformedPromptVersionsHeaderIsABadRequest() {
+        webTestClient.get().uri("/probe/prompt-malformed").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00009");
+    }
+
+    @Test
+    void anUnavailablePinnedVersionHasItsOwnCode() {
+        webTestClient.get().uri("/probe/prompt-unavailable").exchange()
+                .expectStatus().isEqualTo(422)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00010");
+    }
+
     /** Test-only routes that throw each kind of exception; the {@code stream-*} ones only produce event streams. */
     @RestController
     static class ProbeController {
+
+        @GetMapping("/probe/prompt-forbidden")
+        String promptForbidden() {
+            throw new PromptOverrideForbiddenException();
+        }
+
+        @GetMapping("/probe/prompt-malformed")
+        String promptMalformed() {
+            throw PromptOverrideException.malformed();
+        }
+
+        @GetMapping("/probe/prompt-unavailable")
+        String promptUnavailable() {
+            throw PromptOverrideException.unavailable();
+        }
 
         @GetMapping("/probe/business")
         String business() {

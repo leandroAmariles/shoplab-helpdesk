@@ -81,12 +81,12 @@ class StreamChatUseCaseTests {
 
     /** The generic tests are about streaming, so without context the model still answers (mode MODEL). */
     private static RagProperties rag(Integer topK, Double threshold) {
-        return new RagProperties(topK, threshold, null, null, null, NoContextMode.MODEL, null);
+        return new RagProperties(topK, threshold, null, NoContextMode.MODEL, null);
     }
 
     private StreamChatUseCase newUseCase(ChatModelPort model, RagProperties rag) {
         return new StreamChatUseCase(model, knowledge, new ContextSelector(),
-                history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH, "system"), rag,
+                history(new MemoryProperties(null, null, null)), metrics, new ChatProperties(MAX_LENGTH), rag,
                 new NoOpChatTrace(), smallTalk());
     }
 
@@ -433,7 +433,7 @@ class StreamChatUseCaseTests {
     // --- sources of the answer (LAB-23) ---
 
     private static RagProperties withThreshold(double threshold) {
-        return new RagProperties(null, threshold, null, null, null, NoContextMode.MODEL, null);
+        return new RagProperties(null, threshold, null, NoContextMode.MODEL, null);
     }
 
     @Test
@@ -631,7 +631,7 @@ class StreamChatUseCaseTests {
     // --- fixed message without context ---
 
     private static RagProperties fixedMessage(String message) {
-        return new RagProperties(null, null, null, null, null, NoContextMode.FIXED_MESSAGE, message);
+        return new RagProperties(null, null, null, NoContextMode.FIXED_MESSAGE, message);
     }
 
     @Test
@@ -652,7 +652,7 @@ class StreamChatUseCaseTests {
     void theFixedMessageModeIsTheDefaultAndItsMessageHasADefault() {
         ChatModelPort model = mock(ChatModelPort.class);
 
-        StepVerifier.create(newUseCase(model, new RagProperties(null, null, null, null, null, null, null))
+        StepVerifier.create(newUseCase(model, new RagProperties(null, null, null, null, null))
                         .stream(command("¿Y esto?")))
                 .expectNext(new TokenEvent(ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE), new DoneEvent(1))
                 .verifyComplete();
@@ -680,7 +680,7 @@ class StreamChatUseCaseTests {
     void whenTheThresholdLeavesNothingTheFixedMessageIsTheAnswer() {
         ChatModelPort model = mock(ChatModelPort.class);
         when(knowledge.retrieve("q", 4)).thenReturn(Mono.just(List.of(fragment("Weak match.", 0.2))));
-        RagProperties properties = new RagProperties(null, 0.6, null, null, null, NoContextMode.FIXED_MESSAGE,
+        RagProperties properties = new RagProperties(null, 0.6, null, NoContextMode.FIXED_MESSAGE,
                 "Sin información.");
 
         StepVerifier.create(newUseCase(model, properties).stream(command("q")))
@@ -725,7 +725,7 @@ class StreamChatUseCaseTests {
         when(selector.select(any(), anyDouble(), anyInt())).thenThrow(new IllegalStateException("bug"));
         StreamChatUseCase useCase = new StreamChatUseCase(model, knowledge, selector,
                 history(new MemoryProperties(null, null, null)), metrics,
-                new ChatProperties(MAX_LENGTH, "system"), rag(null, null), new NoOpChatTrace(), smallTalk());
+                new ChatProperties(MAX_LENGTH), rag(null, null), new NoOpChatTrace(), smallTalk());
 
         StepVerifier.create(useCase.stream(command("q"))).expectError(IllegalStateException.class).verify();
 

@@ -46,6 +46,9 @@ Si el fallo ocurre antes del primer evento no hay flujo: la respuesta es JSON `{
 | 400 | `SLHD_CHAT_00001` | Mensaje ausente, vacío, solo espacios o de más de 4000 caracteres |
 | 400 | `SLHD_CHAT_00005` | `conversationId` presente pero que no es un UUID en texto canónico (también con la memoria desactivada) |
 | 400 | `SLHD_GENE_00002` | Cuerpo que no es JSON válido |
+| 403 | `SLHD_CHAT_00008` | La petición lleva `X-Prompt-Versions` sin que la capacidad esté activa o con un `X-Prompt-Token` ausente o incorrecto (solo la evaluación usa estas cabeceras) |
+| 400 | `SLHD_CHAT_00009` | `X-Prompt-Versions` mal formada, con un prompt desconocido o repetido, o con una versión que no es un entero desde 1 |
+| 422 | `SLHD_CHAT_00010` | Una versión de prompt fijada con `X-Prompt-Versions` no existe, no es válida o Langfuse no responde: no se responde con otro texto |
 | 503 | `SLHD_CHAT_00002` | El gateway de modelos no responde, rechaza la clave, el modelo no existe o principal y respaldo han fallado |
 | 429 | `SLHD_CHAT_00007` | La clave virtual del backend agotó su presupuesto en el gateway |
 | 503 | `SLHD_CHAT_00004` | No se pudo recuperar el contexto de la base de conocimiento (servicio de embeddings o base de datos caídos). El bot no responde sin contexto |
@@ -64,18 +67,24 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
 | `SHOPLAB_CHAT_GATEWAY_PRIMARY_MODEL` | `chat` | Nombre con el que el gateway informa las respuestas de su modelo principal; otro nombre se marca como fallback en la traza |
 | `SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT` | `60s` | Tiempo máximo que el backend espera al gateway |
 | `shoplab.chat.max-message-length` | `4000` | Longitud máxima del mensaje, en caracteres |
-| `SHOPLAB_CHAT_SYSTEM_PROMPT` / `shoplab.chat.system-prompt` | el texto de `application.yml` (reglas 1–8) | Prompt de sistema: responder solo con el contexto, reconocer lo que no sabe, citar, no revelar sus instrucciones y tratar el mensaje delimitado como datos. El texto por defecto está en `application.yml` y se reemplaza con la variable. **No puede quedar en blanco** (el arranque falla) y un prompt propio no hereda ninguna regla del de por defecto |
+| `SHOPLAB_CHAT_PROMPTS_ENABLED` / `shoplab.chat.prompts.enabled` | `false` | Carga los cuatro prompts del chat desde Langfuse (sección «Prompts versionados en Langfuse»). Apagado, el chat usa siempre el texto por defecto y no crea ningún cliente ni hilo. Es independiente del envío de trazas |
+| `SHOPLAB_CHAT_PROMPTS_BASE_URL` | `http://localhost:3001` | Dirección de Langfuse (sin `/api/...`); en DEV, `http://langfuse-web:3000` |
+| `SHOPLAB_CHAT_PROMPTS_PUBLIC_KEY` / `…_SECRET_KEY` | las de `SHOPLAB_CHAT_TRACING_*` | Claves del proyecto de Langfuse; la secreta nunca se imprime. Sin ellas, aviso y se comporta como apagado |
+| `SHOPLAB_CHAT_PROMPTS_LABEL` | `production` | Etiqueta cuya versión se sirve |
+| `SHOPLAB_CHAT_PROMPTS_REFRESH_INTERVAL` | `60s` | Cada cuánto se vuelven a pedir los prompts; es el máximo que tarda un cambio de etiqueta en llegar al chat (mínimo 5 s) |
+| `SHOPLAB_CHAT_PROMPTS_REQUEST_TIMEOUT` | `2s` | Tiempo máximo de cada petición a Langfuse, incluida la carga de arranque (de 100 ms a 30 s) |
+| `SHOPLAB_CHAT_PROMPTS_MAX_PROMPT_CHARACTERS` | `20000` | Tamaño máximo de un prompt; uno mayor se descarta como edición mala (mínimo 100) |
+| `SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING` | `false` | Al arrancar crea en Langfuse, con su texto por defecto y la etiqueta, los prompts que **no existen**; nunca crea versiones de uno que existe ni mueve etiquetas |
+| `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN` | vacío | Token que permite a la evaluación fijar versiones de prompts en una petición. Vacío, o con `enabled=false`, la capacidad está apagada |
 | `SHOPLAB_CHAT_RAG_TOP_K` / `shoplab.chat.rag.top-k` | `4` | Fragmentos que se piden a la búsqueda por pregunta. Rango 1–20; fuera de rango el arranque falla |
 | `SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD` / `shoplab.chat.rag.similarity-threshold` | `0.6` | Similitud mínima (0–1) de un fragmento; `0` no descarta nada. Con `0` la búsqueda entrega siempre `top-k` fragmentos aunque no se parezcan a la pregunta y el bot responde con contexto de otro tema |
 | `SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS` / `shoplab.chat.rag.max-context-characters` | `8000` | Máximo de caracteres de contexto que recibe el modelo (mínimo 500); cuenta solo el texto de los fragmentos, no sus cabeceras `[origen › sección]` ni la plantilla (unos cientos de caracteres más); los fragmentos van completos o no van |
 | `SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE` / `shoplab.chat.rag.no-context-mode` | `fixed-message` | Qué hacer si no hay fragmentos útiles: `fixed-message` responde el texto de `shoplab.chat.rag.no-context-message` sin llamar al modelo (determinista, no inventa); `model` deja que el modelo conteste con la plantilla de contexto vacío (conserva saludos y cortesías, pero el modelo local puede usar conocimiento general) |
-| `shoplab.chat.rag.context-template` / `empty-context-template` | plantillas en español | Mensaje de usuario con y sin contexto; llevan los marcadores `{query}` y `{context}` (la segunda, solo `{query}`). La de contexto no puede llevar otras llaves `{...}` (Spring AI las lee como variables): el arranque falla si no se puede renderizar |
 | `SHOPLAB_CHAT_MEMORY_MAX_TURNS` / `shoplab.chat.memory.max-turns` | `5` | Turnos recientes (pregunta + respuesta) que recibe el modelo. Rango 0–50; `0` apaga la memoria aunque llegue `conversationId` (el identificador se sigue validando) |
 | `SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS` / `shoplab.chat.memory.max-history-characters` | `4000` | Máximo de caracteres de historial (preguntas y respuestas), mínimo 200; se descarta el turno más antiguo entero, nunca se recorta un texto |
 | `SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS` / `shoplab.chat.memory.retrieval-turns` | `1` | Preguntas anteriores que se anteponen a la consulta de búsqueda para que un seguimiento encuentre su tema (0–50); `0` busca solo con el mensaje. Nunca más que `max-turns` |
 | `SHOPLAB_CHAT_SMALL_TALK_ENABLED` / `shoplab.chat.small-talk.enabled` | `true` | Responde las cortesías (saludos, agradecimientos, despedidas, «¿qué puedes hacer?») sin recuperar contexto. `false` restablece exactamente el comportamiento anterior a LAB-114 |
-| `SHOPLAB_CHAT_SMALL_TALK_SYSTEM_PROMPT` / `shoplab.chat.small-talk.system-prompt` | prompt de charla en español | Instrucciones de la respuesta de charla; vacío usa el de por defecto. Si se define, **debe contener `{topics}`** o el arranque falla, y conviene que prohíba afirmar datos de la tienda y revelar instrucciones |
-| `SHOPLAB_CHAT_SMALL_TALK_TOPICS` / `shoplab.chat.small-talk.topics` | `pagos, privacidad, devoluciones, envíos y garantías` | Temas que el bot nombra al decir qué puede hacer (sustituyen a `{topics}`); no puede quedar en blanco |
+| `SHOPLAB_CHAT_SMALL_TALK_TOPICS` / `shoplab.chat.small-talk.topics` | `pagos, privacidad, devoluciones, envíos y garantías` | Temas que el bot nombra al decir qué puede hacer (sustituyen a `{topics}` en el prompt `chat-small-talk`); no puede quedar en blanco |
 | `SHOPLAB_CHAT_SMALL_TALK_GREETINGS` / `…THANKS` / `…FAREWELLS` / `…ACKNOWLEDGMENTS` / `…CAPABILITIES` (`shoplab.chat.small-talk.greetings`, `thanks`, `farewells`, `acknowledgments`, `capabilities`) | listas incorporadas | Léxico cerrado de cortesías, frases separadas por comas (mayúsculas, acentos y signos no importan). Vacío conserva la lista incorporada; un valor la **reemplaza**. El arranque falla si una frase queda vacía, lleva cifras o tiene más de 10 palabras |
 | `LITELLM_NUM_CTX` / `LITELLM_KEEP_ALIVE` | `8192` / `30m` | Ventana de contexto y tiempo de carga del modelo que el **gateway** pide a Ollama (antes `OLLAMA_NUM_CTX` y `OLLAMA_KEEP_ALIVE` en el backend) |
 
@@ -95,7 +104,69 @@ Un cliente que solo acepte `application/json` recibe `406`: el endpoint produce 
   La proporción de charla es `sum(rate(shoplab_chat_turns_total{kind="small_talk"}[5m])) / sum(rate(shoplab_chat_turns_total[5m]))`;
   una proporción que se dispara puede indicar que el léxico de cortesías se queda corto o que algo repite saludos. Una charla
   no se cuenta en `shoplab_chat_first_token_seconds`, que mide respuestas con recuperación.
+- `shoplab_chat_prompts_refresh_total` cuenta cada consulta a Langfuse por prompt (`prompt`) y resultado (`result` = `updated`, `unchanged`, `invalid`, `missing` o `failed`) y `shoplab_chat_prompts_version` es la versión cargada de cada prompt (0 mientras se usa el texto por defecto). Un `invalid` o un `failed` sostenido significa que el chat sigue con la última versión válida.
 - Cerrar la conexión del cliente cancela la generación en el modelo.
+
+## Prompts versionados en Langfuse (LAB-85)
+
+Los cuatro textos que el chat envía al modelo se editan en **Langfuse** (Prompts), sin tocar código ni redesplegar:
+
+| Prompt en Langfuse | Para qué | Marcadores obligatorios |
+| --- | --- | --- |
+| `chat-system` | Reglas de toda respuesta con conocimiento (se envía tal cual; sus llaves son literales) | ninguno |
+| `chat-small-talk` | Instrucciones de la respuesta a una cortesía | `{topics}` |
+| `chat-context` | Mensaje del cliente con los fragmentos recuperados | `{query}` y `{context}` (ninguna otra variable) |
+| `chat-empty-context` | Mensaje del cliente sin fragmentos (solo con `no-context-mode=model`) | `{query}` |
+
+**Cómo funciona.** El backend pide a Langfuse la versión con la etiqueta `production` de cada prompt y la guarda en memoria; el
+turno **solo lee esa memoria**, así que un Langfuse lento o caído no retrasa ni rompe ninguna pregunta. Cada
+`SHOPLAB_CHAT_PROMPTS_REFRESH_INTERVAL` (60 s por omisión) vuelve a preguntar: **ese es el máximo que tarda un cambio de etiqueta
+en llegar al chat**, en todas las instancias y sin reiniciar. Cada turno toma la versión de cada prompt al empezar y la mantiene
+hasta terminar, aunque la etiqueta se mueva mientras responde.
+
+**Si Langfuse no ayuda** el chat usa, por este orden, la última versión válida cargada (aunque sea antigua) y el texto por defecto
+de `backend/src/main/resources/prompts/*.txt`, que es la única copia del texto en el repositorio. Una versión nueva se **descarta**
+(con un aviso que nombra el prompt, la versión y el motivo, nunca el texto) si no es de tipo texto, está vacía, supera
+`SHOPLAB_CHAT_PROMPTS_MAX_PROMPT_CHARACTERS`, le falta un marcador obligatorio o `chat-context` usa otra variable.
+
+**Primera vez.** Con `SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true` el backend crea, al arrancar, los prompts que no existen (versión 1,
+etiqueta `production`, el texto por defecto). Repetirlo no crea versiones y nunca toca un prompt que ya existe.
+
+### Editar, probar, comparar, promover y revertir
+
+1. **Editar**: en Langfuse, abre el prompt y crea una versión nueva. Sin etiqueta no la usa nadie: el chat sigue con `production`.
+2. **Probarla** sin tocar `production`: pon una etiqueta propia (por ejemplo `staging`) y mide con
+   `uv run python -m shoplab_eval quality --prompt chat-system=staging --out eval/results/staging` (ver `eval/README.md`).
+3. **Compararla**: mide también la versión actual y usa `compare` sobre los dos resúmenes. La comparación avisa si los dos
+   resultados no son comparables (otro juez, otro modelo del asistente u otro número de casos).
+4. **Promoverla**: mueve la etiqueta `production` a la versión nueva. En ≤ `REFRESH_INTERVAL` las preguntas nuevas la usan.
+5. **Revertir**: mueve `production` de vuelta a la versión anterior; vuelve exactamente el texto anterior en el mismo tiempo.
+
+Un prompt no debe contener claves, datos de clientes ni nada que no pueda verse en una traza: las trazas guardan el prompt
+completo (con el tope y el saneado de LAB-64). Cambiar un prompt sin una medición de calidad antes y después se rechaza
+(Constitución V).
+
+### Qué dice cada traza
+
+Con el envío de trazas activo, la generación de cada turno enlaza con la versión de su prompt principal (`chat-system` en un turno
+de conocimiento, `chat-small-talk` en una cortesía) y puede saltarse a ella desde Langfuse. La traza guarda además, como
+metadatos filtrables, la versión de **cada** prompt que el turno usó (`prompt_chat_system`, `prompt_chat_context`…). Con el texto
+por defecto no hay enlace y el metadato dice `default`; una cortesía no registra los prompts de contexto.
+
+### Fijar versiones solo para evaluar
+
+Una petición puede fijar versiones con `X-Prompt-Versions: chat-system=3,chat-context=2` y `X-Prompt-Token`. Solo funciona si el
+backend tiene `SHOPLAB_CHAT_PROMPTS_ENABLED=true` y un `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN`, y la petición lo presenta; en cualquier
+otro caso responde **403** (nunca ignora la cabecera: una evaluación mal configurada mediría con los prompts equivocados). Una
+versión que no existe es un **422** y no se cae al texto de `production`. No mueve ninguna etiqueta ni cambia la respuesta de otras
+peticiones. Decisiones: [ADR-0027](adr/0027-prompts-versionados-en-langfuse.md).
+
+### Cambio de configuración incompatible
+
+Se retiraron `shoplab.chat.system-prompt`, `shoplab.chat.small-talk.system-prompt`, `shoplab.chat.rag.context-template` y
+`shoplab.chat.rag.empty-context-template`, y las variables `SHOPLAB_CHAT_SYSTEM_PROMPT` y `SHOPLAB_CHAT_SMALL_TALK_SYSTEM_PROMPT`: su
+valor ya no se lee. Si el entorno aún define una variable, el backend arranca y deja un aviso que la nombra. Para conservar un
+texto propio, créalo como versión en Langfuse y ponle la etiqueta `production`.
 
 ## Detrás de un proxy o ingreso
 
@@ -122,8 +193,8 @@ respuesta aparece «Fuentes» con las citadas (o «Fuentes consultadas» si el m
 fuente abre el fragmento. Una marca que no apunta a ninguna fuente se queda como texto. Decisiones:
 [ADR-0019](adr/0019-citas-a-la-fuente-en-el-chat.md).
 
-La regla de citas está en el prompt de sistema y en la plantilla de contexto por defecto: quien defina su propio
-`SHOPLAB_CHAT_SYSTEM_PROMPT` debe incluirla. `/actuator/prometheus` publica `shoplab_chat_citations_total` con la etiqueta
+La regla de citas está en el prompt de sistema y en la plantilla de contexto por defecto: quien escriba una versión nueva de
+`chat-system` o de `chat-context` en Langfuse debe conservarla. `/actuator/prometheus` publica `shoplab_chat_citations_total` con la etiqueta
 `outcome` = `valid` (cita solo fuentes que tiene), `invalid` (alguna cita sin fuente) o `none` (no cita), una vez por respuesta
 completada con contexto; sin texto de preguntas, respuestas ni fragmentos.
 
@@ -171,7 +242,7 @@ no se usa para completar la búsqueda de la pregunta siguiente («hola» no cont
 - **Los datos van delimitados.** El mensaje del cliente y las preguntas del historial llegan al modelo entre
   `<mensaje_del_cliente>` y `</mensaje_del_cliente>`; en ellos, en las respuestas anteriores y en los fragmentos se vuelve
   inerte lo que imite un delimitador o un rol (`</contexto>`, `<|im_start|>`, `[INST]`, `<<SYS>>`, líneas de guiones). Lo hace
-  el código, no las plantillas: cambiar `context-template` o `system-prompt` no lo quita. El prompt de sistema por defecto
+  el código, no las plantillas: editar los prompts de Langfuse no lo quita. El prompt de sistema por defecto
   prohíbe además revelar, resumir o traducir sus instrucciones y su configuración.
 - **El delimitador no llega al cliente.** Algunos modelos pequeños devuelven su respuesta envuelta en
   `<mensaje_del_cliente>…</mensaje_del_cliente>`. `DelimiterEchoFilter` quita esas etiquetas del stream antes de que lleguen

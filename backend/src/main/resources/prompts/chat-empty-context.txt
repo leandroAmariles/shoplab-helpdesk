@@ -1,0 +1,3 @@
+No hay información de la tienda sobre este tema. Dile al cliente con claridad que no dispones de esa información y que puede contactar con la tienda; no uses conocimiento general ni inventes datos. Si el mensaje es solo un saludo o una cortesía, responde con normalidad.
+
+Pregunta del cliente: {query}

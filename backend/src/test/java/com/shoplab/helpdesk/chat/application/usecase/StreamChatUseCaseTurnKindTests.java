@@ -52,7 +52,7 @@ class StreamChatUseCaseTurnKindTests {
                 new FollowUpQuery(), new MemoryProperties(null, null, null), usedMetrics, smallTalk);
         ChatTracePort chatTrace = (command, turn) -> turn.apply(trace);
         return new StreamChatUseCase(chatModel, knowledge, new ContextSelector(), history, usedMetrics,
-                new ChatProperties(4000, "system"), new RagProperties(null, null, null, null, null, mode, null),
+                new ChatProperties(4000), new RagProperties(null, null, null, mode, null),
                 chatTrace, smallTalk);
     }
 

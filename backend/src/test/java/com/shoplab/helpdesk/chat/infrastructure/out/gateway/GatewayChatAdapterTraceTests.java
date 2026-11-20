@@ -7,16 +7,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.GatewayStubs;
 import com.shoplab.helpdesk.chat.application.port.out.GenerationScope;
+import com.shoplab.helpdesk.chat.application.port.out.PromptCatalogPort;
 import com.shoplab.helpdesk.chat.application.port.out.TurnTrace;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
+import com.shoplab.helpdesk.chat.domain.model.PromptReference;
 import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
 import com.shoplab.helpdesk.chat.domain.model.ServedModel;
 import com.shoplab.helpdesk.chat.domain.model.TokenUsage;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;
 import com.shoplab.helpdesk.chat.domain.model.constants.TracingConstants;
+import com.shoplab.helpdesk.chat.domain.model.enums.PromptName;
+import com.shoplab.helpdesk.chat.support.FixedPromptCatalog;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -26,6 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import reactor.core.publisher.Flux;
@@ -43,7 +50,17 @@ class GatewayChatAdapterTraceTests {
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
-        registry.add("shoplab.chat.system-prompt", () -> "You are the test assistant");
+    }
+
+    @TestConfiguration
+    static class Prompts {
+
+        @Bean
+        @Primary
+        PromptCatalogPort testPrompts() {
+            return FixedPromptCatalog.with(Map.of(
+                    PromptName.CHAT_SYSTEM, "You are the test assistant"));
+        }
     }
 
     @Autowired
@@ -54,6 +71,58 @@ class GatewayChatAdapterTraceTests {
     private Flux<String> answer(List<ConversationTurn> history, List<ContextFragment> context) {
         return adapter.streamAnswer("¿Plazo?", history, context)
                 .contextWrite(reactorContext -> reactorContext.put(TracingConstants.TURN_TRACE_KEY, trace));
+    }
+
+    @Test
+    void theTraceIsToldTheMainPromptFirstAndBeforeTheGenerationStarts() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
+        List<ContextFragment> context = List.of(new ContextFragment("returns.md", "Devoluciones", "", 0, "Texto.", 0.9));
+
+        StepVerifier.create(answer(List.of(), context)).expectNext("Hola").verifyComplete();
+
+        assertThat(trace.promptsTold).isEqualTo(1);
+        assertThat(trace.startedWhenPromptsWereTold).as("told before the generation starts").isZero();
+        assertThat(trace.prompts).extracting(prompt -> prompt.name())
+                .containsExactly(PromptName.CHAT_SYSTEM, PromptName.CONTEXT);
+        assertThat(trace.prompts.get(0).version()).isEqualTo(1);
+        assertThat(trace.prompts.get(1).isDefault()).isTrue();
+        assertThat(trace.overridden).isFalse();
+    }
+
+    @Test
+    void withoutContextTheEmptyContextPromptIsTheOneReportedNextToTheSystemPrompt() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
+
+        StepVerifier.create(answer(List.of(), List.of())).expectNext("Hola").verifyComplete();
+
+        assertThat(trace.prompts).extracting(prompt -> prompt.name())
+                .containsExactly(PromptName.CHAT_SYSTEM, PromptName.EMPTY_CONTEXT);
+    }
+
+    @Test
+    void aCourtesyReportsOnlyItsOwnPrompt() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
+
+        StepVerifier.create(adapter.streamReply("Hola")
+                .contextWrite(reactorContext -> reactorContext.put(TracingConstants.TURN_TRACE_KEY, trace)))
+                .expectNext("Hola").verifyComplete();
+
+        assertThat(trace.prompts).extracting(prompt -> prompt.name()).containsExactly(PromptName.SMALL_TALK);
+    }
+
+    @Test
+    void aTraceThatFailsToRecordThePromptsNeverBreaksTheAnswer() {
+        GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Hola")));
+        RecordingTrace broken = new RecordingTrace() {
+            @Override
+            public void promptsUsed(List<PromptReference> used, boolean overridden) {
+                throw new IllegalStateException("the trace is broken");
+            }
+        };
+
+        StepVerifier.create(adapter.streamAnswer("¿Plazo?", List.of(), List.of())
+                .contextWrite(reactorContext -> reactorContext.put(TracingConstants.TURN_TRACE_KEY, broken)))
+                .expectNext("Hola").verifyComplete();
     }
 
     @Test
@@ -139,7 +208,7 @@ class GatewayChatAdapterTraceTests {
     }
 
     /** Keeps what the adapter reports. */
-    private static final class RecordingTrace implements TurnTrace {
+    private static class RecordingTrace implements TurnTrace {
 
         private int started;
         private int firstTokens;
@@ -151,6 +220,18 @@ class GatewayChatAdapterTraceTests {
         private ServedModel completedServed;
         private Throwable failure;
         private String cancelledAnswer;
+        private List<PromptReference> prompts;
+        private boolean overridden;
+        private int promptsTold;
+        private int startedWhenPromptsWereTold = -1;
+
+        @Override
+        public void promptsUsed(List<PromptReference> used, boolean overridden) {
+            promptsTold++;
+            startedWhenPromptsWereTold = started;
+            this.prompts = used;
+            this.overridden = overridden;
+        }
 
         @Override
         public void historyTurns(int turns) {

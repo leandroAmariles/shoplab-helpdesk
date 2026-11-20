@@ -44,6 +44,10 @@ final class LangfuseAttributes {
     static final AttributeKey<String> COMPLETION_START_TIME =
             AttributeKey.stringKey("langfuse.observation.completion_start_time");
 
+    /** Link of a generation with a version of a prompt of Langfuse (LAB-85): its name and its number. */
+    static final AttributeKey<String> PROMPT_NAME = AttributeKey.stringKey("langfuse.observation.prompt.name");
+    static final AttributeKey<Long> PROMPT_VERSION = AttributeKey.longKey("langfuse.observation.prompt.version");
+
     private static final String TRACE_METADATA = "langfuse.trace.metadata.";
     private static final String OBSERVATION_METADATA = "langfuse.observation.metadata.";
 

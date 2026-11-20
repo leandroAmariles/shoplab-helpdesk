@@ -24,7 +24,7 @@ public final class SmallTalkTestSupport {
 
     /** The built-in lexicon, prompt and topics. */
     public static SmallTalkProperties properties(boolean enabled) {
-        return new SmallTalkProperties(enabled, null, null, null, null, null, null, null);
+        return new SmallTalkProperties(enabled, null, null, null, null, null, null);
     }
 
     /** A classifier with the built-in lexicon. */

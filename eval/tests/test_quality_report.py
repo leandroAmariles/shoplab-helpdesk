@@ -28,7 +28,7 @@ SUMMARY_COLUMNS = [
     "answer_relevancy_mean", "answer_relevancy_n", "answer_relevancy_empty",
     "context_precision_mean", "context_precision_n", "context_precision_empty",
     "abstained", "run_id", "judge_model", "judge_underlying_model", "judge_temperature", "ragas_version",
-    "abstention_prompt_version", "assistant_model", "embedding_model", "langfuse",
+    "abstention_prompt_version", "assistant_model", "embedding_model", "langfuse", "prompt_versions",
 ]  # fmt: skip
 DETAIL_COLUMNS = [
     "id", "category", "question", "kind", "faithfulness", "answer_relevancy", "context_precision", "abstained",
