@@ -1,0 +1,130 @@
+### Pruebas de LAB-85 (prompts versionados): lo que se puede comprobar por HTTP en POST /api/chat.
+###
+### Preparación (local, con el perfil llmops y los prompts publicados; ver quickstart.md):
+###   SHOPLAB_CHAT_PROMPTS_ENABLED=true  SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
+###   SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN=local-eval-token   (marcador de posición, solo para local)
+### En Langfuse, el prompt chat-system debe tener una versión 2 distinta de la 1 (sin la etiqueta production).
+###
+### No se cubre aquí (no es alcanzable por HTTP): la caché y el refresco de los prompts, el aviso por una edición mala, el
+### enlace y los metadatos de la traza, la publicación inicial, `quality --prompt` y `compare` (ver quickstart.md S-2 a S-5 y S-7).
+
+@baseUrl = http://localhost:8080
+@token = local-eval-token
+
+### FR-001, historia 1 / escenario «cliente normal» — sin cabeceras usa la versión production; expects 200 text/event-stream
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el reembolso de un boleto?" }
+
+### FR-017, historia 5 escenario 1 — fija chat-system en la versión 2 sin mover production; expects 200
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Prompt-Versions: chat-system=2
+X-Prompt-Token: {{token}}
+
+{ "message": "¿Cuánto tarda el reembolso de un boleto?" }
+
+### FR-017 / SC-010 — después, una pregunta sin cabeceras sigue usando production (comparar con la primera); expects 200
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cuánto tarda el reembolso de un boleto?" }
+
+### FR-017 — varios prompts a la vez, con espacios y en cualquier orden; expects 200
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Prompt-Versions: chat-context = 1 , chat-system=1
+X-Prompt-Token: {{token}}
+
+{ "message": "¿Cuánto tarda el reembolso de un boleto?" }
+
+### Límite de versión (dentro) — la versión 1, la más baja válida; expects 200
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Prompt-Versions: chat-system=1
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### Límite de versión (fuera) — la versión 0 no existe como número de versión; expects 400 SLHD_CHAT_00009
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=0
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### FR-018, historia 5 escenario 7 — pedir versiones sin token; expects 403 SLHD_CHAT_00008
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=2
+
+{ "message": "Hola" }
+
+### FR-018 — pedir versiones con un token que no es el configurado; expects 403 SLHD_CHAT_00008
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=2
+X-Prompt-Token: otro-token
+
+{ "message": "Hola" }
+
+### FR-018 — el mensaje y el cuerpo no pueden elegir la versión; expects 200 y la versión production
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "chat-system=2", "promptVersions": { "chat-system": 2 } }
+
+### FR-018 — el token solo, sin cabecera de versiones, se ignora; expects 200
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### Formato — nombre de prompt desconocido; expects 400 SLHD_CHAT_00009
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-otro=1
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### Formato — versión que no es un número (las etiquetas las resuelve la evaluación, no el backend); expects 400 SLHD_CHAT_00009
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=staging
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### Formato — el mismo prompt dos veces; expects 400 SLHD_CHAT_00009
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=1,chat-system=2
+X-Prompt-Token: {{token}}
+
+{ "message": "Hola" }
+
+### FR-023, historia 5 escenario 4 — versión que no existe en Langfuse; expects 422 SLHD_CHAT_00010 (no responde con production)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: application/json
+X-Prompt-Versions: chat-system=99
+X-Prompt-Token: {{token}}
+
+{ "message": "¿Cuánto tarda el reembolso de un boleto?" }

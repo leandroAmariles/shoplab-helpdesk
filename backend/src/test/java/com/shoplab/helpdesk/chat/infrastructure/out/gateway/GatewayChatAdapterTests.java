@@ -14,11 +14,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.GatewayStubs;
+import com.shoplab.helpdesk.chat.application.port.out.PromptCatalogPort;
 import com.shoplab.helpdesk.chat.domain.exception.ChatBudgetExceededException;
 import com.shoplab.helpdesk.chat.domain.exception.ChatModelException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
+import com.shoplab.helpdesk.chat.domain.model.enums.PromptName;
+import com.shoplab.helpdesk.chat.support.FixedPromptCatalog;
 import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -27,10 +30,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import reactor.test.StepVerifier;
@@ -46,7 +53,17 @@ class GatewayChatAdapterTests {
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
-        registry.add("shoplab.chat.system-prompt", () -> "You are the test assistant");
+    }
+
+    @TestConfiguration
+    static class Prompts {
+
+        @Bean
+        @Primary
+        PromptCatalogPort testPrompts() {
+            return FixedPromptCatalog.with(Map.of(
+                    PromptName.CHAT_SYSTEM, "You are the test assistant"));
+        }
     }
 
     @Autowired

@@ -82,13 +82,13 @@ class SmallTalkClassifierTests {
     // --- a lexicon taken from the configuration (shoplab.chat.small-talk.*) ---
 
     private static SmallTalkClassifier withLexicon(List<String> greetings, List<String> thanks) {
-        return new SmallTalkClassifier(new SmallTalkProperties(null, null, null, greetings, thanks, List.of("adios"),
+        return new SmallTalkClassifier(new SmallTalkProperties(null, null, greetings, thanks, List.of("adios"),
                 List.of("vale"), List.of("quien eres")));
     }
 
     @Test
     void aConfiguredListReplacesTheBuiltInOneAndTheOthersKeepTheirs() {
-        SmallTalkClassifier custom = new SmallTalkClassifier(new SmallTalkProperties(null, null, null,
+        SmallTalkClassifier custom = new SmallTalkClassifier(new SmallTalkProperties(null, null,
                 List.of("hola mundo", "que onda"), null, null, null, null));
 
         assertThat(custom.isSmallTalk("hola mundo")).isTrue();

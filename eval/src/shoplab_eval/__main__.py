@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from shoplab_eval.chat_client import SseChatClient
+from shoplab_eval.compare import SummaryError, compare_summaries, comparison_csv, format_comparison, read_summary
 from shoplab_eval.constants import (
     ABSTENTION_PROMPT_VERSION,
     ASSISTANT_MODEL_ENV,
@@ -39,12 +40,22 @@ from shoplab_eval.constants import (
     MAX_CONCURRENCY,
     MAX_DEPTH,
     MIN_CONCURRENCY,
+    PROMPT_NAMES,
+    PROMPT_TOKEN_ENV,
     UNKNOWN,
 )
 from shoplab_eval.corpus import load_corpus, title_index
 from shoplab_eval.errors import InvalidGoldenError, MeasurementError
 from shoplab_eval.golden import GoldenCase, load_golden, validate_golden
 from shoplab_eval.langfuse_client import LangfuseClient, TraceScores
+from shoplab_eval.prompt_client import PromptClient, PromptResolver
+from shoplab_eval.prompt_selection import (
+    PromptChoice,
+    PromptRequest,
+    format_prompt_versions,
+    parse_prompt_arguments,
+    versions_header,
+)
 from shoplab_eval.quality_judge import (
     GatewayClient,
     Judge,
@@ -149,8 +160,26 @@ def main(argv: list[str] | None = None) -> int:
         f"{LANGFUSE_PUBLIC_KEY_ENV} y {LANGFUSE_SECRET_KEY_ENV} están definidas "
         f"(servidor: {LANGFUSE_HOST_ENV}, por defecto {DEFAULT_LANGFUSE_HOST})",
     )
+    quality.add_argument(
+        "--prompt",
+        action="append",
+        default=[],
+        metavar="NOMBRE=VALOR",
+        help="fija un prompt en una versión (número) o en la versión a la que apunta una etiqueta, sin tocar "
+        f"production; se repite por prompt ({', '.join(PROMPT_NAMES)}). Necesita {PROMPT_TOKEN_ENV} y las claves de "
+        f"Langfuse ({LANGFUSE_PUBLIC_KEY_ENV}, {LANGFUSE_SECRET_KEY_ENV})",
+    )
+    compare = commands.add_parser(
+        "compare",
+        help="compara dos resúmenes de calidad (quality-summary.csv): medias, diferencia y prompts que difieren",
+    )
+    compare.add_argument("summary_a", type=Path, help="quality-summary.csv del resultado A")
+    compare.add_argument("summary_b", type=Path, help="quality-summary.csv del resultado B")
+    compare.add_argument("--out", type=Path, default=None, help="escribe también la tabla como CSV en esta ruta")
     args = parser.parse_args(argv)
     _use_utf8_output()
+    if args.command == "compare":
+        return _run_compare(args)
     if args.command == "quality":
         return _run_quality(args)
     if args.command == "retrieval":
@@ -224,6 +253,31 @@ def build_langfuse(host: str, public_key: str, secret_key: str) -> TraceScores:
     return LangfuseClient(host, public_key, secret_key)
 
 
+def build_prompt_client(host: str, public_key: str, secret_key: str) -> PromptResolver:
+    """The real resolver of prompt versions. It is a seam: the tests put a double here."""
+    return PromptClient(host, public_key, secret_key)
+
+
+def _resolve_prompts(requests: tuple[PromptRequest, ...], env: Mapping[str, str]) -> tuple[PromptChoice, ...]:
+    """Turns every ``--prompt`` into the version it means, before the assistant is asked anything (FR-019, FR-023).
+
+    Raises ``MeasurementError`` when Langfuse cannot be asked, a version does not exist or is not text. It never falls
+    back to the default text: a run measured with other prompts than the ones asked for would be a wrong result.
+    """
+    if not requests:
+        return ()
+    public_key = env.get(LANGFUSE_PUBLIC_KEY_ENV, "").strip()
+    secret_key = env.get(LANGFUSE_SECRET_KEY_ENV, "").strip()
+    if not (public_key and secret_key):
+        raise MeasurementError(
+            f"--prompt necesita consultar a Langfuse: define {LANGFUSE_PUBLIC_KEY_ENV} y {LANGFUSE_SECRET_KEY_ENV} "
+            "(las claves del proyecto); sin ellas no se sabe qué versión se mide y no se mide con el texto por defecto"
+        )
+    host = env.get(LANGFUSE_HOST_ENV, "").strip() or DEFAULT_LANGFUSE_HOST
+    resolver = build_prompt_client(host, public_key, secret_key)
+    return tuple(resolver.resolve(request) for request in requests)
+
+
 def _langfuse_config(args: argparse.Namespace, env: Mapping[str, str]) -> tuple[str, str, str] | None:
     """The host and keys to attach scores with, or ``None`` when they must not be attached (FR-014).
 
@@ -259,6 +313,13 @@ def _run_quality(args: argparse.Namespace) -> int:
         api_key = read_judge_api_key(os.environ)
         langfuse_config = _langfuse_config(args, os.environ)
         host_header = _host_header(args, os.environ)
+        prompt_requests = parse_prompt_arguments(args.prompt)
+        prompt_token = os.environ.get(PROMPT_TOKEN_ENV, "").strip()
+        if prompt_requests and not prompt_token:
+            raise ValueError(
+                f"--prompt necesita {PROMPT_TOKEN_ENV}: el mismo valor que shoplab.chat.prompts.override-token del "
+                "backend, que es lo que permite fijar versiones en una petición"
+            )
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
@@ -270,6 +331,10 @@ def _run_quality(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     try:
+        # The versions are resolved first: a prompt that does not exist stops the run before anything else is asked.
+        choices = _resolve_prompts(prompt_requests, os.environ)
+        if choices:
+            _progress("Prompts fijados: " + format_prompt_versions(choices))
         cases = load_golden(args.golden, args.kb)
         titles = title_index(load_corpus(args.kb))
         gateway = GatewayClient(settings.base_url, api_key)
@@ -288,8 +353,11 @@ def _run_quality(args: argparse.Namespace) -> int:
             assistant_model=assistant_model,
             embedding_model=_embedding_model(args.base_url, args.turn_timeout, host_header),
             langfuse="skipped",
+            prompt_versions=format_prompt_versions(choices),
         )
-        chat = SseChatClient(args.base_url, args.turn_timeout, titles, host_header)
+        chat = SseChatClient(
+            args.base_url, args.turn_timeout, titles, host_header, versions_header(choices), prompt_token
+        )
         report = measure_quality(
             cases, chat, build_judge(settings, api_key), info, progress=_progress, langfuse=langfuse
         )
@@ -307,6 +375,24 @@ def _run_quality(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    return 0
+
+
+def _run_compare(args: argparse.Namespace) -> int:
+    """Exit codes: 0 compared (with or without warnings of comparability); 2 a summary cannot be read.
+
+    It only reads the two files: no model, no Langfuse and no backend.
+    """
+    try:
+        comparison = compare_summaries(read_summary(args.summary_a), read_summary(args.summary_b))
+    except SummaryError as error:
+        print(error, file=sys.stderr)
+        return 2
+    print(format_comparison(comparison))
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(comparison_csv(comparison), encoding="utf-8", newline="")
+        print(f"\nComparación: {args.out}")
     return 0
 
 

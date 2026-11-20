@@ -1,7 +1,6 @@
 package com.shoplab.helpdesk.chat.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.shoplab.helpdesk.chat.domain.model.constants.SmallTalkConstants;
 import java.util.List;
@@ -14,49 +13,31 @@ class SmallTalkPropertiesTests {
 
     @Test
     void usesTheDocumentedDefaults() {
-        SmallTalkProperties properties = new SmallTalkProperties(null, null, null, null, null, null, null, null);
+        SmallTalkProperties properties = new SmallTalkProperties(null, null, null, null, null, null, null);
 
         assertThat(properties.enabled()).isTrue();
-        assertThat(properties.systemPrompt()).isEqualTo(SmallTalkConstants.DEFAULT_SYSTEM_PROMPT);
         assertThat(properties.topics()).isEqualTo(SmallTalkConstants.DEFAULT_TOPICS);
     }
 
     @Test
     void blankTextsFallBackToTheDefaults() {
-        SmallTalkProperties properties = new SmallTalkProperties(false, "  ", "", null, null, null, null, null);
+        SmallTalkProperties properties = new SmallTalkProperties(false, "", null, null, null, null, null);
 
         assertThat(properties.enabled()).isFalse();
-        assertThat(properties.systemPrompt()).isEqualTo(SmallTalkConstants.DEFAULT_SYSTEM_PROMPT);
         assertThat(properties.topics()).isEqualTo(SmallTalkConstants.DEFAULT_TOPICS);
     }
 
     @Test
-    void theDefaultPromptHasTheTopicsMarker() {
-        assertThat(SmallTalkConstants.DEFAULT_SYSTEM_PROMPT).contains(SmallTalkConstants.TOPICS_PLACEHOLDER);
-    }
-
-    @Test
-    void aCustomPromptKeepsItsTextAndTheTopicsAreTrimmed() {
-        SmallTalkProperties properties = new SmallTalkProperties(true, "Saluda. Temas: {topics}", "  pagos  ", null,
-                null, null, null, null);
-
-        assertThat(properties.systemPrompt()).isEqualTo("Saluda. Temas: {topics}");
-        assertThat(properties.topics()).isEqualTo("pagos");
-    }
-
-    @Test
-    void aCustomPromptWithoutTheTopicsMarkerFailsNamingTheProperty() {
-        assertThatThrownBy(() -> new SmallTalkProperties(true, "Saluda al cliente.", null, null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("shoplab.chat.small-talk.system-prompt")
-                .hasMessageContaining("{topics}");
+    void theTopicsAreTrimmed() {
+        assertThat(new SmallTalkProperties(true, "  pagos  ", null, null, null, null, null).topics())
+                .isEqualTo("pagos");
     }
 
     // --- the lexicon ---
 
     @Test
     void withoutConfigurationEveryListIsTheBuiltInOne() {
-        SmallTalkProperties properties = new SmallTalkProperties(null, null, null, null, null, null, null, null);
+        SmallTalkProperties properties = new SmallTalkProperties(null, null, null, null, null, null, null);
 
         assertThat(properties.greetings()).containsExactlyInAnyOrderElementsOf(SmallTalkConstants.GREETINGS);
         assertThat(properties.thanks()).containsExactlyInAnyOrderElementsOf(SmallTalkConstants.THANKS);
@@ -67,7 +48,7 @@ class SmallTalkPropertiesTests {
 
     @Test
     void aConfiguredListReplacesTheBuiltInOneAndBlankEntriesAreDropped() {
-        SmallTalkProperties properties = new SmallTalkProperties(null, null, null, List.of(" hola ", "", "  ", "hey"),
+        SmallTalkProperties properties = new SmallTalkProperties(null, null, List.of(" hola ", "", "  ", "hey"),
                 List.of("", " "), null, null, null);
 
         assertThat(properties.greetings()).containsExactly("hola", "hey");

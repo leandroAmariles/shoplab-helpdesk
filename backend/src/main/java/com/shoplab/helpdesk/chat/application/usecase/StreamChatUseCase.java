@@ -25,6 +25,7 @@ import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
 import com.shoplab.helpdesk.chat.domain.model.constants.GatewayConstants;
+import com.shoplab.helpdesk.chat.domain.model.constants.PromptConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
 import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import com.shoplab.helpdesk.shared.constants.GatewayHeaders;
@@ -285,8 +286,10 @@ public class StreamChatUseCase implements StreamChatServicePort {
     private static Context correlation(Context context, StreamChatCommand command, ConversationId conversation) {
         Context correlated = command.requestId() == null ? context
                 : context.put(GatewayHeaders.REQUEST_ID_CONTEXT_KEY, command.requestId());
-        return conversation == null ? correlated
+        Context withConversation = conversation == null ? correlated
                 : correlated.put(GatewayConstants.CONVERSATION_ID_CONTEXT_KEY, conversation.value());
+        return command.promptOverrides().isEmpty() ? withConversation
+                : withConversation.put(PromptConstants.OVERRIDES_CONTEXT_KEY, command.promptOverrides());
     }
 
     /** Before the first fragment the failure is the flux's error (an HTTP error); afterwards it is a last event. */

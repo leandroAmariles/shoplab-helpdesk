@@ -8,14 +8,21 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.GatewayStubs;
+import com.shoplab.helpdesk.chat.application.port.out.PromptCatalogPort;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
+import com.shoplab.helpdesk.chat.domain.model.enums.PromptName;
+import com.shoplab.helpdesk.chat.support.FixedPromptCatalog;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import reactor.test.StepVerifier;
@@ -24,10 +31,7 @@ import reactor.test.StepVerifier;
  * The delimiting is done in code (LAB-114, FR-009): an operator who replaces the templates or the system prompt does
  * not remove it, because the text that fills {@code {query}} already arrives between the delimiters.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
-    "shoplab.chat.system-prompt=Custom system prompt",
-    "shoplab.chat.rag.context-template=Datos: {context} || Cliente: {query}",
-    "shoplab.chat.rag.empty-context-template=Sin datos || Cliente: {query}"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @PostgresTest
 class PromptDelimitingCustomTemplatesTests {
 
@@ -38,6 +42,19 @@ class PromptDelimitingCustomTemplatesTests {
     @DynamicPropertySource
     static void ollamaUrl(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
+    }
+
+    @TestConfiguration
+    static class Prompts {
+
+        @Bean
+        @Primary
+        PromptCatalogPort testPrompts() {
+            return FixedPromptCatalog.with(Map.of(
+                    PromptName.CHAT_SYSTEM, "Custom system prompt",
+                PromptName.CONTEXT, "Datos: {context} || Cliente: {query}",
+                PromptName.EMPTY_CONTEXT, "Sin datos || Cliente: {query}"));
+        }
     }
 
     @Autowired

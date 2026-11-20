@@ -62,8 +62,8 @@ class StreamChatUseCaseTraceTests {
         ConversationHistory history = new ConversationHistory(memory, new HistoryWindow(), new FollowUpQuery(),
                 new MemoryProperties(null, null, null), metrics, smallTalk());
         return new StreamChatUseCase(model, knowledge, new ContextSelector(), history, metrics,
-                new ChatProperties(4000, "system"),
-                new RagProperties(null, null, null, null, null, mode, null), trace, smallTalk());
+                new ChatProperties(4000),
+                new RagProperties(null, null, null, mode, null), trace, smallTalk());
     }
 
     private static ContextFragment fragment(String text, double score) {

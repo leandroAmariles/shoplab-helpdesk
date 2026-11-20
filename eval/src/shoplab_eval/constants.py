@@ -132,3 +132,16 @@ LANGFUSE_SECRET_KEY_ENV = "SHOPLAB_EVAL_LANGFUSE_SECRET_KEY"
 UNKNOWN = "unknown"
 # Version of the abstention check of the judge (a prompt of ours, not of RAGAS): bump it when its text changes (R6).
 ABSTENTION_PROMPT_VERSION = "2"
+
+# --- prompts versionados en Langfuse (LAB-85) ---
+PROMPT_NAMES = ("chat-system", "chat-small-talk", "chat-context", "chat-empty-context")
+PRODUCTION_LABEL = "production"
+PROMPT_TOKEN_ENV = "SHOPLAB_EVAL_PROMPT_TOKEN"
+PROMPT_VERSIONS_HEADER = "X-Prompt-Versions"
+PROMPT_TOKEN_HEADER = "X-Prompt-Token"
+PROMPTS_PATH = "/api/public/v2/prompts"
+PROMPT_TEXT_TYPE = "text"
+PROMPT_LABEL_PATTERN = r"^[A-Za-z0-9._-]{1,64}$"
+PROMPT_VERSIONS_SEPARATOR = "|"
+PROMPT_FORBIDDEN_CODE = "SLHD_CHAT_00008"
+PROMPT_UNAVAILABLE_CODE = "SLHD_CHAT_00010"

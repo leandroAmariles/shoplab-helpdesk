@@ -9,7 +9,7 @@ import base64
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 PUBLIC_KEY = "pk-lf-prueba"
 SECRET_KEY = "sk-lf-prueba-secreta"
@@ -28,6 +28,9 @@ class FakeLangfuse:
         self.score_status = 200
         self.fail_scores_for: set[str] = set()
         self.projects_status = 200
+        # (prompt name, "label" or "version", value) -> (status, body): what the prompts API answers (LAB-85)
+        self.prompts: dict[tuple[str, str, str], tuple[int, object]] = {}
+        self.prompt_requests: list[tuple[str, str, str]] = []
         langfuse = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -41,6 +44,15 @@ class FakeLangfuse:
                     self._send(401, {"message": "Invalid credentials", "error": "UnauthorizedError"})
                 elif parts.path == "/api/public/projects":
                     self._send(langfuse.projects_status, {"data": [{"id": "shoplab-helpdesk"}]})
+                elif parts.path.startswith("/api/public/v2/prompts/"):
+                    name = unquote(parts.path.rsplit("/", 1)[1])
+                    query = parse_qs(parts.query)
+                    kind = "version" if "version" in query else "label"
+                    value = query.get(kind, [""])[0]
+                    langfuse.prompt_requests.append((name, kind, value))
+                    not_found = {"message": f"Prompt not found: {name!r} with {kind} {value!r}"}
+                    status, body = langfuse.prompts.get((name, kind, value), (404, not_found))
+                    self._send(status, body)
                 elif parts.path == "/api/public/v2/observations":
                     trace_id = parse_qs(parts.query).get("traceId", [""])[0]
                     if langfuse.delay.get(trace_id, 0) > 0:
@@ -88,6 +100,19 @@ class FakeLangfuse:
     @property
     def url(self) -> str:
         return f"http://127.0.0.1:{self._server.server_address[1]}"
+
+    def add_prompt(self, name: str, version: int, label: str | None = None, prompt_type: str = "text") -> None:
+        """A version of a prompt, found by its number and, when a label is given, by the label too."""
+        body = {
+            "name": name,
+            "version": version,
+            "type": prompt_type,
+            "prompt": "texto" if prompt_type == "text" else [{"role": "system", "content": "x"}],
+            "labels": [label] if label else [],
+        }
+        self.prompts[(name, "version", str(version))] = (200, body)
+        if label:
+            self.prompts[(name, "label", label)] = (200, body)
 
     def add_trace(self, trace_id: str, model: str | None = None) -> None:
         """The trace is there, with a ``generation`` observation that names the model when one is given."""

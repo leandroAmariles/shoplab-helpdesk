@@ -22,7 +22,13 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from shoplab_eval.chat_client import ChatClient, ChatTurn
-from shoplab_eval.constants import DECIMALS, MAX_REQUEST_ID_LENGTH, REQUEST_ID_PREFIX, RUN_ID_PATTERN
+from shoplab_eval.constants import (
+    DECIMALS,
+    MAX_REQUEST_ID_LENGTH,
+    PRODUCTION_LABEL,
+    REQUEST_ID_PREFIX,
+    RUN_ID_PATTERN,
+)
 from shoplab_eval.errors import MeasurementError
 from shoplab_eval.golden import GoldenCase
 from shoplab_eval.langfuse_client import LangfuseStatus, ScoreToPublish, TraceScores, score_id_for, trace_id_for
@@ -52,6 +58,8 @@ class RunInfo:
     assistant_model: str
     embedding_model: str
     langfuse: str
+    # Which versions of the prompts were measured, as the column of the summary writes them (LAB-85, FR-020).
+    prompt_versions: str = PRODUCTION_LABEL
 
 
 @dataclass(frozen=True)

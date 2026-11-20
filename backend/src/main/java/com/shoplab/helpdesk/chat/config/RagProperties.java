@@ -2,25 +2,22 @@ package com.shoplab.helpdesk.chat.config;
 
 import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.NoContextMode;
-import java.util.Map;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Settings of the retrieval-augmented answers under {@code shoplab.chat.rag}.
+ * Settings of the retrieval-augmented answers under {@code shoplab.chat.rag}. The two user messages (with and without
+ * context) are the {@code chat-context} and {@code chat-empty-context} prompts (LAB-85), not settings.
  *
  * @param topK                 fragments asked of the search for each question (from 1 to 20)
  * @param similarityThreshold  lowest similarity a fragment may have (from 0.0 to 1.0, default 0.6); 0.0 keeps
  *                             everything
  * @param maxContextCharacters most characters of context handed to the model (at least 500)
- * @param contextTemplate      user message with context; it has the query and context markers
- * @param emptyContextTemplate user message when there is no context; it has the query marker
  * @param noContextMode        what to do without useful context: {@code FIXED_MESSAGE} (default) or {@code MODEL}
  * @param noContextMessage     the answer in {@code FIXED_MESSAGE} mode
  */
 @ConfigurationProperties("shoplab.chat.rag")
 public record RagProperties(Integer topK, Double similarityThreshold, Integer maxContextCharacters,
-        String contextTemplate, String emptyContextTemplate, NoContextMode noContextMode, String noContextMessage) {
+        NoContextMode noContextMode, String noContextMessage) {
 
     public static final int MAX_TOP_K = 20;
 
@@ -29,28 +26,10 @@ public record RagProperties(Integer topK, Double similarityThreshold, Integer ma
     private static final int DEFAULT_MAX_CONTEXT_CHARACTERS = 8000;
     private static final int MIN_CONTEXT_CHARACTERS = 500;
 
-    /**
-     * The context template is rendered by Spring AI, which reads every {@code {name}} as a variable. Rendering it once
-     * here makes a template with other braces fail at start-up instead of on every request that has context.
-     */
-    private static void requireRenderable(String template) {
-        try {
-            new PromptTemplate(template).render(Map.of("query", "question", "context", "fragments"));
-        } catch (RuntimeException e) {
-            throw new IllegalArgumentException("shoplab.chat.rag.context-template cannot be rendered: only "
-                    + ChatConstants.QUERY_PLACEHOLDER + " and " + ChatConstants.CONTEXT_PLACEHOLDER
-                    + " may appear between braces (" + e.getMessage() + ")", e);
-        }
-    }
-
     public RagProperties {
         topK = topK == null ? DEFAULT_TOP_K : topK;
         similarityThreshold = similarityThreshold == null ? DEFAULT_SIMILARITY_THRESHOLD : similarityThreshold;
         maxContextCharacters = maxContextCharacters == null ? DEFAULT_MAX_CONTEXT_CHARACTERS : maxContextCharacters;
-        contextTemplate = contextTemplate == null || contextTemplate.isBlank()
-                ? ChatConstants.DEFAULT_CONTEXT_TEMPLATE : contextTemplate;
-        emptyContextTemplate = emptyContextTemplate == null || emptyContextTemplate.isBlank()
-                ? ChatConstants.DEFAULT_EMPTY_CONTEXT_TEMPLATE : emptyContextTemplate;
         noContextMode = noContextMode == null ? NoContextMode.FIXED_MESSAGE : noContextMode;
         noContextMessage = noContextMessage == null || noContextMessage.isBlank()
                 ? ChatConstants.DEFAULT_NO_CONTEXT_MESSAGE : noContextMessage;
@@ -65,16 +44,6 @@ public record RagProperties(Integer topK, Double similarityThreshold, Integer ma
         if (maxContextCharacters < MIN_CONTEXT_CHARACTERS) {
             throw new IllegalArgumentException("shoplab.chat.rag.max-context-characters must be at least "
                     + MIN_CONTEXT_CHARACTERS + " but was " + maxContextCharacters);
-        }
-        if (!contextTemplate.contains(ChatConstants.QUERY_PLACEHOLDER)
-                || !contextTemplate.contains(ChatConstants.CONTEXT_PLACEHOLDER)) {
-            throw new IllegalArgumentException("shoplab.chat.rag.context-template must contain "
-                    + ChatConstants.QUERY_PLACEHOLDER + " and " + ChatConstants.CONTEXT_PLACEHOLDER);
-        }
-        requireRenderable(contextTemplate);
-        if (!emptyContextTemplate.contains(ChatConstants.QUERY_PLACEHOLDER)) {
-            throw new IllegalArgumentException("shoplab.chat.rag.empty-context-template must contain "
-                    + ChatConstants.QUERY_PLACEHOLDER);
         }
     }
 }

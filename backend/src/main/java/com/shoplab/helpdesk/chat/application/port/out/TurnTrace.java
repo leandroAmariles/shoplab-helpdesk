@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.chat.application.port.out;
 
 import com.shoplab.helpdesk.chat.domain.model.PromptMessage;
+import com.shoplab.helpdesk.chat.domain.model.PromptReference;
 import com.shoplab.helpdesk.chat.domain.model.RetrievalTrace;
 import com.shoplab.helpdesk.chat.domain.model.ToolCallTrace;
 import java.time.Duration;
@@ -57,6 +58,18 @@ public interface TurnTrace {
 
     /** The turn is a courtesy answered without retrieval (LAB-114): there is no search to report. */
     void smallTalkAnswer();
+
+    /**
+     * The prompts the turn took, with the version of each (LAB-85). The first one is the main prompt, the one the next
+     * generation is linked with; it is told before {@link #startGeneration}. Recording nothing is the default, so the
+     * implementations and the doubles that do not care about prompts stay as they are.
+     *
+     * @param used       the prompts of the turn, the main one first
+     * @param overridden the request fixed versions instead of the ones labelled for production (an evaluation)
+     */
+    default void promptsUsed(List<PromptReference> used, boolean overridden) {
+        // nothing is recorded
+    }
 
     /** The model is about to be called with these messages. */
     GenerationScope startGeneration(String model, Map<String, Object> parameters, List<PromptMessage> messages);

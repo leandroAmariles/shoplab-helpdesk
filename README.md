@@ -222,6 +222,28 @@ Con ese id, la interfaz abre `http://localhost:3001/project/shoplab-helpdesk/tra
 
 **Ambiente DEV.** El backend de dev envía las trazas al Langfuse del clúster y este no tiene Ingress; se abre con `kubectl -n shoplab-dev port-forward svc/langfuse-web 3001:3000` y luego `http://localhost:3001` (detalles y secretos en `docs/observability.md` del repositorio `shoplab-infra`).
 
+### Prompts del chat (LAB-85)
+
+Los cuatro textos que el chat envía al modelo (prompt de sistema, de cortesía y las dos plantillas del mensaje del cliente) se
+editan en **Langfuse**, sin tocar código ni redesplegar (ADR-0027). **Está apagado por defecto**: sin la variable el chat usa
+el texto por defecto de `backend/src/main/resources/prompts/*.txt`. En local, con el perfil `llmops` levantado:
+
+```bash
+SHOPLAB_CHAT_PROMPTS_ENABLED=true SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true SHOPLAB_CHAT_PROMPTS_REFRESH_INTERVAL=10s \
+SHOPLAB_CHAT_PROMPTS_PUBLIC_KEY=pk-lf-shoplab-local SHOPLAB_CHAT_PROMPTS_SECRET_KEY=sk-lf-shoplab-local ./mvnw spring-boot:run
+```
+
+- **Primera vez:** con `PUBLISH_MISSING=true` el backend crea los prompts que no existen (versión 1, etiqueta `production`, el texto
+  por defecto) al arrancar; repetirlo no crea nada. Aparecen en `http://localhost:3001` → Prompts: `chat-system`,
+  `chat-small-talk`, `chat-context` y `chat-empty-context`.
+- **Cambiar un prompt:** crea una versión nueva en Langfuse y mueve la etiqueta `production` a ella; en ≤ `REFRESH_INTERVAL`
+  (60 s por omisión) el chat la usa, sin reiniciar. Para revertir, mueve la etiqueta de vuelta.
+- **Si Langfuse falla** el chat sigue con la última versión válida y, si no hay, con el texto por defecto: nunca devuelve error por esto.
+- **Medir antes de promover:** `quality --prompt` y `compare` de `eval/` (ver `eval/README.md`); necesitan
+  `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN` en el backend y `SHOPLAB_EVAL_PROMPT_TOKEN` en `eval/`.
+- Las variables `SHOPLAB_CHAT_SYSTEM_PROMPT` y `SHOPLAB_CHAT_SMALL_TALK_SYSTEM_PROMPT` ya no se leen. Todas las variables, la guía de
+  editar, probar, promover y revertir y lo que dice cada traza están en [`docs/chat-streaming.md`](docs/chat-streaming.md).
+
 ## Integración continua
 
 El workflow `.github/workflows/ci.yml` corre en cada pull request y en cada push a `main`, y solo construye los componentes cuyos archivos cambiaron (`backend/`, `frontend/`, `ingest/`, `eval/`, `notebooks/`).

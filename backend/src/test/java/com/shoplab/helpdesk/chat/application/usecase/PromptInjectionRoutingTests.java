@@ -51,8 +51,8 @@ class PromptInjectionRoutingTests {
         ConversationHistory history = new ConversationHistory(mock(ConversationMemoryPort.class),
                 new HistoryWindow(), new FollowUpQuery(), new MemoryProperties(null, null, null), metrics, smallTalk);
         useCase = new StreamChatUseCase(chatModel, knowledge, new ContextSelector(), history, metrics,
-                new ChatProperties(4000, "system"),
-                new RagProperties(null, null, null, null, null, NoContextMode.FIXED_MESSAGE, null),
+                new ChatProperties(4000),
+                new RagProperties(null, null, null, NoContextMode.FIXED_MESSAGE, null),
                 new NoOpChatTrace(), smallTalk);
     }
 
