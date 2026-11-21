@@ -41,3 +41,6 @@ notebooks/.cache/
 # Resultados locales de la medicion de recuperacion (LAB-28); la linea base versionada es de LAB-30
 eval/results/*
 !eval/results/.gitkeep
+
+# LAB-117: working files of the intent dataset (review CSVs, paraphrase drafts, annotator sheet)
+ml/data/intents/work/

@@ -141,7 +141,14 @@ def test_the_notebook_is_small_enough_to_live_in_the_repository():
 
 def test_there_is_no_csv_of_the_dataset_under_ml():
     ignored = {".venv", ".cache", ".pytest_cache", "__pycache__"}
-    csvs = [path for path in (REPO_ROOT / "ml").rglob("*.csv") if not ignored & set(path.parts)]
+    # LAB-117: the review sheets of the intent dataset live in a local folder that git ignores (.gitignore) and that only
+    # holds masked, reviewed-by-hand comments; nothing in it is ever committed.
+    local_work = REPO_ROOT / "ml" / "data" / "intents" / "work"
+    csvs = [
+        path
+        for path in (REPO_ROOT / "ml").rglob("*.csv")
+        if not ignored & set(path.parts) and local_work not in path.parents
+    ]
 
     assert csvs == []
 

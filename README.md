@@ -18,7 +18,7 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | `ingest/` | Servicio FastAPI de ingesta |
 | `eval/` | Dataset golden y evaluación |
 | `notebooks/` | Experimentos: [comparativo de estrategias de chunking](notebooks/README.md) |
-| `ml/` | ML y MLOps (F8): [análisis exploratorio de Olist](ml/README.md) |
+| `ml/` | ML y MLOps (F8): [análisis exploratorio de Olist](ml/README.md) y [dataset de intenciones del cliente](ml/README.md#dataset-de-intenciones-del-cliente-lab-117) |
 | `data/` | Políticas, FAQs y scripts de carga |
 | `infra/` | docker compose, Keycloak, observabilidad |
 | `docs/` | Guías por fase y ADRs |
