@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.21.0...v0.22.0) (2026-11-21)
+
+
+### Features
+
+* **eval:** [LAB-31] persistencia de las ejecuciones de evaluación ([#151](https://github.com/leandroAmariles/shoplab-helpdesk/issues/151)) ([99ab321](https://github.com/leandroAmariles/shoplab-helpdesk/commit/99ab321171bc664c7a55281a83af9e75fe1343e1))
+* **ml:** [LAB-117] dataset etiquetado de intenciones del cliente ([#161](https://github.com/leandroAmariles/shoplab-helpdesk/issues/161)) ([a677947](https://github.com/leandroAmariles/shoplab-helpdesk/commit/a6779470cc68328b7b4c8b8b460ff25a876896e9))
+
 ## [0.21.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.20.0...v0.21.0) (2026-11-20)
 
 
