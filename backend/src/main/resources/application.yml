@@ -106,6 +106,12 @@ shoplab:
         ollama:
           input-per-million: 0
           output-per-million: 0
+  # History of the evaluation runs (LAB-31). The tool of eval/ saves each run with POST /api/eval/runs and the header
+  # X-Eval-Token. Empty token = saving is off (403): the backend has no authentication yet, so a write is never open.
+  eval:
+    persistence:
+      token: ${SHOPLAB_EVAL_PERSISTENCE_TOKEN:}
+
   retrieval:
     ingest:
       base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}

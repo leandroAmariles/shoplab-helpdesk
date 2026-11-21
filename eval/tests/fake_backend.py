@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
+from shoplab_eval.constants import EVAL_RUNS_PATH, EVAL_SETTINGS_PATH
 from shoplab_eval.golden import GoldenCase
 from shoplab_eval.search_client import IndexedDocument, SearchHit, SearchResponse
 
@@ -83,8 +84,40 @@ def indexed_documents(*doc_ids: str, status: str = "INDEXED") -> list[dict[str, 
             for doc_id in doc_ids]
 
 
+def eval_settings(
+    top_k: int = 4,
+    threshold: float = 0.6,
+    max_context_characters: int = 8000,
+    versions: dict[str, int | None] | None = None,
+) -> dict[str, object]:
+    """The body of ``GET /api/eval/settings``: how the assistant retrieves and the version it serves of each prompt."""
+    served = versions or {"chat-system": 3, "chat-small-talk": 1, "chat-context": 2, "chat-empty-context": 1}
+    return {
+        "retrieval": {
+            "top_k": top_k,
+            "similarity_threshold": threshold,
+            "max_context_characters": max_context_characters,
+        },
+        "prompts": [
+            {"name": name, "version": version, "source": "DEFAULT" if version is None else "LANGFUSE"}
+            for name, version in served.items()
+        ],
+    }
+
+
+def saved_reply(payload: dict[str, object]) -> Reply:
+    results = payload.get("results") or []
+    return 201, {"run_id": payload["run_id"], "kind": payload["kind"], "results": len(results),
+                 "new_case_revisions": len(results)}  # fmt: skip
+
+
 class FakeBackend:
-    """Serves ``GET /api/knowledge/search`` and ``GET /api/documents`` and records what it receives."""
+    """Serves the search, the document catalog, the chat and the evaluation history, and records what it receives.
+
+    ``order`` lists every request by kind (``settings``, ``run-exists``, ``save``, ``search``, ``documents``, ``chat``),
+    so a test can say what happened before what; ``eval_requests`` keeps the method, path, headers and body of the
+    requests to the history.
+    """
 
     def __init__(self) -> None:
         self.search_handler: SearchHandler = ok_search({})
@@ -94,6 +127,12 @@ class FakeBackend:
         self.chat_handler: ChatHandler = lambda message, headers: chat_turn("Respuesta")
         self.chat_requests: list[dict[str, object]] = []
         self.get_headers: list[dict[str, str]] = []  # the headers of every GET (search and document catalog)
+        self.order: list[str] = []
+        self.eval_requests: list[dict[str, object]] = []
+        self.settings_replies: list[Reply] = [(200, eval_settings())]  # one per reading; the last one repeats
+        self.settings_calls = 0
+        self.run_reply: Reply = (404, {"code": "SLHD_EVAL_00004", "message": "no existe"})
+        self.save_handler: Callable[[dict[str, object]], Reply] = saved_reply
         backend = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -101,11 +140,23 @@ class FakeBackend:
                 backend.get_headers.append({name.lower(): value for name, value in self.headers.items()})
                 parts = urlsplit(self.path)
                 params = {key: values[0] for key, values in parse_qs(parts.query, keep_blank_values=True).items()}
-                if parts.path == SEARCH_PATH:
+                if parts.path == EVAL_SETTINGS_PATH:
+                    backend.order.append("settings")
+                    backend.eval_requests.append({"method": "GET", "path": parts.path, "headers": dict(self.headers)})
+                    index = min(backend.settings_calls, len(backend.settings_replies) - 1)
+                    backend.settings_calls += 1
+                    status, body = backend.settings_replies[index]
+                elif parts.path.startswith(EVAL_RUNS_PATH + "/"):
+                    backend.order.append("run-exists")
+                    backend.eval_requests.append({"method": "GET", "path": parts.path, "headers": dict(self.headers)})
+                    status, body = backend.run_reply
+                elif parts.path == SEARCH_PATH:
+                    backend.order.append("search")
                     backend.search_requests.append(params)
                     limit = int(params["limit"]) if "limit" in params else None
                     status, body = backend.search_handler(params.get("query", ""), limit)
                 elif parts.path == DOCUMENTS_PATH:
+                    backend.order.append("documents")
                     backend.document_requests += 1
                     status, body = backend.documents_reply
                 else:
@@ -113,9 +164,21 @@ class FakeBackend:
                 self._send(status, body)
 
             def do_POST(self) -> None:
-                if urlsplit(self.path).path != CHAT_PATH:
+                path = urlsplit(self.path).path
+                if path == EVAL_RUNS_PATH:
+                    raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                    sent = json.loads(raw.decode("utf-8")) if raw else {}
+                    backend.order.append("save")
+                    backend.eval_requests.append(
+                        {"method": "POST", "path": path, "headers": dict(self.headers), "body": sent}
+                    )
+                    status, body = backend.save_handler(sent)
+                    self._send(status, body)
+                    return
+                if path != CHAT_PATH:
                     self._send(404, {"code": "SLHD_GENE_00001"})
                     return
+                backend.order.append("chat")
                 raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
                 headers = {name.lower(): value for name, value in self.headers.items()}
                 payload = json.loads(raw.decode("utf-8")) if raw else {}

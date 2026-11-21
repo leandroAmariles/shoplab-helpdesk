@@ -11,10 +11,12 @@ las historias de F2 juzgan al asistente: métricas de recuperación (LAB-28), ca
 | `REVIEW.md` | Revisión manual registrada (quién revisó qué y cuándo) |
 | `src/shoplab_eval/` | Lector y validación del dataset (`load_golden`, `validate_golden`) y medición de la recuperación (`retrieval_*.py`, `search_client.py`) |
 | `results/` | Salida local de la medición de recuperación (los CSV no se versionan) |
+| `store_*.py`, `queries/` | Guardar cada ejecución en el historial del backend (LAB-31) y las consultas SQL para leerlo |
 | `tests/` | Pruebas, incluida una contra el `golden.jsonl` y el `data/kb` reales |
 
 Especificación y decisiones: [`specs/LAB-27-golden-dataset/`](../specs/LAB-27-golden-dataset/) (dataset) y
-[`specs/LAB-28-retrieval-metrics/`](../specs/LAB-28-retrieval-metrics/) (métricas de recuperación, ADR-0024).
+[`specs/LAB-28-retrieval-metrics/`](../specs/LAB-28-retrieval-metrics/) (métricas de recuperación, ADR-0024). y
+[`specs/LAB-31-eval-run-persistence/`](../specs/LAB-31-eval-run-persistence/) (historial de ejecuciones, ADR-0028).
 
 ## Formato de cada caso
 
@@ -264,3 +266,131 @@ Códigos de salida de `quality --prompt`: `2` uso incorrecto (formato, nombre re
 `1` Langfuse no responde, una versión no existe o el backend rechaza fijar versiones (403). `compare` sale con `0` aunque advierta
 y con `2` si un resumen no se puede leer. El formato completo está en
 [`specs/LAB-85-versioned-prompts/contracts/eval-compare.md`](../specs/LAB-85-versioned-prompts/contracts/eval-compare.md).
+
+## Guardar las ejecuciones (LAB-31)
+
+Cada medición, la de recuperación (`retrieval`) y la de calidad (`quality`), puede quedar guardada en la base de datos del
+backend, en el esquema `eval`. Así hay un **historial** que sobrevive a la carpeta `results/`: se puede ver cuándo empezó a
+bajar la fidelidad, qué preguntas empeoraron entre dos ejecuciones y con qué prompt, modelo y configuración se midió cada una.
+
+**La herramienta no tiene credenciales de base de datos** (ADR-0015, ADR-0028): entrega la ejecución entera al backend con
+`POST /api/eval/runs` y un token, y el módulo `eval` del backend la guarda en **una transacción**: una ejecución visible es una
+ejecución completa. Una prueba (`EvalHasNoDatabaseCredentialsTests`) vigila que no aparezcan credenciales en este directorio.
+
+### Qué se guarda y qué no
+
+| Tabla | Qué guarda |
+|---|---|
+| `eval.eval_run` | Una ejecución: su identificador, tipo (`RETRIEVAL` o `QUALITY`), cuándo empezó y terminó, **origen** (`local`, `dev`…), commit de `eval/`, huella del dataset, casos medidos y excluidos, modelo del asistente y de embeddings, **versión de cada prompt**, juez y biblioteca (solo calidad) y la **configuración de recuperación** (top-k, umbral, presupuesto de contexto y, en recuperación, la profundidad y los k) |
+| `eval.eval_case` | Una **revisión** de un caso del dataset golden: su `id`, categoría, pregunta, documentos esperados y respuesta de referencia. Si editas un caso, lo que midas desde entonces apunta a una revisión nueva y las ejecuciones anteriores siguen apuntando a la suya |
+| `eval.eval_result` | Lo que un caso dio en una ejecución: el valor de cada métrica (`null` = no aplica o no se pudo calcular **por definición**, nunca un cero), los documentos recuperados en orden, el tipo de caso, si el asistente se abstuvo y el identificador de la traza de Langfuse |
+
+**No se guarda** el texto de la respuesta del asistente ni el de los fragmentos que recuperó: viven en las trazas de Langfuse, a
+las que apunta `trace_id`. Una prueba (`EvalNoTextStoredTests`) comprueba que las tablas no tienen ninguna columna que pueda
+contenerlo. Las versiones de prompt son **numéricas**: no `production`, sino la versión concreta que sirvió el backend (o la
+que fijaste con `--prompt`, marcada `pinned`). Una ejecución de recuperación guarda `prompts = []`: no usa prompts.
+
+### Activarlo
+
+| Dónde | Qué |
+|---|---|
+| Backend | `SHOPLAB_EVAL_PERSISTENCE_TOKEN` (`shoplab.eval.persistence.token`): un valor secreto cualquiera. **Vacío = el guardado está apagado** (el backend responde 403): como todavía no hay autenticación, una escritura nunca está abierta. En el clúster de dev lo entrega el secreto `/shoplab/dev/eval` (`make secrets`, en `shoplab-infra`) |
+| Quien mide | `SHOPLAB_EVAL_TOKEN` con **el mismo valor**. `make quality` de `shoplab-infra` lo lee del clúster |
+| Opcional | `SHOPLAB_EVAL_ORIGIN`: etiqueta corta de dónde se lanza (`local` por defecto; `dev`, `ci`…). Nunca un usuario ni una máquina |
+
+```bash
+export SHOPLAB_EVAL_TOKEN=<el valor del backend>
+uv run python -m shoplab_eval quality --run-id demo-1        # se guarda: hay token
+uv run python -m shoplab_eval retrieval --run-id demo-r1 --save
+uv run python -m shoplab_eval quality --no-save              # mide y escribe los CSV, sin guardar
+```
+
+Guardar es **opcional por configuración**, con la misma convención que Langfuse: sin opción se guarda si y solo si hay
+`SHOPLAB_EVAL_TOKEN`; `--save` sin token es un error de uso; `--no-save` nunca guarda. Sin token todo se comporta como antes (se
+escriben los CSV y la salida dice que no se guardó nada).
+
+`--run-id` identifica la ejecución (letras, cifras, `.`, `_` y `-`, hasta 32 caracteres; por defecto el momento UTC). **Un
+identificador guardado no se sobrescribe ni se duplica**: repetirlo es un error que se detecta antes de medir.
+
+### En qué orden pasa todo
+
+1. Se validan las opciones y el dataset, y se comprueba lo de siempre (gateway, índice, Langfuse).
+2. Con el guardado activo se lee la **configuración del asistente** (`GET /api/eval/settings`) y se comprueba que el
+   identificador está libre. Eso prueba el token, la base y el esquema: si algo falla, termina **antes de consultar al asistente
+   o al juez**, sin gastar una medición que no se podría guardar.
+3. Se mide.
+4. Se vuelve a leer la configuración del asistente. Si cambió algo que la medición no fijó (alguien movió la etiqueta
+   `production` de un prompt en Langfuse, o se reinició el backend con otro umbral), unos turnos se respondieron con una
+   configuración y otros con otra: **la ejecución no es válida**, no se escribe ni se guarda. Repítela sin tocar nada.
+5. Se escriben los CSV y **después** se envía la ejecución. Si el envío falla, los CSV ya están escritos, en la base no queda
+   nada de esa ejecución y el código de salida es `1`.
+
+Códigos de salida: `0` medida y, si se pidió, guardada; `1` medición inválida, configuración cambiada, o ejecución sin guardar
+(con los CSV escritos en este último caso); `2` uso incorrecto.
+
+### Errores
+
+| Mensaje | Causa y qué hacer |
+|---|---|
+| «El backend rechazó el token (SLHD_EVAL_00001)» | `SHOPLAB_EVAL_TOKEN` no coincide con `shoplab.eval.persistence.token`, o el backend lo tiene vacío (guardado apagado) |
+| «Ya hay una ejecución guardada con el identificador …» (409) | Usa otro `--run-id`; una ejecución guardada no se sobrescribe |
+| «El backend no aceptó la ejecución (SLHD_EVAL_00002): …» (422) | La ejecución rompe una regla del modelo de datos; el detalle nombra el campo o el caso, nunca su texto. Suele ser un backend y una herramienta de versiones distintas |
+| «El historial de evaluación no está disponible» (503) | La base del backend no responde; no se guardó nada |
+| «El backend no tiene /api/eval/…» | El backend es anterior a LAB-31: despliega una versión que lo incluya, o usa `--no-save` |
+| «La configuración del asistente cambió durante la medición» | Ver el paso 4; repite la medición |
+| «La ejecución NO se guardó en el historial …» (código 1) | Falló el envío final; los CSV están escritos. Corrige la causa (el mensaje la da) y repite con otro `--run-id` |
+
+### Qué hay que saber al leer el historial
+
+- El **commit** que se guarda es el de `eval/` (el repositorio de esta herramienta), no el del backend medido; puede ser vacío si
+  `git` no está disponible. Nunca se inventa.
+- El **modelo del asistente** lo declara quien mide (`--assistant-model` o `SHOPLAB_EVAL_ASSISTANT_MODEL`), porque el backend no
+  lo expone; si no se indica queda vacío. Un cambio de modelo en el gateway durante la medición no se detecta.
+- Dos ejecuciones solo son comparables si coinciden el juez, el modelo del asistente, el de embeddings, la recuperación y el
+  dataset: la consulta `06` lo dice. La variabilidad de cada ejecución es la de LAB-29: decide sobre la fila `all`, no sobre
+  una categoría, y repite si la diferencia es pequeña.
+- El dataset sigue en borrador hasta la revisión humana ([`REVIEW.md`](REVIEW.md)); las métricas y todo el historial heredan
+  esa reserva.
+- Las ejecuciones anteriores a LAB-31 (los CSV de `results/`) no se importan: el historial empieza con esta historia. No hay
+  borrado ni retención todavía.
+
+## Leer el historial (LAB-31)
+
+Las consultas están en [`queries/`](queries/): una por pregunta, solo lectura, cada una con su cabecera (qué responde, qué
+parámetros lleva y cómo ejecutarla). Se ejecutan con `psql` desde cualquier conexión de **quien consulta** (la herramienta no
+tiene ninguna), pasando los parámetros con `-v`:
+
+```bash
+psql "$DATABASE" -f eval/queries/01-list-runs.sql
+psql "$DATABASE" -v run_id=demo-1 -f eval/queries/03-run-summary.sql
+psql "$DATABASE" -v run_a=demo-1 -v run_b=demo-2 -v metric=faithfulness -v drop=0.05 -f eval/queries/07-regressions.sql
+```
+
+| Archivo | Para qué |
+|---|---|
+| `01-list-runs.sql` | Las ejecuciones, la más reciente primero, con prompts, modelo y la media de la métrica principal (fidelidad en calidad, MRR en recuperación) |
+| `02-run-parameters.sql` | Con qué se midió una ejecución: prompts y versiones, modelos, juez, recuperación, huella del dataset y commit |
+| `03-run-summary.sql` | Media, `n` y casos vacíos de cada métrica, del conjunto completo (`all`) y por categoría. Coincide con el CSV de esa ejecución |
+| `04-metric-evolution.sql` | La evolución de una métrica a lo largo de las ejecuciones |
+| `05-compare-runs.sql` | Dos ejecuciones caso a caso: valor de cada una, diferencia y `comparable` |
+| `06-compare-parameters.sql` | Qué parámetros difieren entre dos ejecuciones (juez, modelo, embeddings, recuperación, dataset, prompts) |
+| `07-regressions.sql` | Los casos comparables que bajaron más de `drop` puntos |
+| `08-find-by-prompt.sql` | Las ejecuciones que usaron una versión de un prompt |
+| `09-find-by-model.sql` | Las ejecuciones medidas con un modelo del asistente |
+
+Cómo leer `05-compare-runs.sql`:
+
+```text
+ case_id | category | value_a | value_b | delta   | comparable
+---------+----------+---------+---------+---------+-----------
+ G044    | returns  |  0.8000 |  0.2000 | -0.6000 | t           <- empeoró de verdad
+ G012    | payments |  1.0000 |  0.9000 | -0.1000 | f           <- el caso se reescribió: no se compara
+ G031    | privacy  |         |         |         | t           <- sin valor en las dos: no aplica o no se calculó
+```
+
+`comparable = f` significa que el caso cambió de contenido entre las dos ejecuciones (otra fila de `eval_case`): su diferencia
+no es de calidad. `comparable` es nulo si el caso solo estaba en una de las dos. Un valor vacío es «no aplica o no se pudo
+calcular por definición» y **no entra en la media**: la media del resumen la recalcula la consulta `03` ignorándolos.
+
+Una prueba del backend (`EvalHistoryQueriesTests`) ejecuta las nueve consultas contra PostgreSQL con tres ejecuciones de
+ejemplo, para que no se pudran.

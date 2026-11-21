@@ -23,6 +23,7 @@ System_Boundary("ShopLabHelpdeskApplication_boundary", "ShopLabHelpdeskApplicati
     Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Retrieval, "Retrieval", $techn="Module", $descr="", $tags="", $link="")
     Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Tickets, "Tickets", $techn="Module", $descr="", $tags="", $link="")
     Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Chat, "Chat", $techn="Module", $descr="", $tags="", $link="")
+    Component(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Eval, "Eval", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }
@@ -30,6 +31,8 @@ System_Boundary("ShopLabHelpdeskApplication_boundary", "ShopLabHelpdeskApplicati
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Catalog, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Chat, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Retrieval, "uses", $techn="", $tags="", $link="")
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Chat, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
+Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Eval, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Chat, "uses", $techn="", $tags="", $link="")
+Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Eval, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Orders, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Retrieval, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")
 Rel(ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Tickets, ShopLabHelpdeskApplication.ShopLabHelpdeskApplication.Shared, "depends on", $techn="", $tags="", $link="")

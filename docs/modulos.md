@@ -11,6 +11,7 @@ contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verific
 | `orders` | Pedidos | `orders` | `db/migration/orders` |
 | `catalog` | Catálogo de productos | `catalog` | `db/migration/catalog` |
 | `tickets` | Tickets de soporte | `tickets` | `db/migration/tickets` |
+| `eval` | Historial de las ejecuciones de evaluación (LAB-31) | `eval` | `db/migration/eval` |
 | `shared` | Errores y correlación comunes (módulo abierto, sin datos) | — | — |
 
 ## Estructura de un módulo
@@ -99,3 +100,15 @@ chunks guardados por documento, el más reciente primero. Métricas `retrieval.u
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.
+
+## Datos de `eval`
+
+`eval.eval_run` (una ejecución de la medición de recuperación o de calidad, con prompts y versiones, modelos, juez y
+configuración de recuperación), `eval.eval_case` (una **revisión** de un caso del dataset golden) y `eval.eval_result` (lo que
+un caso dio en una ejecución, con las puntuaciones en un `jsonb`) los crea `db/migration/eval/V2__evaluation_history.sql`
+(LAB-31). Solo `eval` los lee y escribe. **La herramienta Python de `eval/` no tiene credenciales de base de datos**: entrega
+cada ejecución entera a `POST /api/eval/runs` con un token (`shoplab.eval.persistence.token`, apagado por defecto) y el módulo la
+guarda en una transacción, o no la guarda. Lee de `chat` solo lo que éste publica en su `api` (`AssistantSettingsApi`: la
+configuración de recuperación y la versión servida de cada prompt). Nunca guarda el texto de una respuesta ni de un fragmento.
+Decisión: [ADR-0028](adr/0028-persistencia-de-ejecuciones-de-evaluacion.md); cómo se usa y se lee, en
+[`eval/README.md`](../eval/README.md).

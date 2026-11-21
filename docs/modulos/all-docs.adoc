@@ -25,3 +25,7 @@ include::module-tickets.adoc[]
 plantuml::module-chat.puml[,,format=svg]
 include::module-chat.adoc[]
 
+== Eval
+plantuml::module-eval.puml[,,format=svg]
+include::module-eval.adoc[]
+
