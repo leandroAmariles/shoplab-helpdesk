@@ -417,10 +417,10 @@ las Fases 3 a 6 (solo necesita el nombre de la variable, T010).
   kustomize policies test-ci-scripts`) y `kustomize build k8s/overlays/dev` mostrando `backend-eval` en el `envFrom` del backend
   con `optional: true`. Con el clúster local, `make up` deja el Secret `backend-eval` creado (V17, V18, V19; la verificación
   contra el backend desplegado espera al release)
-- [ ] T065 [US1] Abrir el PR de `shoplab-infra` con la skill `commit-and-push` en ese repositorio (rama
+- [X] T065 [US1] Abrir el PR de `shoplab-infra` con la skill `commit-and-push` en ese repositorio (rama
   `feature/LAB-31-eval-token`, título `feat(eval): [LAB-31] token de persistencia de evaluación`), enlazando el PR de
   `shoplab-helpdesk`. Anotar en `validation.md` el orden de fusión: infra **primero**
-  _No hecha: el PR (y el commit y el push que exige) solo se hacen cuando lo pidas. Los cambios están en el árbol de trabajo aparte `../shoplab-infra-lab31`, rama `feature/LAB-31-eval-token`, sin commitear._
+  _Hecho: PR abierto en https://github.com/leandroAmariles/shoplab-infra/pull/33 (commit `6646cd0`, rama `feature/LAB-31-eval-token`)._
 
 ---
 

@@ -7,7 +7,7 @@ de aquí contiene secretos: los tokens se citan como `<token>`.
 se toma el siguiente tras el 0027).
 
 **Orden de fusión entre repositorios**: primero el PR de `shoplab-infra` (rama `feature/LAB-31-eval-token`, en el árbol de trabajo
-aparte `../shoplab-infra-lab31`), después el de `shoplab-helpdesk`. **Ninguno de los dos está commiteado ni abierto todavía.**
+aparte `../shoplab-infra-lab31`), después el de `shoplab-helpdesk`. El de infra está abierto: https://github.com/leandroAmariles/shoplab-infra/pull/33. El de helpdesk está commiteado (`d714487`) pero **sin empujar ni abrir**.
 
 ## Pruebas automáticas (2026-11-20)
 
