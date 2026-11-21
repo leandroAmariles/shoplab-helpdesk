@@ -1,0 +1,33 @@
+{
+  "n": 50,
+  "kappa": 0.85,
+  "observed_agreement": 0.88,
+  "expected_agreement": 0.2,
+  "disagreements": 6,
+  "annotator_b": "local_model",
+  "annotator_b_model": "judge",
+  "confusion": {
+    "charla": {
+      "charla": 10
+    },
+    "escalado": {
+      "escalado": 9,
+      "pedido": 1
+    },
+    "pedido": {
+      "pedido": 8,
+      "politica": 1,
+      "producto": 1
+    },
+    "politica": {
+      "pedido": 2,
+      "politica": 8
+    },
+    "producto": {
+      "charla": 1,
+      "producto": 9
+    }
+  },
+  "computed_on": "2026-11-21",
+  "kappa_note": null
+}

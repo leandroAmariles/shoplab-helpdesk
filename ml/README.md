@@ -139,3 +139,56 @@ ml/
 
 La lógica vive en `src/olist_eda/` (probada y con lint); el notebook solo la orquesta y la explica. Especificación, plan y
 decisiones en [`specs/LAB-116-olist-eda-notebook/`](../specs/LAB-116-olist-eda-notebook/).
+
+## Dataset de intenciones del cliente (LAB-117)
+
+> **Estado: el dataset existe (685 ejemplos), pero lo etiquetó y revisó el asistente de IA, no una persona.** El segundo
+> anotador de la muestra de acuerdo (κ = 0,85) es el modelo local. Hasta que una persona complete
+> [`data/intents/REVIEW.md`](data/intents/REVIEW.md) (leer la guía, revisar una muestra, leer los comentarios de Olist buscando
+> nombres y repetir la muestra de acuerdo) es un **dataset sin validar por humanos**; la ficha lo declara.
+
+Mensajes de clientes en español y portugués etiquetados con una de cinco intenciones (`politica`, `producto`, `pedido`,
+`escalado`, `charla`), para entrenar y evaluar un clasificador propio (LAB-118). Vive en [`data/intents/`](data/intents/):
+
+| Archivo | Para qué sirve |
+|---|---|
+| `intents.jsonl` | El dataset (685 ejemplos), con su partición train/val/test ya asignada |
+| [`LABELING-GUIDE.md`](data/intents/LABELING-GUIDE.md) | Definición de cada clase, prioridad entre clases y casos límite |
+| [`DATASHEET.md`](data/intents/DATASHEET.md) | Ficha: origen, licencias (Olist **CC BY-NC-SA 4.0**), limitaciones; el bloque de cifras lo genera `stats --write` |
+| [`REVIEW.md`](data/intents/REVIEW.md) | Registro de la revisión manual (quién, cuándo, qué) |
+| `annotations/` | Muestra doble-etiquetada de 50 casos y el kappa de Cohen |
+| `work/` | **Ignorado por git**: CSV de revisión, borradores de paráfrasis y hoja del segundo anotador |
+
+### Validar (lo que corre en CI, sin red ni base de datos)
+
+```bash
+cd ml
+uv run python -m intent_dataset validate --golden ../eval/golden.jsonl
+uv run python -m intent_dataset stats          # las cifras de la ficha
+```
+
+`validate` ejecuta todas las reglas (etiquetas, mínimos por clase e idioma, fugas entre particiones, datos personales, kappa,
+ficha y guía), imprime **todas** las incidencias y devuelve `1` si hay alguna. **No puede comprobar** que una etiqueta sea la
+correcta ni que no se haya colado un nombre: eso lo cubre la revisión manual.
+
+### Construirlo (local, una vez)
+
+| Paso | Comando | Necesita |
+|---|---|---|
+| 1. Candidatos (golden + reseñas, **enmascarados al leer**) | `uv run python -m intent_dataset candidates` | Olist cargado en la base local |
+| 2. Revisar `data/intents/work/candidates.csv` y añadir semillas | (a mano: `decision`, `label`, `pii_checked`) | **una persona** |
+| 3. Incorporar lo aceptado | `uv run python -m intent_dataset build data/intents/work/candidates.csv` | — |
+| 4. Paráfrasis con el modelo local | `uv run python -m intent_dataset paraphrase --translate` | gateway + `SHOPLAB_ML_LLM_API_KEY` |
+| 5. Revisar las paráfrasis y `build` otra vez | (a mano) | **una persona** |
+| 6. Partición fija | `uv run python -m intent_dataset split` | — |
+| 7. Muestra de acuerdo | `uv run python -m intent_dataset sample`, luego el segundo anotador etiqueta `work/annotator-b.csv` y `agreement --kind person` | **una segunda persona** (o `annotate`, que usa el modelo y **no** es un acuerdo entre personas) |
+| 8. Ficha y comprobación | `stats --write` y `validate --golden ../eval/golden.jsonl` | — |
+
+| Variable | Defecto | Uso |
+|---|---|---|
+| `SHOPLAB_ML_LLM_API_KEY` | **sin valor** | Clave virtual `eval` del gateway; solo `paraphrase` y `annotate`; nunca se imprime |
+| `SHOPLAB_ML_LLM_BASE_URL` | `http://localhost:4000/v1` | Gateway de modelos |
+| `SHOPLAB_ML_LLM_MODEL` | `judge` | Modelo lógico del gateway |
+
+Los comandos de preparación (`candidates`, `paraphrase`, `annotate`) no se ejecutan en CI. Especificación, plan y decisiones en
+[`specs/LAB-117-intent-labeled-dataset/`](../specs/LAB-117-intent-labeled-dataset/); el paquete es `src/intent_dataset/`.
