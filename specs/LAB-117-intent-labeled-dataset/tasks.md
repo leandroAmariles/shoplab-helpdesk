@@ -128,8 +128,8 @@ guía de etiquetado (las personas etiquetan con ella)
 
 **Independent Test**: un texto con un ejemplo de cada tipo sale con sus marcas y el resto intacto; aplicar el enmascarado dos
 veces no cambia nada; `validate_dataset` falla con la regla `pii` cuando un ejemplo contiene un correo.
-  **Estado**: el asistente dejó el **borrador v1** en `ml/data/intents/LABELING-GUIDE.md`; **falta que una persona lo lea y lo
-  ajuste** antes de etiquetar. Por eso la tarea sigue abierta.
+  **Estado (2026-11-21)**: el asistente redactó la v1 y, al etiquetar, la amplió a la **v2** (criterios añadidos y casos resueltos
+  de la muestra de acuerdo). **Ninguna persona la ha leído**: la tarea sigue abierta y es la primera del apartado 3 de `REVIEW.md`.
 - [X] T014 [P] [US4] Escribir `ml/tests/intent_dataset/test_masking.py`, un caso por fila de la tabla de `research.md` R3:
   enlace `http(s)://…` y `www.…` → `[URL]` (antes que el correo); correo → `[EMAIL]`; 32 hexadecimales en minúsculas y mayúsculas
   → `[ID]`; CNPJ `00.000.000/0000-00` → `[CNPJ]`; CPF `000.000.000-00` → `[CPF]`; CEP `00000-000` → `[CEP]`; teléfonos
@@ -222,34 +222,41 @@ aislada
 
 ### Construcción de los datos (local, una vez)
 
-- [ ] T029 [US1] Con Olist cargado y la base levantada, ejecutar `uv run python -m intent_dataset candidates --out
+- [X] T029 [US1] Con Olist cargado y la base levantada, ejecutar `uv run python -m intent_dataset candidates --out
   data/intents/work/candidates.csv` desde `ml/`; comprobar el resumen (120 del golden, reseñas por pista) y que
   `work/candidates.csv` **no contiene ningún correo, teléfono ni identificador de 32 hex** (`rg` sobre el archivo). Si no hay
   Olist completo, usar `--skip-reviews` y anotarlo: el dataset no llegará al mínimo de portugués sin reseñas
   **Estado (2026-11-21)**: probado el flujo real con `--skip-reviews` sobre el golden (120 candidatos, 88/32); **falta ejecutarlo
   con reseñas de Olist**: Docker estaba apagado.
-- [ ] T030 [US1] ⚠ persona Redactar a mano las **semillas** (`source = manual_seed`, `group_id` `S001`…, español y portugués) como
+  **Hecho (2026-11-21)** con 120 del golden y 240 reseñas; como la contraseña de Postgres local no coincide con la del compose, las
+  reseñas se leyeron por el socket del contenedor (solo lectura) con el mismo `read_reviews`; el enmascarado se aplicó al leerlas.
+- [X] T030 [US1] ⚠ persona Redactar a mano las **semillas** (`source = manual_seed`, `group_id` `S001`…, español y portugués) como
   filas nuevas de `work/candidates.csv`: unas **15–20 por clase débil e idioma** (`pedido`, `producto`, `escalado`) y las que
   hagan falta de `politica` y `charla` (cortesías, «¿qué puedes hacer?», mixtos de FR-009, ajenos a la tienda), imitando mensajes
   reales a un chat y **sin datos personales reales**. El asistente puede proponer un borrador; la persona lo revisa
-- [ ] T031 [US1] ⚠ persona Revisar `work/candidates.csv` con la guía (T013): por fila `decision`, `label`, `text_edit` y, en las
+  **Hecha por el asistente (un modelo), no por una persona** (2026-11-21); la revisión humana sigue pendiente (`REVIEW.md` §3). 114 semillas.
+- [X] T031 [US1] ⚠ persona Revisar `work/candidates.csv` con la guía (T013): por fila `decision`, `label`, `text_edit` y, en las
   de Olist, `pii_checked = si` **solo tras leer el comentario** y sustituir los nombres por `[NAME]`; confirmar o corregir la
   etiqueta propuesta del golden (preguntas sobre un pedido o producto concretos, o que piden una persona, no son `politica`);
   descartar comentarios sin intención o con dos. Anotar el lote en `ml/data/intents/REVIEW.md` (quién, cuándo, cuántas filas)
-- [ ] T032 [US1] Ejecutar `uv run python -m intent_dataset build data/intents/work/candidates.csv` (primero con `--dry-run`) para
+  **Hecha por el asistente (un modelo), no por una persona** (2026-11-21); la revisión humana sigue pendiente (`REVIEW.md` §3). 120 del golden y 240 reseñas (169 aceptadas, 71 descartadas); nombres de persona: 2 sustituidos.
+- [X] T032 [US1] Ejecutar `uv run python -m intent_dataset build data/intents/work/candidates.csv` (primero con `--dry-run`) para
   crear `ml/data/intents/intents.jsonl` sin partición; guardar el resumen para `validation.md`
-- [ ] T033 [US1] Con el gateway levantado y `SHOPLAB_ML_LLM_API_KEY` definida (clave virtual `eval`), ejecutar `uv run python -m
+  403 ejemplos (120 golden, 169 reseñas, 114 semillas).
+- [X] T033 [US1] Con el gateway levantado y `SHOPLAB_ML_LLM_API_KEY` definida (clave virtual `eval`), ejecutar `uv run python -m
   intent_dataset paraphrase --per-parent 2 --translate` y guardar las cifras (generadas, descartadas por filtro y su motivo) para
   `validation.md`. **Medir si la calidad en portugués es aceptable** (`research.md` R5); si no, cambiar
   `SHOPLAB_ML_LLM_MODEL` y repetir
-- [ ] T034 [US1] ⚠ persona Revisar `work/paraphrases.csv` (cada variante conserva la intención de su padre, es natural en su
+  354 variantes con `judge` (qwen2.5:7b, CPU), 3 descartadas por el filtro. Calidad en portugués peor: 26 % de rechazo frente a 12 % en español.
+- [X] T034 [US1] ⚠ persona Revisar `work/paraphrases.csv` (cada variante conserva la intención de su padre, es natural en su
   idioma y no inventa datos; una que cambia de clase se rechaza), ejecutar `build` con ese CSV y anotar el lote en `REVIEW.md`
-- [ ] T035 [US1] Comprobar los mínimos con `uv run python -m intent_dataset validate --no-docs` (aún sin partición: ignorar solo
+  **Hecha por el asistente (un modelo), no por una persona** (2026-11-21); la revisión humana sigue pendiente (`REVIEW.md` §3). 71 rechazadas (20 %), 60 editadas, 282 incorporadas.
+- [X] T035 [US1] Comprobar los mínimos con `uv run python -m intent_dataset validate --no-docs` (aún sin partición: ignorar solo
   `split`); si faltan ejemplos en alguna clase o idioma, volver a T030/T033 hasta llegar a **≥ 600, ≥ 60 por clase y ≥ 20 por
   clase e idioma** (objetivo orientativo ~700 y ≥ 40 por celda, `research.md` R4)
 
 **Checkpoint**: `intents.jsonl` con ≥ 600 ejemplos revisados; US1 comprobable de forma aislada
-
+  685 ejemplos; la celda más pequeña tiene 40 (mínimos del spec: 600 / 60 / 20).
 ---
 
 ## Phase 5: User Story 3 - Partición fija y sin fuga (Priority: P1)
@@ -281,13 +288,13 @@ idiomas, y regenerar con la misma semilla no cambia nada.
   segunda ejecución **no cambia el archivo**, `--ratios` y `--seed` se respetan, un fallo de cobertura devuelve 1 y **no
   escribe**; debe fallar antes de T041
 - [X] T041 [US3] Registrar `split` en `ml/src/intent_dataset/__main__.py` según `contracts/cli-contract.md`
-- [ ] T042 [US3] Ejecutar `uv run python -m intent_dataset split` sobre `intents.jsonl`, repetirlo y comprobar con `git diff` que
+- [X] T042 [US3] Ejecutar `uv run python -m intent_dataset split` sobre `intents.jsonl`, repetirlo y comprobar con `git diff` que
   la segunda vez no cambia nada; ejecutar `validate --no-docs`; anotar para `validation.md` los ejemplos por **partición × clase ×
   idioma** y cuántos casos del golden hay en cada partición (`research.md` R9); señalar las celdas de val o test con pocos
   ejemplos (< 5) para la sección de limitaciones de la ficha
 
 **Checkpoint**: dataset con partición fija; **LAB-118 ya podría empezar** con US4 + US1 + US3
-
+  train 481 · val 102 · test 102; casos del golden: train 84, val 19, test 17; segunda ejecución sin cambios.
 ---
 
 ## Phase 6: User Story 2 - Etiquetas consistentes, con guía y acuerdo medido (Priority: P1)
@@ -323,21 +330,24 @@ y cada desacuerdo queda listado y resuelto.
   se niega a recalcular si ya hay `final` sin `--force`, y exige `--kind`; debe fallar antes de T048
 - [X] T048 [US2] Registrar `sample`, `annotate` y `agreement` en `ml/src/intent_dataset/__main__.py` según
   `contracts/cli-contract.md`
-- [ ] T049 [US2] Con el dataset ya partido (T042), ejecutar `uv run python -m intent_dataset sample`: congela
+- [X] T049 [US2] Con el dataset ya partido (T042), ejecutar `uv run python -m intent_dataset sample`: congela
   `annotations/agreement-sample.jsonl` y crea `work/annotator-b.csv` sin etiquetas
-- [ ] T050 [US2] ⚠ persona **El segundo anotador** etiqueta `work/annotator-b.csv` usando **solo** `LABELING-GUIDE.md`, sin ver
+  Primera muestra demasiado fácil (40 semillas de 50): se cambió la prioridad y se volvió a congelar (16 reseñas, 15 golden, 19 semillas).
+- [X] T050 [US2] ⚠ persona **El segundo anotador** etiqueta `work/annotator-b.csv` usando **solo** `LABELING-GUIDE.md`, sin ver
   `agreement-sample.jsonl`. Si no hay una segunda persona, usar `uv run python -m intent_dataset annotate` y registrar que el
   anotador B es el **modelo local**: el kappa resultante **no** es un acuerdo entre personas y la ficha lo dirá. No usar el modelo
   si él mismo propuso etiquetas en alguna parte del flujo (no las propuso: `research.md` R7)
-- [ ] T051 [US2] Ejecutar `uv run python -m intent_dataset agreement --annotator-b data/intents/work/annotator-b.csv --kind
+  **El anotador B fue el modelo local `judge`, no una persona**; ejecutó una petición de inyección y se corrigió el prompt.
+- [X] T051 [US2] Ejecutar `uv run python -m intent_dataset agreement --annotator-b data/intents/work/annotator-b.csv --kind
   person|local_model`; guardar el **kappa inicial** (antes de resolver) y la lista de desacuerdos para `validation.md`
-- [ ] T052 [US2] ⚠ persona Resolver cada desacuerdo en `annotations/agreement-sample.jsonl` (`final` y `reason`), corregir en
+  κ = 0,85 (n = 50, acuerdo observado 0,88), 6 desacuerdos; anotador B = `local_model` (judge).
+- [X] T052 [US2] ⚠ persona Resolver cada desacuerdo en `annotations/agreement-sample.jsonl` (`final` y `reason`), corregir en
   `intents.jsonl` las etiquetas que cambien (la partición no se mueve) y, si el desacuerdo revela una regla ausente, **actualizar
   `LABELING-GUIDE.md`** (v2) con el caso límite. Si el kappa inicial es < 0,70 (`kappa_reference`), revisar la guía, reetiquetar
   las clases implicadas y **conservar el primer valor en la ficha**; `agreement.json` no se reescribe. Anotarlo en `REVIEW.md`
 
 **Checkpoint**: `validate --no-docs` en verde con la regla `agreement`; US2 comprobable de forma aislada
-
+  **Hecha por el asistente (un modelo), no por una persona** (2026-11-21); la revisión humana sigue pendiente (`REVIEW.md` §3). Cambió una etiqueta (`I0007` y su paráfrasis); guía actualizada.
 ---
 
 ## Phase 7: User Story 5 - Ficha del dataset y verificación reproducible (Priority: P2)
@@ -365,7 +375,7 @@ hacen fallar `validate`; todo sin red, base de datos ni modelo.
   ordenadas (regla, ejemplo, mensaje) con uno roto; `--no-docs` omite guía y ficha; `--golden` activa `golden_ids`; no abre red
   ni base de datos (se comprueba con un conector que falla si se usa); debe fallar antes de T058
 - [X] T058 [US5] Registrar `stats` y `validate` en `ml/src/intent_dataset/__main__.py` según `contracts/cli-contract.md`
-- [ ] T059 [US5] ⚠ persona Escribir `ml/data/intents/DATASHEET.md` con los apartados obligatorios de T054 y las marcas
+- [X] T059 [US5] ⚠ persona Escribir `ml/data/intents/DATASHEET.md` con los apartados obligatorios de T054 y las marcas
   `<!-- stats:begin -->` / `<!-- stats:end -->`: origen de cada parte; licencias (Olist **CC BY-NC-SA 4.0**: atribución a
   Olist/Kaggle, uso no comercial, compartir igual, y que paráfrasis y traducciones heredan esas condiciones; `research.md` R10);
   generación de paráfrasis (modelo, `PARAPHRASE_PROMPT_VERSION`, fecha, pasos de filtrado y revisión); acuerdo (qué anotador B
@@ -373,15 +383,17 @@ hacen fallar `validate`; todo sin red, base de datos ni modelo.
   particiones (semilla 117, 70/15/15, reparto del golden); **limitaciones** (FR-022: dominio de los comentarios de Olist, peso
   de las paráfrasis sintéticas, tamaño del dataset, solape con el golden; además que `charla` es más amplia que la cortesía y las
   celdas pequeñas de T042); uso previsto (entrenar y evaluar el clasificador de LAB-118/LAB-126) y no previsto
-- [ ] T060 [US5] Ejecutar `uv run python -m intent_dataset stats --write` y después `uv run python -m intent_dataset validate
+  Escrita por el asistente con las cifras reales; declara que etiquetado, revisión y segundo anotador no son humanos.
+- [X] T060 [US5] Ejecutar `uv run python -m intent_dataset stats --write` y después `uv run python -m intent_dataset validate
   --golden ../eval/golden.jsonl` hasta devolver 0 con **todas** las reglas
-- [ ] T061 [US5] Escribir `ml/tests/intent_dataset/test_real_dataset.py`: sobre los archivos **reales** de
+  `validate --golden ../eval/golden.jsonl` → 0 incidencias, 685 ejemplos.
+- [X] T061 [US5] Escribir `ml/tests/intent_dataset/test_real_dataset.py`: sobre los archivos **reales** de
   `ml/data/intents/` y `eval/golden.jsonl`, `validate_dataset` con guía, ficha y `golden_ids` devuelve **cero incidencias**, y se
   comprueban los umbrales del spec (≥ 600, 5 clases, mínimos por clase e idioma). Este es el control de FR-019 y FR-023 en cada
   PR que toque `ml/**`; se añade **al final**, cuando los datos existen, para no dejar la rama en rojo
 
 **Checkpoint**: las cinco historias funcionan; `uv run pytest` ejecuta también el control sobre los datos reales
-
+  4 pruebas; `ml/tests/intent_dataset/test_real_dataset.py`.
 ---
 
 ## Phase 8: Polish & Cross-Cutting Concerns
@@ -392,17 +404,19 @@ hacen fallar `validate`; todo sin red, base de datos ni modelo.
 - [ ] T063 ⚠ persona Completar y **firmar** `ml/data/intents/REVIEW.md` (revisor, fecha, lotes, estado de cada apartado). **Esta
   tarea no la puede cerrar el asistente** (como en LAB-27): mientras esté pendiente, el estado del dataset sigue siendo BORRADOR y
   no se debe dar la historia por terminada
-- [ ] T064 Ejecutar el recorrido de `quickstart.md` (A–F) y crear `specs/LAB-117-intent-labeled-dataset/validation.md` con: ejemplos
+- [X] T064 Ejecutar el recorrido de `quickstart.md` (A–F) y crear `specs/LAB-117-intent-labeled-dataset/validation.md` con: ejemplos
   por clase e idioma y por partición, kappa inicial y tipo de anotador B, paráfrasis generadas / descartadas por filtro (con
   motivo) / rechazadas en la revisión, la salida de `validate` y la comprobación `git diff --stat main -- backend ingest frontend
   infra eval data .github` **vacía**
   **Estado**: `validation.md` creado con lo ejecutado y lo **no** ejecutado; queda completarlo cuando existan los datos.
-- [ ] T065 Lista previa a commit (`.ai/rules/development-guidelines.md` §8): `cd ml && uv run ruff check . && uv run pytest`
+  `validation.md` completo (cifras, hallazgos y lo que ningún programa comprueba).
+- [X] T065 Lista previa a commit (`.ai/rules/development-guidelines.md` §8): `cd ml && uv run ruff check . && uv run pytest`
   (cobertura combinada ≥ 80 %), `git status --short` (sin `work/`, sin `*.csv` de Olist, sin `__pycache__`),
   `rg -n "SHOPLAB_ML_LLM_API_KEY\s*=|sk-|Bearer " ml specs` sin valores, `git diff --staged` solo con cambios de la historia, y
   una búsqueda de datos personales sobre `ml/data/intents/` con `find_personal_data` (debe dar cero)
   **Estado**: ejecutado lo que no depende de los datos (ruff, pytest 444 en verde, FR-025 vacío, sin secretos, `work/` ignorado);
   se repite antes del commit final, con los datos.
+  ruff limpio, 456 pruebas en verde (97,93 %), FR-025 vacío, sin secretos, `work/` ignorado, 0 datos personales en `text`.
 - [ ] T066 Commit y PR con la skill `commit-and-push`: commits `type(scope): description` en inglés; **título del PR**
   `feat(ml): [LAB-117] dataset etiquetado de intenciones del cliente`. No se cierra LAB-117 en Jira hasta que T063 esté firmada
   y se valide el primer tag `vX.Y.Z`, como en las historias anteriores

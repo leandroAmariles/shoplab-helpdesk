@@ -283,7 +283,9 @@ def _sample_balance_issues(context: ValidationContext, sample: list[dict]) -> li
     by_id = {example.id: example for example in context.examples}
     members = [by_id[row["id"]] for row in sample if row.get("id") in by_id]
     per_label, extra = divmod(context.rules.agreement_sample_size, len(LABELS))
-    counts = Counter(example.label for example in members)
+    # The sample was drawn stratified by the label of the first annotator, frozen as label_a: resolving a
+    # disagreement later may change the label of an example, but not how the sample was drawn.
+    counts = Counter(row.get("label_a") for row in sample)
     issues = []
     for position, label in enumerate(LABELS):
         expected = per_label + (1 if position < extra else 0)

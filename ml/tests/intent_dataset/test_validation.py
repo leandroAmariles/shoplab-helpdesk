@@ -305,12 +305,25 @@ def test_the_dataset_label_must_be_the_final_label():
     assert sample[1]["id"] in [i.example_id for i in _agreement_issues(examples, sample, report)]
 
 
-def test_the_sample_needs_the_same_number_per_class_and_both_languages():
+def test_the_sample_needs_the_same_number_per_class_by_the_frozen_label_of_the_first_annotator():
     examples, sample, report = _agreement()
-    other = [e for e in examples if e.label == "politica" and e.id not in {r["id"] for r in sample}][0]
-    sample[2] = {**sample[2], "id": other.id}  # replaces a pedido case with a politica one, same language
+    sample[2] = {**sample[2], "label_a": "politica"}  # now politica has 3 and the class of this case has 1
     messages = " ".join(i.message for i in _agreement_issues(examples, sample, report))
     assert "por clase" in messages
+
+
+def test_resolving_a_disagreement_that_changes_a_label_does_not_unbalance_the_sample():
+    examples, sample, report = _agreement()
+    changed = sample[0]["id"]  # label_a stays the frozen one; the dataset label may follow the resolution
+    examples = modify(examples, changed, label="producto")
+    sample[0] = {**sample[0], "final": "producto", "reason": "se resolvió a favor del anotador B"}
+    assert not any("por clase" in i.message for i in _agreement_issues(examples, sample, report))
+
+
+def test_the_sample_needs_both_languages():
+    examples, sample, report = _agreement()
+    examples = [replace(e, language="es") if e.id in {r["id"] for r in sample} else e for e in examples]
+    assert any("idioma" in i.message for i in _agreement_issues(examples, sample, report))
 
 
 def test_a_sample_in_a_single_language_is_flagged():

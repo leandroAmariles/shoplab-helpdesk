@@ -142,16 +142,17 @@ decisiones en [`specs/LAB-116-olist-eda-notebook/`](../specs/LAB-116-olist-eda-n
 
 ## Dataset de intenciones del cliente (LAB-117)
 
-> **Estado: el código está listo; los datos están en construcción y son un borrador** hasta que una persona complete
-> [`data/intents/REVIEW.md`](data/intents/REVIEW.md). Ni el etiquetado, ni la revisión de nombres de persona, ni el segundo
-> anotador los puede hacer un modelo.
+> **Estado: el dataset existe (685 ejemplos), pero lo etiquetó y revisó el asistente de IA, no una persona.** El segundo
+> anotador de la muestra de acuerdo (κ = 0,85) es el modelo local. Hasta que una persona complete
+> [`data/intents/REVIEW.md`](data/intents/REVIEW.md) (leer la guía, revisar una muestra, leer los comentarios de Olist buscando
+> nombres y repetir la muestra de acuerdo) es un **dataset sin validar por humanos**; la ficha lo declara.
 
 Mensajes de clientes en español y portugués etiquetados con una de cinco intenciones (`politica`, `producto`, `pedido`,
 `escalado`, `charla`), para entrenar y evaluar un clasificador propio (LAB-118). Vive en [`data/intents/`](data/intents/):
 
 | Archivo | Para qué sirve |
 |---|---|
-| `intents.jsonl` | El dataset (≥ 600 ejemplos), con su partición train/val/test ya asignada |
+| `intents.jsonl` | El dataset (685 ejemplos), con su partición train/val/test ya asignada |
 | [`LABELING-GUIDE.md`](data/intents/LABELING-GUIDE.md) | Definición de cada clase, prioridad entre clases y casos límite |
 | [`DATASHEET.md`](data/intents/DATASHEET.md) | Ficha: origen, licencias (Olist **CC BY-NC-SA 4.0**), limitaciones; el bloque de cifras lo genera `stats --write` |
 | [`REVIEW.md`](data/intents/REVIEW.md) | Registro de la revisión manual (quién, cuándo, qué) |

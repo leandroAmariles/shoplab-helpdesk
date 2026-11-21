@@ -159,7 +159,7 @@ def build_examples(rows: list[Candidate], existing: list[Example], rules: Datase
             else:
                 pending += 1
             continue
-        text = mask_text((row.text_edit or row.text).strip())
+        text = " ".join(mask_text(row.text_edit or row.text).split())  # one line: breaks and space runs collapse
         parent = by_id.get(row.parent_id) if row.source == PARAPHRASE else None
         row_problems = _problems(row, parent, text, rules)
         if row_problems:

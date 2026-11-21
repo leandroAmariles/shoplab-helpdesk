@@ -164,3 +164,13 @@ def test_the_summary_counts_by_source_and_label():
 def test_text_outside_the_allowed_length_is_rejected():
     with pytest.raises(ReviewError, match="longitud"):
         build_examples([_row(text="x" * 600)], [], SMALL_RULES)
+
+
+def test_line_breaks_and_repeated_spaces_are_collapsed_into_one_line():
+    row = _row(text="primera línea\n\nsegunda   línea\ty tercera ")
+    assert build_examples([row], [], SMALL_RULES).examples[0].text == "primera línea segunda línea y tercera"
+
+
+def test_collapsing_applies_to_the_edited_text_too():
+    row = _row(text_edit="texto\neditado  a mano")
+    assert build_examples([row], [], SMALL_RULES).examples[0].text == "texto editado a mano"
