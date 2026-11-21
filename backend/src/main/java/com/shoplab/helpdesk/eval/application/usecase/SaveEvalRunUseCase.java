@@ -38,7 +38,7 @@ public class SaveEvalRunUseCase implements SaveEvalRunServicePort {
             guard.check(token);
             validator.validate(run);
             return store.save(withRevisions(run));
-        }).doOnSuccess(saved -> LOG.info("Evaluation run saved: runId={}, kind={}, results={}, newCaseRevisions={}",
+        }).doOnNext(saved -> LOG.info("Evaluation run saved: runId={}, kind={}, results={}, newCaseRevisions={}",
                 saved.runId(), saved.kind(), saved.results(), saved.newCaseRevisions()));
     }
 

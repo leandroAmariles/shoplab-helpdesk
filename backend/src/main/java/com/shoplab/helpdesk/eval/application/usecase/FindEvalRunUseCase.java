@@ -31,8 +31,8 @@ public class FindEvalRunUseCase implements FindEvalRunServicePort {
             if (runId == null || !EvalConstants.RUN_ID.matcher(runId).matches()) {
                 throw new EvalRunInvalidException("run_id: must match " + EvalConstants.RUN_ID.pattern());
             }
-            return store.find(runId).flatMap(found -> found.<Mono<StoredRunSummary>>map(Mono::just)
-                    .orElseGet(() -> Mono.error(new EvalRunNotFoundException())));
+            return store.find(runId).flatMap(Mono::justOrEmpty)
+                    .switchIfEmpty(Mono.error(EvalRunNotFoundException::new));
         });
     }
 }
