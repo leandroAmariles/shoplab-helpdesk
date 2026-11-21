@@ -1,8 +1,9 @@
 # Guía de etiquetado de intenciones
 
-> **Estado: v1, BORRADOR pendiente de lectura por una persona.** La preparó el asistente al implementar LAB-117 a partir de
-> `specs/LAB-117-intent-labeled-dataset/research.md` (R11). Una persona debe leerla entera y ajustarla **antes** de etiquetar
-> (T031, T034), y se corregirá con los desacuerdos de la muestra de 50 casos (T052).
+> **Estado: v2, redactada y aplicada por el asistente; pendiente de lectura por una persona.** La v1 salió de
+> `specs/LAB-117-intent-labeled-dataset/research.md` (R11); la v2 añade los criterios que el asistente tuvo que fijar al etiquetar
+> el golden y las reseñas de Olist (sección «Criterios añadidos al etiquetar») y se corrige con los desacuerdos de la muestra de
+> 50 casos. **Ninguna persona la ha revisado todavía.**
 
 Cada mensaje de cliente recibe **exactamente una** de cinco etiquetas. La etiqueta responde a: *¿qué debe hacer el chat con este
 mensaje?* Etiquetas y ejemplos están en español y portugués porque así escriben los clientes.
@@ -66,8 +67,8 @@ quien exige hablar con una persona o amenaza (`escalado`).
 **Definición.** El cliente **pide o exige una persona**, **amenaza** (acciones legales, denuncia ante un organismo, cancelar la
 cuenta) o expresa un problema que el bot no debe resolver solo. Es la clase que activa el traspaso a un agente humano.
 
-**Incluye.** «Quiero hablar con un agente», insistencia explícita tras varios intentos, amenazas, quejas graves, cobros que el
-cliente no reconoce.
+**Incluye.** «Quiero hablar con un agente», insistencia explícita tras varios intentos sin respuesta («es la 4.ª reclamación y
+nadie contesta», «no consigo contacto con nadie»), amenazas (justicia, Procon, Reclame Aqui, denuncia) y quejas graves.
 
 **Excluye.** Una queja normal por un retraso o un defecto sin exigir una persona ni amenazar (`pedido`).
 
@@ -136,6 +137,36 @@ o deja claro que ya intentó varias veces sin solución.
 
 - `charla`: «Buenas, ¿qué tal?» · «¿Quién ganó el partido de ayer?» · «Bom dia!»
 - no `charla`: «Buenas, ¿puedo cambiar un producto?» (`politica`) · «Bom dia, cadê meu pedido?» (`pedido`)
+
+## Criterios añadidos al etiquetar
+
+Reglas que los casos reales obligaron a fijar (v2):
+
+1. **`politica` frente a `pedido`: ¿pide información o hay un caso que gestionar?** Si el cliente pregunta cómo funciona la
+   tienda o si algo «es normal», se responde con un documento: **`politica`, aunque hable en primera persona** («Pagué con
+   tarjeta y mi pedido no figura aprobado, ¿es normal?»). Si describe un **problema o una acción sobre su pedido** que hay que
+   gestionar (se pasó la fecha, figura entregado y no llegó, llegó roto, quiere cancelarlo, no ha visto su reembolso), es
+   **`pedido`**. Las preguntas del golden se escribieron para responderse con la base de conocimiento, así que casi todas son
+   `politica`.
+2. **`producto` frente a `pedido` en una reseña**: lo que **describe o valora el artículo** (calidad, material, tamaño, no
+   coincide con la foto, no funciona, compatibilidad) es `producto`; lo que trata de **la gestión de la compra** (entrega,
+   retraso, faltantes, artículo equivocado, cambio, cancelación, devolución, reembolso) es `pedido`.
+3. **`escalado` en una reseña** exige una de estas cosas: pedir una persona, amenazar, insistir tras varios intentos sin
+   respuesta, o decir que **no se logra contactar con nadie**. Una queja fuerte pero sin ninguna de ellas es `pedido` o
+   `producto`. (Caso límite resuelto: «el producto vino con una unidad menos y aún no conseguí contactar con nadie» → `escalado`;
+   la muestra de acuerdo lo marcó como el desacuerdo más dudoso.)
+4. **Ejemplos resueltos en la muestra de acuerdo** (los dos anotadores discreparon): «mi tarjeta fue rechazada varias veces, ¿qué
+   hago?» → `politica` (se resuelve con la política de pagos); «ya envié el paquete de la devolución, ¿en cuánto tiempo lo
+   revisan?» y «¿cuándo me mandan el código de rastreo y dónde lo consulto?» → `politica` (plazos y procedimientos generales);
+   «recibí el producto con 1/4 del contenido que compré» → `pedido` (artículo distinto del comprado); «el vaso es bonito pero
+   caro» → `producto` (opinión sobre el artículo).
+5. **Reseñas que no se aceptan**: elogios de la tienda sin pedir ni describir nada, textos de dos temas sin uno dominante
+   (producto bueno **y** entrega rápida), frases sin objeto («muito bom») y textos cortados a mitad de palabra.
+6. **Dominio**: las reseñas son comentarios posteriores a la compra, no mensajes a un chat; se aceptan como ejemplos de la
+   intención que expresan, pero son más largas y más emotivas que lo que escribiría un cliente a un asistente (limitación
+   declarada en la ficha).
+7. Los nombres de persona se sustituyen por `[NAME]`; los nombres de **tiendas** (Olist las anonimizó con nombres de casas de
+   «Juego de tronos») no son datos personales y se dejan.
 
 ## Lo que no se etiqueta
 

@@ -1,0 +1,50 @@
+{"id": "I0007", "label_a": "pedido", "label_b": "politica", "final": "politica", "reason": "Una tarjeta rechazada se resuelve con la política de pagos; no hay un caso del pedido que gestionar (guía v2, criterio 1). Gana el anotador B."}
+{"id": "I0022", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0024", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0035", "label_a": "politica", "label_b": "pedido", "final": "politica", "reason": "Pregunta un plazo general de revisión de devoluciones, no el estado de un caso (criterio 1). Gana el anotador A."}
+{"id": "I0039", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0049", "label_a": "politica", "label_b": "pedido", "final": "politica", "reason": "Pregunta cuándo se envía el código de rastreo y dónde se consulta: una regla de la tienda (criterio 1). Gana el anotador A."}
+{"id": "I0052", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0054", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0059", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0088", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0089", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0093", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0094", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0102", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0120", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0126", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0129", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0131", "label_a": "producto", "label_b": "charla", "final": "producto", "reason": "Opinión sobre el artículo y su precio, sin ninguna petición: ni cortesía ni gestión de la compra (criterio 2). Gana el anotador A."}
+{"id": "I0163", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0169", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0173", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0176", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0183", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0187", "label_a": "pedido", "label_b": "producto", "final": "pedido", "reason": "El contenido recibido no es el comprado (artículo equivocado): gestión de la compra, no característica del artículo (criterio 2). Gana el anotador A."}
+{"id": "I0188", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0202", "label_a": "pedido", "label_b": "pedido", "final": "pedido", "reason": null}
+{"id": "I0209", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0214", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0234", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0250", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0261", "label_a": "escalado", "label_b": "pedido", "final": "escalado", "reason": "Dice que no ha logrado contactar con nadie: sin canal de respuesta cuenta como insistencia (criterio 3, ampliado en la v2). Caso límite entre pedido y escalado. Gana el anotador A."}
+{"id": "I0290", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0291", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0299", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0308", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0311", "label_a": "escalado", "label_b": "escalado", "final": "escalado", "reason": null}
+{"id": "I0351", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0353", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0355", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0356", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0357", "label_a": "producto", "label_b": "producto", "final": "producto", "reason": null}
+{"id": "I0374", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0376", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0378", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0380", "label_a": "politica", "label_b": "politica", "final": "politica", "reason": null}
+{"id": "I0395", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0397", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0398", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0399", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}
+{"id": "I0403", "label_a": "charla", "label_b": "charla", "final": "charla", "reason": null}

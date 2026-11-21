@@ -1,9 +1,11 @@
 # Ficha del dataset de intenciones del cliente
 
-> **Estado: BORRADOR.** El esqueleto y los apartados que no dependen de los datos los dejó preparados el asistente al
-> implementar LAB-117. Lo marcado como **pendiente** se completa cuando el dataset exista y una persona lo revise
-> (`REVIEW.md`). Las cifras del apartado «Composición» **no se escriben a mano**: las genera
-> `uv run python -m intent_dataset stats --write` y `validate` falla si no coinciden con `intents.jsonl`.
+> **Estado: etiquetado y revisado por el asistente (un modelo), SIN revisión humana.** Todas las etiquetas, las revisiones de
+> reseñas y de paráfrasis y la revisión de nombres de persona las hizo el asistente de IA que implementó LAB-117, por encargo del
+> autor, el 2026-11-21. **El segundo anotador de la muestra de acuerdo es el modelo local, no una persona.** Una persona debe
+> revisar una muestra y firmar [`REVIEW.md`](REVIEW.md) antes de tratar este dataset como validado. Las cifras de
+> «Composición» **no se escriben a mano**: las genera `uv run python -m intent_dataset stats --write` y `validate` falla si no
+> coinciden con `intents.jsonl`.
 
 Mensajes de clientes de una tienda en línea, en español y portugués, etiquetados con **una** de cinco intenciones, para
 entrenar y evaluar un clasificador propio (LAB-118, LAB-126) y, más adelante, auditarlo (LAB-125).
@@ -14,10 +16,10 @@ Cada ejemplo indica su origen en `source`:
 
 | `source` | De dónde viene | Idioma típico |
 |---|---|---|
-| `golden` | Preguntas de `eval/golden.jsonl` (LAB-27, 120 casos: 88 de conocimiento y 32 de conversación, fuera de alcance e inyección). La etiqueta propuesta sale de la categoría del caso y una persona la confirma | es |
-| `olist_review` | Comentarios de reseñas del dataset público de Olist, leídos de la tabla `orders.order_reviews` (solo lectura), enmascarados al leerlos y revisados a mano | pt |
-| `manual_seed` | Mensajes redactados a mano que imitan lo que un cliente escribiría a un chat; cubren las clases que el golden apenas tiene (`pedido`, `producto`, `escalado`) | es, pt |
-| `paraphrase` | Variantes y traducciones de los anteriores generadas con el modelo local y aceptadas tras revisión manual | es, pt |
+| `golden` | Preguntas de `eval/golden.jsonl` (LAB-27, 120 casos: 88 de conocimiento y 32 de conversación, fuera de alcance e inyección). La etiqueta propuesta sale de la categoría del caso y el asistente la confirmó o corrigió caso a caso (quedaron 79 `politica`, 32 `charla` y 9 `pedido`) | es |
+| `olist_review` | Comentarios de reseñas del dataset público de Olist, leídos de la tabla `orders.order_reviews` (solo lectura), enmascarados al leerlos; el asistente los leyó todos (240 candidatos: 169 aceptados y 71 descartados) | pt |
+| `manual_seed` | Mensajes redactados por el asistente que imitan lo que un cliente escribiría a un chat; cubren las clases que el golden apenas tiene (`pedido`, `producto`, `escalado`) | es, pt |
+| `paraphrase` | Variantes y traducciones de los anteriores generadas con el modelo local y aceptadas, editadas o rechazadas una a una por el asistente | es, pt |
 
 Cada ejemplo lleva un `group_id` (el mensaje de origen y todas sus paráfrasis) y, si desciende de un caso del golden, su
 `golden_id`. La procedencia exacta de cada parte, con cifras, está en «Composición».
@@ -25,7 +27,32 @@ Cada ejemplo lleva un `group_id` (el mensaje de origen y todas sus paráfrasis) 
 ## Composición
 
 <!-- stats:begin -->
-pendiente: este bloque lo genera `stats --write` cuando exista `intents.jsonl`.
+**Total: 685 ejemplos**
+
+| Clase | es | pt | total |
+|---|---|---|---|
+| politica | 85 | 50 | 135 |
+| producto | 56 | 87 | 143 |
+| pedido | 60 | 136 | 196 |
+| escalado | 64 | 67 | 131 |
+| charla | 40 | 40 | 80 |
+
+| Partición | politica | producto | pedido | escalado | charla | total |
+|---|---|---|---|---|---|---|
+| train | 95 | 101 | 138 | 91 | 56 | 481 |
+| val | 20 | 21 | 29 | 20 | 12 | 102 |
+| test | 20 | 21 | 29 | 20 | 12 | 102 |
+
+| Origen | ejemplos |
+|---|---|
+| golden | 120 |
+| olist_review | 169 |
+| manual_seed | 114 |
+| paraphrase | 282 |
+
+Casos del golden por partición: train 84, val 19, test 17.
+
+Acuerdo entre anotadores: κ de Cohen = 0.85 sobre 50 casos (6 desacuerdos antes de resolver). Anotador B: **modelo local** (judge); **no es un acuerdo entre personas**.
 <!-- stats:end -->
 
 Las **cinco intenciones** son fijas y se definen en [`LABELING-GUIDE.md`](LABELING-GUIDE.md): `politica`, `producto`, `pedido`,
@@ -46,14 +73,16 @@ inyección de instrucciones, porque el chat los resuelve igual, sin recuperar do
 
 ## Generación y revisión de paráfrasis
 
-- **Modelo**: el de los pasos de evaluación del gateway de modelos (LAB-84), por defecto `judge` (`qwen2.5:7b`); el valor real
-  usado queda registrado aquí cuando se genere. _Pendiente._
+- **Modelo**: `judge` del gateway de modelos (LAB-84), que corresponde a `qwen2.5:7b` en Ollama, en CPU, con la clave virtual
+  `eval`. Generado el 2026-11-21: 354 variantes (5 tandas por clase), 3 descartadas por el filtro (JSON inválido o longitud).
 - **Instrucciones**: versión `v1` del prompt de `paraphrase.py` (`PARAPHRASE_PROMPT_VERSION`): conservar la intención, cambiar
   palabras y estructura, registro de cliente real y **sin nombres, correos, teléfonos ni números de pedido**.
 - **Filtros automáticos** previos a la revisión: JSON inválido, longitud fuera de 3–280, igual al original o repetida, similitud
   de tokens ≥ 0,85 con el original en el mismo idioma, y cualquier variante que el enmascarado cambie (dato personal inventado).
-- **Revisión manual**: una persona acepta, edita o rechaza cada variante; las que cambian de clase se rechazan. Solo entran las
-  aceptadas (`reviewed: true`). Quién revisó, cuándo, cuántas y con qué tasa de rechazo: **pendiente** (`REVIEW.md`).
+- **Revisión**: la hizo el asistente, **no una persona**: aceptar, editar o rechazar cada variante; las que cambian de clase o de
+  idioma, mezclan idiomas o inventan datos se rechazan. De 354 variantes se rechazaron **71 (20 %)** y se editaron **60** de las
+  283 aceptadas (282 entraron: una repetía un texto existente). **La calidad en portugués fue claramente peor que en
+  español**: 26 % de rechazo (55 de 215) frente a 12 % (16 de 139). Solo entran las aceptadas (`reviewed: true`).
 - **Reproducibilidad**: el dataset publicado es la fuente de verdad; no se promete regenerar las mismas paráfrasis.
 
 ## Acuerdo entre anotadores
@@ -62,7 +91,14 @@ inyección de instrucciones, porque el chat los resuelve igual, sin recuperar do
   etiquetados por el segundo **a ciegas**, con solo la guía.
 - **Kappa de Cohen** y desacuerdos: en el bloque de «Composición» y en `annotations/agreement.json` (calculado **antes** de
   resolver). Referencia: κ ≥ 0,70; si no se alcanza, se corrige la guía y se conserva el primer valor.
-- **Quién fue el anotador B**: **pendiente**. Si es el modelo local, el bloque lo dice y **no es un acuerdo entre personas**.
+- **Anotadores**: el primero es **el asistente** (autor de las etiquetas) y el segundo es **el modelo local `judge`
+  (`qwen2.5:7b`)**, que etiqueta a ciegas con la guía como instrucción y recibe el mensaje delimitado como dato. **No es un
+  acuerdo entre personas**: mide cuánto coinciden dos modelos al aplicar la guía, no la fiabilidad humana. La muestra prefiere
+  texto real (16 reseñas, 15 casos del golden) sobre las semillas (19) y excluye las paráfrasis.
+- **Resultado**: κ = 0,85 (acuerdo observado 0,88) y 6 desacuerdos, resueltos uno a uno en
+  `annotations/agreement-sample.jsonl` con su motivo; solo cambió una etiqueta (`I0007`, y su paráfrasis). Superó la referencia
+  (0,70), así que no hubo que reetiquetar. **Un fallo del anotador B** obligó a corregir el prompt: ejecutó una petición de
+  traducción en lugar de clasificarla, y la solución fue entregarle el mensaje como dato, no como instrucción.
 
 ## Enmascarado
 
@@ -81,7 +117,9 @@ coincidencia (cero tolerancia):
 
 Sobreenmascara a propósito. **No existía un enmascarado «de las trazas»** (LAB-64 lo dejó fuera); este es el mínimo que define
 LAB-117 y es reutilizable por otras historias (LAB-124), pero esta historia no lo conecta con las trazas ni con el backend.
-Revisión manual de nombres: **pendiente** (`REVIEW.md`).
+Revisión de nombres de persona: el asistente leyó los 169 comentarios aceptados y sustituyó los que encontró (2 casos: un nombre
+de pila y una razón social). **Lo hizo un modelo, no una persona**: un nombre que se le escapara no lo detectaría ningún
+patrón, así que esta comprobación necesita una lectura humana.
 
 ## Particiones
 
@@ -98,14 +136,18 @@ Revisión manual de nombres: **pendiente** (`REVIEW.md`).
   atención; su estilo y sus temas difieren de los de un cliente que escribe a un asistente.
 - **Peso de las paráfrasis sintéticas**: parte del dataset es texto generado por un modelo pequeño; puede ser más limpio y
   uniforme que el real e inflar las métricas. La proporción por origen está en «Composición».
-- **Tamaño**: del orden de cientos de ejemplos; val y test son pequeños, y las métricas por clase e idioma tienen mucha
-  varianza. Celdas pequeñas: **pendiente** de revisar con las cifras reales.
+- **Tamaño**: 685 ejemplos; val y test tienen 102 cada una, y la clase más pequeña (`charla`) solo 12 en cada una. Las métricas
+  por clase e idioma tienen mucha varianza: una diferencia de unos puntos de F1 puede ser ruido.
+- **Las etiquetas las puso un modelo**: el asistente aplicó su propia guía, que fue redactando mientras etiquetaba (v2). Sus
+  criterios pueden no coincidir con los de una persona, sobre todo en las fronteras `politica`/`pedido` y `producto`/`pedido`.
 - **Solape con el golden**: ver «Particiones».
 - **`charla` es más amplia que la cortesía** (incluye lo ajeno a la tienda y la inyección): un modelo entrenado así no distingue
   entre un saludo y una pregunta ajena, y LAB-121 debe tenerlo en cuenta al enrutar.
-- **Etiquetado de una sola persona** salvo la muestra de 50: el resto no tiene segunda opinión.
-- **Borrador hasta la revisión humana** (`REVIEW.md`): el validador comprueba formato, mínimos, fugas, datos personales por
-  patrón y kappa; **no** puede comprobar que una etiqueta sea la correcta ni que no se haya colado un nombre.
+- **Una sola etiquetadora fuera de la muestra de 50**: el resto de los 685 ejemplos no tiene segunda opinión, ni humana ni de
+  modelo; y el segundo anotador de la muestra es un modelo.
+- **Sin revisión humana** (`REVIEW.md`): el validador comprueba formato, mínimos, fugas, datos personales por patrón y kappa;
+  **no** puede comprobar que una etiqueta sea la correcta ni que no se haya colado un nombre.
+- **Paráfrasis en portugués de peor calidad**: tras la revisión quedan algunas con registro poco natural; el 26 % se rechazó.
 
 ## Uso previsto y no previsto
 
