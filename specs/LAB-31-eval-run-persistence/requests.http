@@ -1,0 +1,309 @@
+### LAB-31 · Persistencia de las ejecuciones de evaluación: casos HTTP del backend (IntelliJ HTTP Client / VS Code REST Client)
+#
+# Cubre lo alcanzable por HTTP: los tres endpoints del módulo `eval` (contracts/eval-runs-api.md). Necesita el backend
+# arrancado con `SHOPLAB_EVAL_PERSISTENCE_TOKEN` definido (el mismo valor que `token` abajo) y la base de datos arriba. Las
+# peticiones se ejecutan de arriba abajo: la primera ejecución del archivo deja guardada la ejecución `demo-lab31-1`; para
+# repetirlo, cambia `runId` y `retrievalRunId` (o la segunda petición de «no existe» devolverá 200 y la tercera, 409).
+#
+# Not covered here (no se alcanzan por HTTP; los cubren las pruebas y el quickstart):
+#   - US1 escenarios 3 a 7 (vacío frente a cero, medias recalculadas, casos de conversación): eval/tests/test_store_payload.py y
+#     JdbcEvalRunStoreAdapterTests.
+#   - US2 (qué prompt, modelo y recuperación se guardan, la deriva de la configuración): la herramienta de eval/ lee y compara
+#     GET /api/eval/settings; eval/tests/test_store_cli.py y quickstart V5, V6 y V12.
+#   - US3 (comparar ejecuciones): son consultas SQL, eval/queries/ y EvalHistoryQueriesTests.
+#   - US4 escenarios 1 a 4 y 6 (opcional, antes de medir, atomicidad de la herramienta): eval/tests/test_store_cli.py.
+#   - Infraestructura (V17 a V19): el secreto `backend-eval` de shoplab-infra, solo en el clúster.
+
+@baseUrl = http://localhost:8080
+@token = change-me-local-only
+@runId = demo-lab31-1
+@retrievalRunId = demo-lab31-r1
+
+### US2 · GET /api/eval/settings — expects 200 con los parámetros de recuperación y las cuatro versiones de prompt
+GET {{baseUrl}}/api/eval/settings
+Accept: application/json
+X-Eval-Token: {{token}}
+
+> {%
+  client.test("responde 200", function () {
+    client.assert(response.status === 200, "status esperado 200");
+  });
+  client.test("lleva los parámetros de recuperación del chat", function () {
+    client.assert(response.body.retrieval.top_k >= 1, "falta top_k");
+    client.assert(typeof response.body.retrieval.similarity_threshold === "number", "falta el umbral");
+  });
+  client.test("lleva los cuatro prompts de LAB-85", function () {
+    client.assert(response.body.prompts.length === 4, "se esperaban cuatro prompts");
+  });
+%}
+
+### US4 / FR-011 · GET /api/eval/runs/{id} antes de guardar — expects 404 SLHD_EVAL_00004 (el identificador está libre)
+GET {{baseUrl}}/api/eval/runs/{{runId}}
+Accept: application/json
+X-Eval-Token: {{token}}
+
+> {%
+  client.test("la ejecución no existe todavía", function () {
+    client.assert(response.status === 404, "status esperado 404");
+    client.assert(response.body.code === "SLHD_EVAL_00004", "código esperado SLHD_EVAL_00004");
+  });
+%}
+
+### US1 escenario 1 / FR-002 · POST /api/eval/runs de calidad — expects 201 con un resultado por caso
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+{
+  "run_id": "{{runId}}",
+  "kind": "QUALITY",
+  "started_at": "2026-11-21T14:02:11Z",
+  "finished_at": "2026-11-21T14:11:03Z",
+  "origin": "local",
+  "commit_sha": null,
+  "dataset_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "cases_measured": 2,
+  "cases_excluded": 24,
+  "assistant_model": "llama3.2:3b",
+  "embedding_model": "bge-m3",
+  "prompts": [
+    {"name": "chat-system", "version": 3, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-small-talk", "version": 1, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-context", "version": 2, "source": "LANGFUSE", "pinned": true},
+    {"name": "chat-empty-context", "version": null, "source": "DEFAULT", "pinned": false}
+  ],
+  "judge": {"model": "judge", "underlying_model": "ollama_chat/qwen2.5:7b", "temperature": 0.0, "seed": 7,
+            "max_input_chars": 24000},
+  "evaluator": {"library": "ragas", "library_version": "0.4.4", "judgment_instructions_version": "2"},
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000},
+  "results": [
+    {
+      "case": {"id": "G801", "category": "payments",
+               "question": "Mi boleto venció sin que lo pagara, ¿qué puedo hacer?",
+               "reference_answer": "Si el boleto vence sin pago, el pedido pasa a cancelado y puedes volver a hacerlo.",
+               "expected_documents": ["payments-03-boleto-and-vouchers"]},
+      "case_kind": "answered",
+      "scores": {"faithfulness": 1.0, "answer_relevancy": 0.6768, "context_precision": 1.0},
+      "retrieved_documents": ["payments-05-faq-payments", "payments-03-boleto-and-vouchers"],
+      "abstained": false,
+      "trace_id": "815a0c4399777df9b9abe61cdcadb9f9"
+    },
+    {
+      "case": {"id": "G802", "category": "payments",
+               "question": "¿Qué porcentaje de interés cobran las cuotas?",
+               "reference_answer": "No tengo información sobre ese porcentaje en los documentos disponibles.",
+               "expected_documents": []},
+      "case_kind": "unanswered",
+      "scores": {"faithfulness": null},
+      "retrieved_documents": [],
+      "abstained": true,
+      "trace_id": null
+    }
+  ]
+}
+
+> {%
+  client.test("se guarda entera", function () {
+    client.assert(response.status === 201, "status esperado 201");
+    client.assert(response.body.run_id === "demo-lab31-1", "run_id esperado");
+    client.assert(response.body.kind === "QUALITY", "kind esperado");
+    client.assert(response.body.results === 2, "dos resultados");
+  });
+%}
+
+### US1 escenario 1 · GET /api/eval/runs/{id} después de guardar — expects 200 con el tipo y los instantes
+GET {{baseUrl}}/api/eval/runs/{{runId}}
+Accept: application/json
+X-Eval-Token: {{token}}
+
+> {%
+  client.test("la ejecución ya existe", function () {
+    client.assert(response.status === 200, "status esperado 200");
+    client.assert(response.body.kind === "QUALITY", "kind esperado");
+    client.assert(typeof response.body.recorded_at === "string", "falta recorded_at");
+  });
+%}
+
+### US4 escenario 5 / FR-013 · POST con un identificador que ya existe — expects 409 SLHD_EVAL_00003, sin duplicar
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+{
+  "run_id": "{{runId}}",
+  "kind": "RETRIEVAL",
+  "started_at": "2026-11-21T14:02:11Z",
+  "finished_at": "2026-11-21T14:03:03Z",
+  "origin": "local",
+  "commit_sha": null,
+  "dataset_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "assistant_model": null,
+  "embedding_model": "bge-m3",
+  "prompts": [],
+  "judge": null,
+  "evaluator": null,
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000, "depth": 50, "ks": [1]},
+  "results": [
+    {
+      "case": {"id": "G801", "category": "payments",
+               "question": "Mi boleto venció sin que lo pagara, ¿qué puedo hacer?",
+               "reference_answer": "Si el boleto vence sin pago, el pedido pasa a cancelado y puedes volver a hacerlo.",
+               "expected_documents": ["payments-03-boleto-and-vouchers"]},
+      "case_kind": "answered",
+      "scores": {"hit_at_1": 1.0, "recall_at_1": 1.0, "reciprocal_rank": 1.0},
+      "retrieved_documents": ["payments-03-boleto-and-vouchers"],
+      "abstained": null,
+      "trace_id": null
+    }
+  ]
+}
+
+> {%
+  client.test("un identificador guardado no se sobrescribe", function () {
+    client.assert(response.status === 409, "status esperado 409");
+    client.assert(response.body.code === "SLHD_EVAL_00003", "código esperado SLHD_EVAL_00003");
+  });
+%}
+
+### US1 escenario 2 · POST de una ejecución de recuperación — expects 201; el caso G801 se reutiliza (0 revisiones nuevas)
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+{
+  "run_id": "{{retrievalRunId}}",
+  "kind": "RETRIEVAL",
+  "started_at": "2026-11-21T14:02:11Z",
+  "finished_at": "2026-11-21T14:03:03Z",
+  "origin": "local",
+  "commit_sha": null,
+  "dataset_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "assistant_model": null,
+  "embedding_model": "bge-m3",
+  "prompts": [],
+  "judge": null,
+  "evaluator": null,
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000, "depth": 50, "ks": [1]},
+  "results": [
+    {
+      "case": {"id": "G801", "category": "payments",
+               "question": "Mi boleto venció sin que lo pagara, ¿qué puedo hacer?",
+               "reference_answer": "Si el boleto vence sin pago, el pedido pasa a cancelado y puedes volver a hacerlo.",
+               "expected_documents": ["payments-03-boleto-and-vouchers"]},
+      "case_kind": "answered",
+      "scores": {"hit_at_1": 1.0, "recall_at_1": 1.0, "reciprocal_rank": 1.0},
+      "retrieved_documents": ["payments-03-boleto-and-vouchers"],
+      "abstained": null,
+      "trace_id": null
+    }
+  ]
+}
+
+> {%
+  client.test("la recuperación queda como otra ejecución", function () {
+    client.assert(response.status === 201, "status esperado 201");
+    client.assert(response.body.kind === "RETRIEVAL", "kind esperado");
+    client.assert(response.body.new_case_revisions === 0, "el caso no cambió: ninguna revisión nueva");
+  });
+%}
+
+### FR-003 · POST con una puntuación fuera de 0 a 1 — expects 422 SLHD_EVAL_00002 con el campo en `detail`, sin texto
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+{
+  "run_id": "demo-lab31-bad",
+  "kind": "RETRIEVAL",
+  "started_at": "2026-11-21T14:02:11Z",
+  "finished_at": "2026-11-21T14:03:03Z",
+  "origin": "local",
+  "commit_sha": null,
+  "dataset_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "assistant_model": null,
+  "embedding_model": "bge-m3",
+  "prompts": [],
+  "judge": null,
+  "evaluator": null,
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000, "depth": 50, "ks": [1]},
+  "results": [
+    {
+      "case": {"id": "G803", "category": "payments",
+               "question": "Mi boleto venció sin que lo pagara, ¿qué puedo hacer?",
+               "reference_answer": "Si el boleto vence sin pago, el pedido pasa a cancelado y puedes volver a hacerlo.",
+               "expected_documents": ["payments-03-boleto-and-vouchers"]},
+      "case_kind": "answered",
+      "scores": {"hit_at_1": 1.0, "recall_at_1": 1.5, "reciprocal_rank": 1.0},
+      "retrieved_documents": ["payments-03-boleto-and-vouchers"],
+      "abstained": null,
+      "trace_id": null
+    }
+  ]
+}
+
+> {%
+  client.test("una puntuación fuera de rango no se guarda", function () {
+    client.assert(response.status === 422, "status esperado 422");
+    client.assert(response.body.code === "SLHD_EVAL_00002", "código esperado SLHD_EVAL_00002");
+    client.assert(response.body.detail.indexOf("results[0].scores.recall_at_1") === 0, "el detalle nombra el campo");
+  });
+%}
+
+### FR-009 · POST con una clave `answer` en un resultado — expects 400 SLHD_GENE_00002: no hay dónde guardar el texto de una respuesta
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+{
+  "run_id": "demo-lab31-text",
+  "kind": "RETRIEVAL",
+  "results": [{"answer": "El texto de una respuesta del asistente"}]
+}
+
+> {%
+  client.test("las claves desconocidas se rechazan", function () {
+    client.assert(response.status === 400, "status esperado 400");
+    client.assert(response.body.code === "SLHD_GENE_00002", "código esperado SLHD_GENE_00002");
+  });
+%}
+
+### FR-011 · GET con un identificador que no cabe — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/runs/con%20espacio
+Accept: application/json
+X-Eval-Token: {{token}}
+
+> {%
+  client.test("el identificador no cumple el formato", function () {
+    client.assert(response.status === 422, "status esperado 422");
+    client.assert(response.body.code === "SLHD_EVAL_00002", "código esperado SLHD_EVAL_00002");
+  });
+%}
+
+### US4 / V15 · GET sin la cabecera del token — expects 403 SLHD_EVAL_00001 (guardado apagado o token ausente)
+GET {{baseUrl}}/api/eval/runs/{{runId}}
+Accept: application/json
+
+> {%
+  client.test("sin token no se entra", function () {
+    client.assert(response.status === 403, "status esperado 403");
+    client.assert(response.body.code === "SLHD_EVAL_00001", "código esperado SLHD_EVAL_00001");
+  });
+%}
+
+### US4 / V15 · GET con un token distinto — expects 403 SLHD_EVAL_00001 y el token no vuelve en la respuesta
+GET {{baseUrl}}/api/eval/settings
+Accept: application/json
+X-Eval-Token: otro-valor
+
+> {%
+  client.test("un token distinto no entra", function () {
+    client.assert(response.status === 403, "status esperado 403");
+    client.assert(JSON.stringify(response.body).indexOf("otro-valor") === -1, "el token no debe volver");
+  });
+%}

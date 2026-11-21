@@ -145,3 +145,21 @@ PROMPT_LABEL_PATTERN = r"^[A-Za-z0-9._-]{1,64}$"
 PROMPT_VERSIONS_SEPARATOR = "|"
 PROMPT_FORBIDDEN_CODE = "SLHD_CHAT_00008"
 PROMPT_UNAVAILABLE_CODE = "SLHD_CHAT_00010"
+
+# --- historial de ejecuciones de evaluación (LAB-31) ---
+EVAL_RUNS_PATH = "/api/eval/runs"
+EVAL_SETTINGS_PATH = "/api/eval/settings"
+EVAL_TOKEN_HEADER = "X-Eval-Token"
+# The same value as shoplab.eval.persistence.token of the backend: without it nothing is saved (and --save is an error).
+EVAL_TOKEN_ENV = "SHOPLAB_EVAL_TOKEN"
+# A short label of where the run was launched (local, dev, ci); never a user or a machine name.
+EVAL_ORIGIN_ENV = "SHOPLAB_EVAL_ORIGIN"
+DEFAULT_ORIGIN = "local"
+ORIGIN_PATTERN = r"^[A-Za-z0-9._-]{1,32}$"
+RUN_KIND_RETRIEVAL = "RETRIEVAL"
+RUN_KIND_QUALITY = "QUALITY"
+EVALUATION_LIBRARY = "ragas"
+# The document of a fragment that is not in the corpus: the CSV shows its title, the history only keeps ids.
+UNKNOWN_DOCUMENT = "unknown-document"
+COMMIT_PATTERN = r"^[0-9a-f]{40}$"
+GIT_TIMEOUT_SECONDS = 5

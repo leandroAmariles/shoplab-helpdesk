@@ -18,7 +18,7 @@ class SchemaIsolationTests {
     private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
     private static final Path JAVA_SOURCES = Path.of("src/main/java/com/shoplab/helpdesk");
     private static final Path FIXTURES = Path.of("src/test/resources/schema/violations");
-    private static final Set<String> MODULES = Set.of("chat", "retrieval", "orders", "catalog", "tickets");
+    private static final Set<String> MODULES = Set.of("chat", "retrieval", "orders", "catalog", "tickets", "eval");
 
     @ParameterizedTest
     @CsvSource({

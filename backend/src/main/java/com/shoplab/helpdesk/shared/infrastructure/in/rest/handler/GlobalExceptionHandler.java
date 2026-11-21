@@ -1,6 +1,7 @@
 package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 
 import com.shoplab.helpdesk.shared.exception.HelpdeskException;
+import com.shoplab.helpdesk.shared.exception.PublicDetail;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.dto.ErrorResponse;
 import org.jspecify.annotations.NonNull;
@@ -34,7 +35,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         } else {
             LOG.warn("Request rejected: code={}", responseCode.getCode());
         }
-        return json(responseCode, exchange);
+        String detail = exception instanceof PublicDetail visible ? visible.publicDetail() : null;
+        return json(responseCode, detail, exchange);
     }
 
     @ExceptionHandler(Exception.class)
@@ -87,9 +89,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> json(ResponseCodeEnum responseCode, ServerWebExchange exchange) {
+        return json(responseCode, null, exchange);
+    }
+
+    private ResponseEntity<ErrorResponse> json(ResponseCodeEnum responseCode, String detail,
+            ServerWebExchange exchange) {
         exchange.getAttributes().remove(HandlerMapping.PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE);
         return ResponseEntity.status(responseCode.getHttpStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(responseCode.getCode(), responseCode.getDefaultMessage()));
+                .body(new ErrorResponse(responseCode.getCode(), responseCode.getDefaultMessage(), detail));
     }
 }

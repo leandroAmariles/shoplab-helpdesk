@@ -8,6 +8,7 @@ import com.shoplab.helpdesk.chat.domain.exception.PromptOverrideForbiddenExcepti
 import com.shoplab.helpdesk.chat.domain.model.ConversationId;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
+import com.shoplab.helpdesk.shared.exception.PublicDetail;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
 import com.shoplab.helpdesk.shared.exception.TechnicalException;
 import org.junit.jupiter.api.Test;
@@ -131,6 +132,45 @@ class GlobalExceptionHandlerTests {
                 .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00010");
     }
 
+    @Test
+    void anExceptionWithAPublicDetailShowsItInTheBody() {
+        webTestClient.get().uri("/probe/detailed").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("SLHD_CHAT_00001")
+                .jsonPath("$.detail").isEqualTo("results[2].scores.faithfulness: must be between 0 and 1");
+    }
+
+    @Test
+    void anExceptionWithoutAPublicDetailKeepsTheBodyAsItWas() {
+        webTestClient.get().uri("/probe/business").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(String.class).value(text -> assertThat(text).doesNotContain("detail"));
+    }
+
+    @Test
+    void aNullPublicDetailIsLeftOut() {
+        webTestClient.get().uri("/probe/detailed-null").exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(String.class).value(text -> assertThat(text).doesNotContain("detail"));
+    }
+
+    /** A business error that may show a safe detail, like the invalid evaluation run of LAB-31. */
+    static class DetailedException extends BusinessException implements PublicDetail {
+
+        private final String detail;
+
+        DetailedException(String detail) {
+            super(ResponseCodeEnum.INVALID_CHAT_MESSAGE);
+            this.detail = detail;
+        }
+
+        @Override
+        public String publicDetail() {
+            return detail;
+        }
+    }
+
     /** Test-only routes that throw each kind of exception; the {@code stream-*} ones only produce event streams. */
     @RestController
     static class ProbeController {
@@ -148,6 +188,16 @@ class GlobalExceptionHandlerTests {
         @GetMapping("/probe/prompt-unavailable")
         String promptUnavailable() {
             throw PromptOverrideException.unavailable();
+        }
+
+        @GetMapping("/probe/detailed")
+        String detailed() {
+            throw new DetailedException("results[2].scores.faithfulness: must be between 0 and 1");
+        }
+
+        @GetMapping("/probe/detailed-null")
+        String detailedNull() {
+            throw new DetailedException(null);
         }
 
         @GetMapping("/probe/business")

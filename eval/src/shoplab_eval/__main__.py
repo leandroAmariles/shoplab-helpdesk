@@ -5,7 +5,8 @@ import argparse
 import os
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
 from shoplab_eval.chat_client import SseChatClient
@@ -30,6 +31,7 @@ from shoplab_eval.constants import (
     DEFAULT_TIMEOUT_SECONDS,
     DEFAULT_TURN_TIMEOUT_SECONDS,
     EMBEDDING_PROBE_QUERY,
+    EVAL_TOKEN_ENV,
     HOST_HEADER_ENV,
     HOST_HEADER_PATTERN,
     JUDGE_BASE_URL_ENV,
@@ -42,10 +44,11 @@ from shoplab_eval.constants import (
     MIN_CONCURRENCY,
     PROMPT_NAMES,
     PROMPT_TOKEN_ENV,
+    RUN_ID_PATTERN,
     UNKNOWN,
 )
 from shoplab_eval.corpus import load_corpus, title_index
-from shoplab_eval.errors import InvalidGoldenError, MeasurementError
+from shoplab_eval.errors import InvalidGoldenError, MeasurementError, StoreError
 from shoplab_eval.golden import GoldenCase, load_golden, validate_golden
 from shoplab_eval.langfuse_client import LangfuseClient, TraceScores
 from shoplab_eval.prompt_client import PromptClient, PromptResolver
@@ -70,7 +73,15 @@ from shoplab_eval.quality_run import RunInfo, measure_quality, new_run_id, reque
 from shoplab_eval.retrieval_report import format_report, write_report
 from shoplab_eval.retrieval_run import check_index, measure_retrieval
 from shoplab_eval.search_client import KnowledgeSearchClient
+from shoplab_eval.store_client import SavedRun
+from shoplab_eval.store_session import NOT_SAVED, StoreSession, describe_saved, store_config
 from shoplab_eval.summary import format_summary
+
+_SAVE_HELP = (
+    "guarda la ejecución en el historial del backend (LAB-31); sin la opción se guarda si "
+    f"{EVAL_TOKEN_ENV} está definida (el mismo valor que shoplab.eval.persistence.token del backend); --no-save "
+    "nunca guarda"
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -94,6 +105,8 @@ def main(argv: list[str] | None = None) -> int:
     retrieval.add_argument("--kb", type=Path, default=DEFAULT_KB_DIR, help="directorio del corpus (data/kb)")
     retrieval.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS, help="segundos por petición")
     retrieval.add_argument("--host-header", default=None, help=_HOST_HEADER_HELP)
+    retrieval.add_argument("--run-id", default=None, help="identificador de la ejecución (por defecto, el momento UTC)")
+    retrieval.add_argument("--save", action=argparse.BooleanOptionalAction, default=None, help=_SAVE_HELP)
     quality = commands.add_parser(
         "quality", help="mide fidelidad, relevancia y precisión del contexto de las respuestas del asistente real"
     )
@@ -107,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     quality.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN_PATH, help="ruta del archivo JSONL")
     quality.add_argument("--kb", type=Path, default=DEFAULT_KB_DIR, help="directorio del corpus (data/kb)")
     quality.add_argument("--run-id", default=None, help="identificador de la ejecución (por defecto, el momento UTC)")
+    quality.add_argument("--save", action=argparse.BooleanOptionalAction, default=None, help=_SAVE_HELP)
     quality.add_argument(
         "--concurrency",
         type=int,
@@ -200,27 +214,69 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _run_retrieval(args: argparse.Namespace) -> int:
-    """Exit codes: 0 measured and written, 1 the measurement is not valid (nothing written), 2 wrong usage.
+    """Exit codes: 0 measured, written and, if asked, saved; 1 the measurement is not valid (nothing written) or the run
+    could not be saved (the files are written anyway); 2 wrong usage.
 
     The CSV files are written only after the whole measurement succeeded, so a failure never leaves a result that
-    looks valid (and never touches the files of an earlier run).
+    looks valid (and never touches the files of an earlier run). With the history on, everything that can make saving
+    impossible is found before the search is asked anything (LAB-31).
     """
     try:
         ks = _parse_ks(args.k, args.depth)
         host_header = _host_header(args, os.environ)
+        run_id = args.run_id or new_run_id()
+        _check_run_id(run_id)
+        store = store_config(args.save, os.environ)
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
+    session = StoreSession(args.base_url, store, run_id, args.golden, args.timeout, host_header) if store else None
     try:
         cases = load_golden(args.golden, args.kb)
+        if session is not None:
+            session.prepare()
         client = KnowledgeSearchClient(args.base_url, args.timeout, host_header)
+        started_at = datetime.now(UTC)
         report = measure_retrieval(cases, client, ks, args.depth)
+        finished_at = datetime.now(UTC)
+        if session is not None:
+            session.verify_unchanged(())
     except (InvalidGoldenError, MeasurementError, FileNotFoundError) as error:
         print(error)
+        return 1
+    except StoreError as error:
+        print(error, file=sys.stderr)
         return 1
     print(format_report(report))
     summary_path, detail_path = write_report(report, args.out)
     print(f"\nResumen: {summary_path}\nDetalle: {detail_path}")
+    assistant_model = os.environ.get(ASSISTANT_MODEL_ENV) or None
+    return _save_result(
+        session,
+        lambda: session.save_retrieval(report, assistant_model, started_at, finished_at),  # type: ignore[union-attr]
+    )
+
+
+def _check_run_id(run_id: str) -> None:
+    if not re.match(RUN_ID_PATTERN, run_id):
+        raise ValueError(f"El identificador de ejecución {run_id!r} debe cumplir {RUN_ID_PATTERN}")
+
+
+def _save_result(session: StoreSession | None, save: Callable[[], SavedRun]) -> int:
+    """Sends the run once the files are written. A run that cannot be saved is an error, but it never costs the CSV."""
+    if session is None:
+        print(NOT_SAVED, file=sys.stderr)
+        return 0
+    try:
+        saved = save()
+    except StoreError as error:
+        print(
+            f"\nLa ejecución NO se guardó en el historial y no quedó nada de ella en la base: {error}\n"
+            "Los CSV sí están escritos.",
+            file=sys.stderr,
+        )
+        return 1
+    print(describe_saved(saved))
     return 0
 
 
@@ -309,6 +365,7 @@ def _run_quality(args: argparse.Namespace) -> int:
     try:
         run_id = args.run_id or new_run_id()
         request_id_for(run_id, "G001")  # a run id that would not make a safe request id is rejected before anything runs
+        store = store_config(args.save, os.environ)
         settings = resolve_judge_settings(args, os.environ)
         api_key = read_judge_api_key(os.environ)
         langfuse_config = _langfuse_config(args, os.environ)
@@ -330,7 +387,11 @@ def _run_quality(args: argparse.Namespace) -> int:
             f"--assistant-model o {ASSISTANT_MODEL_ENV} para que los resultados sean comparables",
             file=sys.stderr,
         )
+    session = StoreSession(args.base_url, store, run_id, args.golden, host_header=host_header) if store else None
     try:
+        if session is not None:
+            # Before the assistant or the judge is asked anything: a run that could not be saved is never measured.
+            session.prepare()
         # The versions are resolved first: a prompt that does not exist stops the run before anything else is asked.
         choices = _resolve_prompts(prompt_requests, os.environ)
         if choices:
@@ -358,15 +419,25 @@ def _run_quality(args: argparse.Namespace) -> int:
         chat = SseChatClient(
             args.base_url, args.turn_timeout, titles, host_header, versions_header(choices), prompt_token
         )
+        started_at = datetime.now(UTC)
         report = measure_quality(
             cases, chat, build_judge(settings, api_key), info, progress=_progress, langfuse=langfuse
         )
+        finished_at = datetime.now(UTC)
+        if session is not None:
+            session.verify_unchanged(choices)
     except (InvalidGoldenError, MeasurementError, FileNotFoundError, ValueError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    except StoreError as error:
         print(error, file=sys.stderr)
         return 1
     print(format_quality_report(report))
     summary_path, detail_path = write_quality_report(report, args.out)
     print(f"\nResumen: {summary_path}\nDetalle: {detail_path}")
+    saved_code = _save_result(
+        session, lambda: session.save_quality(report, choices, started_at, finished_at)  # type: ignore[union-attr]
+    )
     if report.attach_failures:
         # The scores cost hundreds of calls of the judge, so the files are kept; the code says it is not complete.
         print(
@@ -375,7 +446,7 @@ def _run_quality(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    return 0
+    return saved_code
 
 
 def _run_compare(args: argparse.Namespace) -> int:

@@ -40,3 +40,12 @@ class MeasurementError(Exception):
     The message names the cause and, when it applies, the case, the documents or the URL involved. It is never raised
     for a search that works but does not return the expected document: that is a zero in the metrics.
     """
+
+
+class StoreError(Exception):
+    """The history of evaluation runs cannot be reached or refuses a run (LAB-31).
+
+    The message names the cause and what to do about it. It never carries the token. Before the measurement it stops the
+    command (nothing has been asked of the assistant or the judge yet); after it, the CSV files are already written and
+    the command ends with a non-zero code because the run was not saved.
+    """

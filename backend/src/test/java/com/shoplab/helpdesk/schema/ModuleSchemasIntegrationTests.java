@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @PostgresTest
 class ModuleSchemasIntegrationTests {
 
-    private static final List<String> MODULES = List.of("chat", "retrieval", "orders", "catalog", "tickets");
+    private static final List<String> MODULES = List.of("chat", "retrieval", "orders", "catalog", "tickets", "eval");
 
     private static final String CROSS_SCHEMA_FOREIGN_KEYS = """
             SELECT c.conname, src.nspname AS from_schema, dst.nspname AS to_schema
@@ -238,6 +238,7 @@ class ModuleSchemasIntegrationTests {
         assertThat(appliedVersionsOf("tickets")).containsExactly("1");
         assertThat(appliedVersionsOf("orders")).containsExactly("1", "2");
         assertThat(appliedVersionsOf("catalog")).containsExactly("1", "2");
+        assertThat(appliedVersionsOf("eval")).containsExactly("1", "2");
     }
 
     private List<String> appliedVersionsOf(String module) {

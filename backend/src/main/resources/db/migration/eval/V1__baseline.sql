@@ -1,0 +1,3 @@
+-- Baseline of the 'eval' schema, owned by the eval module (specs/LAB-31).
+-- Nothing else reads or writes it: other modules go through the module's API and keep only ids.
+-- The history of evaluation runs arrives in V2.
