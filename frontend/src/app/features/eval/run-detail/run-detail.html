@@ -35,7 +35,8 @@
     <dd>{{ retrieval() }}</dd>
     <dt>Dataset</dt>
     <dd>
-      huella {{ dataset() }} · {{ run().casesMeasured }} medidos · {{ run().casesExcluded }} excluidos
+      huella {{ dataset() }} · {{ run().casesMeasured }} medidos ·
+      {{ run().casesExcluded }} excluidos
     </dd>
     @if (unscored().length > 0) {
       <dt>Casos sin puntuar</dt>
@@ -50,10 +51,16 @@
   </dl>
 
   <h3>Resumen</h3>
-  <div class="summary-region" role="region" tabindex="0" aria-label="Resumen de la ejecución por categoría">
+  <div
+    class="summary-region"
+    role="region"
+    tabindex="0"
+    aria-label="Resumen de la ejecución por categoría"
+  >
     <table class="summary">
       <caption class="visually-hidden">
-        Media de cada métrica, para el conjunto completo y por categoría, con los casos de cada media
+        Media de cada métrica, para el conjunto completo y por categoría, con los casos de cada
+        media
       </caption>
       <thead>
         <tr>

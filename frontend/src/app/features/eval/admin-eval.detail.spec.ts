@@ -87,7 +87,9 @@ describe('AdminEval (run detail)', () => {
     expect(root.querySelector('app-run-detail')?.textContent).toContain('t031-2');
     expect(root.querySelector('app-failing-cases')).not.toBeNull();
     expect(TestBed.inject(Router).url).toContain('ejecucion=t031-2');
-    expect(root.querySelector('app-run-list tr[aria-current="true"]')?.textContent).toContain('t031-2');
+    expect(root.querySelector('app-run-list tr[aria-current="true"]')?.textContent).toContain(
+      't031-2',
+    );
   });
 
   it('opens the detail of the run of a point of the chart when it is activated', async () => {
@@ -129,7 +131,10 @@ describe('AdminEval (run detail)', () => {
   it('says that the run does not exist and cleans the address when it does not', async () => {
     await open('/admin-eval?ejecucion=viejo');
     listRequest().flush(listing());
-    runRequest('viejo').flush({ code: 'SLHD_EVAL_00004' }, { status: 404, statusText: 'Not Found' });
+    runRequest('viejo').flush(
+      { code: 'SLHD_EVAL_00004' },
+      { status: 404, statusText: 'Not Found' },
+    );
     await settle();
 
     expect(root.querySelector('[role="alert"]')?.textContent).toContain('La ejecución no existe');
@@ -182,9 +187,9 @@ describe('AdminEval (run detail)', () => {
     runRequest('t031-1').flush(RUN_BODY);
     await settle();
 
-    const toggle = Array.from(root.querySelectorAll<HTMLButtonElement>('mat-button-toggle button')).find(
-      (button) => (button.textContent ?? '').includes('Recuperación'),
-    ) as HTMLButtonElement;
+    const toggle = Array.from(
+      root.querySelectorAll<HTMLButtonElement>('mat-button-toggle button'),
+    ).find((button) => (button.textContent ?? '').includes('Recuperación')) as HTMLButtonElement;
     toggle.click();
     await settle();
     listRequest().flush({ ...listing([]), kind: 'RETRIEVAL', total_all_origins: 0, origins: [] });

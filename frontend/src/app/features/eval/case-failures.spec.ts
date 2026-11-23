@@ -34,7 +34,11 @@ function result(
 describe('case-failures', () => {
   describe('isFailingQuality', () => {
     it('fails when any metric with a value is below the threshold', () => {
-      const failing = result('G1', { faithfulness: 0.9, answer_relevancy: 0.4, context_precision: 0.8 });
+      const failing = result('G1', {
+        faithfulness: 0.9,
+        answer_relevancy: 0.4,
+        context_precision: 0.8,
+      });
 
       expect(isFailingQuality(failing, 0.5)).toBe(true);
       expect(failingMetrics(failing, 0.5)).toEqual(['answer_relevancy']);
@@ -58,16 +62,27 @@ describe('case-failures', () => {
     });
 
     it('lists every metric below the threshold, not only the worst', () => {
-      const several = result('G1', { faithfulness: 0.1, answer_relevancy: 0.3, context_precision: 0.9 });
+      const several = result('G1', {
+        faithfulness: 0.1,
+        answer_relevancy: 0.3,
+        context_precision: 0.9,
+      });
 
       expect(failingMetrics(several, 0.5)).toEqual(['faithfulness', 'answer_relevancy']);
     });
 
     it('fails nothing at threshold 0 and every case with a value below 1 at threshold 1', () => {
-      const results = [result('G1', { faithfulness: 0 }), result('G2', { faithfulness: 0.99 }), result('G3', { faithfulness: 1 })];
+      const results = [
+        result('G1', { faithfulness: 0 }),
+        result('G2', { faithfulness: 0.99 }),
+        result('G3', { faithfulness: 1 }),
+      ];
 
       expect(results.filter((r) => isFailingQuality(r, 0))).toEqual([]);
-      expect(results.filter((r) => isFailingQuality(r, 1)).map((r) => r.caseId)).toEqual(['G1', 'G2']);
+      expect(results.filter((r) => isFailingQuality(r, 1)).map((r) => r.caseId)).toEqual([
+        'G1',
+        'G2',
+      ]);
     });
   });
 
@@ -80,7 +95,9 @@ describe('case-failures', () => {
     });
 
     it('does not fail a case without expected documents, nor one whose hit has no value', () => {
-      expect(isFailingRetrieval(result('G1', { hit_at_3: 0 }, { expectedDocuments: [] }), 3)).toBe(false);
+      expect(isFailingRetrieval(result('G1', { hit_at_3: 0 }, { expectedDocuments: [] }), 3)).toBe(
+        false,
+      );
       expect(isFailingRetrieval(result('G2', { hit_at_3: null }), 3)).toBe(false);
       expect(isFailingRetrieval(result('G3', {}), 3)).toBe(false);
     });
@@ -127,22 +144,41 @@ describe('case-failures', () => {
     it('breaks the ties of the worst value by case id, so the order is stable', () => {
       const tied = [result('G9', { faithfulness: 0.2 }), result('G2', { faithfulness: 0.2 })];
 
-      expect(selectFailures(tied, quality, all, 'worst').map((f) => f.result.caseId)).toEqual(['G2', 'G9']);
+      expect(selectFailures(tied, quality, all, 'worst').map((f) => f.result.caseId)).toEqual([
+        'G2',
+        'G9',
+      ]);
     });
 
     it('sorts by case id or by category and then case id', () => {
-      expect(selectFailures(results, quality, all, 'caseId').map((f) => f.result.caseId)).toEqual(['G1', 'G2', 'G3']);
-      expect(selectFailures(results, quality, all, 'category').map((f) => f.result.caseId)).toEqual(['G2', 'G3', 'G1']);
+      expect(selectFailures(results, quality, all, 'caseId').map((f) => f.result.caseId)).toEqual([
+        'G1',
+        'G2',
+        'G3',
+      ]);
+      expect(selectFailures(results, quality, all, 'category').map((f) => f.result.caseId)).toEqual(
+        ['G2', 'G3', 'G1'],
+      );
     });
 
     it('filters by category', () => {
-      const failures = selectFailures(results, quality, { category: 'payments', metric: null }, 'worst');
+      const failures = selectFailures(
+        results,
+        quality,
+        { category: 'payments', metric: null },
+        'worst',
+      );
 
       expect(failures.map((f) => f.result.caseId)).toEqual(['G3', 'G2']);
     });
 
     it('filters by the metric that failed', () => {
-      const failures = selectFailures(results, quality, { category: null, metric: 'answer_relevancy' }, 'worst');
+      const failures = selectFailures(
+        results,
+        quality,
+        { category: null, metric: 'answer_relevancy' },
+        'worst',
+      );
 
       expect(failures.map((f) => f.result.caseId)).toEqual(['G1', 'G2']);
     });

@@ -155,7 +155,10 @@ describe('EvalStore (run detail)', () => {
 
   it('a run that does not exist is reported and the selection is cleared', () => {
     store.selectRun('t031-9');
-    runRequest('t031-9').flush({ code: 'SLHD_EVAL_00004' }, { status: 404, statusText: 'Not Found' });
+    runRequest('t031-9').flush(
+      { code: 'SLHD_EVAL_00004' },
+      { status: 404, statusText: 'Not Found' },
+    );
 
     expect(store.runNotFound()).toBe(true);
     expect(store.selectedRunId()).toBeNull();

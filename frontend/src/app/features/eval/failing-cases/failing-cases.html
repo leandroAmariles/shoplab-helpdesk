@@ -138,7 +138,9 @@
                 <tr class="case-detail">
                   <td colspan="5">
                     <h4>{{ failure.result.caseId }} · {{ failure.result.question }}</h4>
-                    <p class="reference"><strong>Respuesta de referencia:</strong> {{ failure.result.referenceAnswer }}</p>
+                    <p class="reference">
+                      <strong>Respuesta de referencia:</strong> {{ failure.result.referenceAnswer }}
+                    </p>
                     <div class="documents">
                       <div class="expected">
                         <h5>Documentos esperados</h5>
@@ -203,8 +205,8 @@
                       </p>
                     }
                     <p class="hint">
-                      El texto de la respuesta del asistente y el de los fragmentos no se guardan aquí:
-                      viven en la traza de Langfuse.
+                      El texto de la respuesta del asistente y el de los fragmentos no se guardan
+                      aquí: viven en la traza de Langfuse.
                     </p>
                   </td>
                 </tr>

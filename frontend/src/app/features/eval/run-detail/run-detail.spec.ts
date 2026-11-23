@@ -226,7 +226,9 @@ describe('RunDetailView', () => {
     it('has a column for each metric the run has', () => {
       render(retrieval());
 
-      const headers = Array.from(root.querySelectorAll('.summary thead th')).map((th) => th.textContent?.trim());
+      const headers = Array.from(root.querySelectorAll('.summary thead th')).map((th) =>
+        th.textContent?.trim(),
+      );
       expect(headers).toContain('MRR');
       expect(headers).toContain('Hit rate@3');
     });

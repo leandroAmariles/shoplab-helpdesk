@@ -36,10 +36,14 @@ export class FailingCases {
     [...new Set(this.store.detail()?.results.map((result) => result.category) ?? [])].sort(),
   );
   protected readonly metrics = computed(() =>
-    orderMetrics(this.store.detail()?.results.flatMap((result) => Object.keys(result.scores)) ?? []),
+    orderMetrics(
+      this.store.detail()?.results.flatMap((result) => Object.keys(result.scores)) ?? [],
+    ),
   );
   protected readonly isQuality = computed(() => this.store.failureCriterion()?.kind === 'QUALITY');
-  protected readonly isRetrieval = computed(() => this.store.failureCriterion()?.kind === 'RETRIEVAL');
+  protected readonly isRetrieval = computed(
+    () => this.store.failureCriterion()?.kind === 'RETRIEVAL',
+  );
   protected readonly metricLabel = metricLabel;
 
   protected isOpen(result: StoredResult): boolean {
@@ -90,7 +94,9 @@ export class FailingCases {
   }
 
   protected onSort(event: Event): void {
-    this.store.setSort((event.target as HTMLSelectElement).value as 'worst' | 'caseId' | 'category');
+    this.store.setSort(
+      (event.target as HTMLSelectElement).value as 'worst' | 'caseId' | 'category',
+    );
   }
 
   protected copy(traceId: string): void {

@@ -82,7 +82,36 @@
   }
 
   @if (store.runs().length > 0) {
-    <app-metric-chart [series]="store.series()" />
-    <app-run-list [runs]="store.runs()" [metrics]="store.selectedMetrics()" />
+    <app-metric-chart
+      [series]="store.series()"
+      [selectedRunId]="store.selectedRunId()"
+      (runSelected)="onRunSelected($event)"
+    />
+    <app-run-list
+      [runs]="store.runs()"
+      [metrics]="store.selectedMetrics()"
+      [selectedRunId]="store.selectedRunId()"
+      (runSelected)="onRunSelected($event)"
+    />
+  }
+
+  @if (store.runNotFound()) {
+    <p class="detail-missing" role="alert">La ejecución no existe (¿enlace antiguo?).</p>
+  }
+
+  @if (store.detailLoading()) {
+    <p class="detail-loading" role="status">Cargando la ejecución…</p>
+  }
+
+  @if (store.detailError(); as message) {
+    <div class="detail-error" role="alert">
+      <p>{{ message }}</p>
+      <button mat-stroked-button type="button" (click)="store.retryDetail()">Reintentar</button>
+    </div>
+  }
+
+  @if (store.detail(); as detail) {
+    <app-run-detail [detail]="detail" />
+    <app-failing-cases />
   }
 </section>

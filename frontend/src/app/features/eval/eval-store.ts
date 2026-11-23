@@ -26,7 +26,7 @@ export const LOAD_ERROR_MESSAGE =
   'No se pudo cargar la evaluación. Se muestra el último estado conocido.';
 export const DETAIL_ERROR_MESSAGE = 'No se pudo cargar la ejecución.';
 
-const RUN_ID = /^[A-Za-z0-9._-]{1,32}$/;
+export const RUN_ID = /^[A-Za-z0-9._-]{1,32}$/;
 
 /**
  * State of the admin-eval screen: the list of runs of a kind with the metrics, the filters and the range, and the

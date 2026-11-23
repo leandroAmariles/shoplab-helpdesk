@@ -34,12 +34,27 @@ function result(
 const QUALITY_BODY = {
   ...RUN_BODY,
   results: [
-    result('G044', 'returns', { faithfulness: 0.2, answer_relevancy: null }, {
-      trace_id: TRACE,
-      trace_url: `http://localhost:3001/trace/${TRACE}`,
-    }),
-    result('G045', 'returns', { faithfulness: 1 }, { case_kind: 'unanswered', expected_documents: [] }),
-    result('G046', 'payments', { faithfulness: 0.3, answer_relevancy: 0.4 }, { trace_id: 'tracesinurl' }),
+    result(
+      'G044',
+      'returns',
+      { faithfulness: 0.2, answer_relevancy: null },
+      {
+        trace_id: TRACE,
+        trace_url: `http://localhost:3001/trace/${TRACE}`,
+      },
+    ),
+    result(
+      'G045',
+      'returns',
+      { faithfulness: 1 },
+      { case_kind: 'unanswered', expected_documents: [] },
+    ),
+    result(
+      'G046',
+      'payments',
+      { faithfulness: 0.3, answer_relevancy: 0.4 },
+      { trace_id: 'tracesinurl' },
+    ),
     result('G047', 'payments', { faithfulness: 0.9, answer_relevancy: 0.9 }),
   ],
 };
@@ -133,7 +148,10 @@ describe('FailingCases', () => {
     });
 
     it('lists the failing cases worst first, with id, category and question', () => {
-      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual(['G044', 'G046']);
+      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual([
+        'G044',
+        'G046',
+      ]);
       expect(rows()[0].textContent).toContain('returns');
       expect(rows()[0].textContent).toContain('Pregunta del caso G044');
     });
@@ -150,7 +168,9 @@ describe('FailingCases', () => {
       setThreshold('0');
 
       expect(rows()).toHaveLength(0);
-      expect(root.querySelector('.status')?.textContent).toContain('Ningún caso falla con este criterio');
+      expect(root.querySelector('.status')?.textContent).toContain(
+        'Ningún caso falla con este criterio',
+      );
     });
 
     it('keeps the threshold inside its range', () => {
@@ -184,8 +204,8 @@ describe('FailingCases', () => {
     });
 
     it('offers the categories and the metrics that the run has', () => {
-      const categories = Array.from(root.querySelectorAll('select#category-filter option')).map((o) =>
-        o.textContent?.trim(),
+      const categories = Array.from(root.querySelectorAll('select#category-filter option')).map(
+        (o) => o.textContent?.trim(),
       );
       const metrics = Array.from(root.querySelectorAll('select#metric-filter option')).map((o) =>
         o.textContent?.trim(),
@@ -197,10 +217,16 @@ describe('FailingCases', () => {
 
     it('orders by case id or by category', () => {
       choose('select#sort', 'caseId');
-      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual(['G044', 'G046']);
+      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual([
+        'G044',
+        'G046',
+      ]);
 
       choose('select#sort', 'category');
-      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual(['G046', 'G044']);
+      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual([
+        'G046',
+        'G044',
+      ]);
     });
 
     it('opens a case with its reference answer, the expected and the retrieved documents and the abstention', () => {
@@ -209,7 +235,9 @@ describe('FailingCases', () => {
 
       const detail = root.querySelector('tr.case-detail') as HTMLElement;
       expect(detail.textContent).toContain('Respuesta de referencia de G044');
-      const expected = Array.from(detail.querySelectorAll('.expected li')).map((li) => li.textContent?.trim());
+      const expected = Array.from(detail.querySelectorAll('.expected li')).map((li) =>
+        li.textContent?.trim(),
+      );
       expect(expected.join(' ')).toContain('politica-devoluciones');
       expect(expected.join(' ')).toContain('encontrado');
       const retrieved = Array.from(detail.querySelectorAll('.retrieved li'));
@@ -249,7 +277,9 @@ describe('FailingCases', () => {
       (rows()[0].querySelector('button.toggle') as HTMLButtonElement).click();
       fixture.detectChanges();
 
-      expect(root.querySelector('tr.case-detail')?.textContent).toContain('El asistente se abstuvo');
+      expect(root.querySelector('tr.case-detail')?.textContent).toContain(
+        'El asistente se abstuvo',
+      );
     });
 
     it('links to the trace in a new tab without leaking the opener', () => {
@@ -290,7 +320,9 @@ describe('FailingCases', () => {
 
       expect(text()).toContain('viven en la traza de Langfuse');
       expect(text()).not.toContain('Respuesta del asistente:');
-      expect(root.querySelector('tr.case-detail')?.textContent).not.toContain('Fragmentos recuperados');
+      expect(root.querySelector('tr.case-detail')?.textContent).not.toContain(
+        'Fragmentos recuperados',
+      );
     });
 
     it('is inside a scrollable region with a name', () => {
@@ -316,14 +348,19 @@ describe('FailingCases', () => {
 
     it('lists the cases that did not find their documents within the chosen k', () => {
       expect(rows()).toHaveLength(0);
-      expect(root.querySelector('.status')?.textContent).toContain('Ningún caso falla con este criterio');
+      expect(root.querySelector('.status')?.textContent).toContain(
+        'Ningún caso falla con este criterio',
+      );
 
       choose('select#k-select', '3');
       expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual(['G001']);
       expect(rows()[0].textContent).toContain('no encontró ningún documento esperado');
 
       choose('select#k-select', '1');
-      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual(['G001', 'G002']);
+      expect(rows().map((row) => row.querySelector('th')?.textContent?.trim())).toEqual([
+        'G001',
+        'G002',
+      ]);
     });
   });
 

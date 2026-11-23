@@ -6,8 +6,7 @@ import { RetrievalConfig, StoredResult } from './eval-history';
  * chooses; in retrieval, when it has expected documents and none was found within the chosen k.
  */
 export type FailureCriterion =
-  | { kind: 'QUALITY'; threshold: number }
-  | { kind: 'RETRIEVAL'; k: number };
+  { kind: 'QUALITY'; threshold: number } | { kind: 'RETRIEVAL'; k: number };
 
 export interface FailureFilters {
   category: string | null;

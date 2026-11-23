@@ -258,28 +258,28 @@ con una métrica vacía y un caso sin respuesta (V9–V14).
 
 ### Pruebas de US2 (frontend, primero)
 
-- [ ] T037 [P] [US2] `FE/case-failures.spec.ts`: calidad — un caso falla si **alguna** métrica **con valor** es `< umbral`
+- [X] T037 [P] [US2] `FE/case-failures.spec.ts`: calidad — un caso falla si **alguna** métrica **con valor** es `< umbral`
   (estricto; un valor igual al umbral no falla); una métrica `null` no cuenta y un caso con todas las métricas `null` no falla;
   `failingMetrics` devuelve cuáles bajaron; umbral 0 → ningún caso falla, umbral 1 → fallan todos los que tienen algún valor
   `< 1`; recuperación — falla si `expectedDocuments` no está vacío y `hit_at_<k>` vale 0, un caso sin documentos esperados o con
   `hit_at_<k>` nulo no falla; `maxK(run)` toma el mayor de `retrieval_config.ks`; `selectFailures` filtra por categoría y por
   métrica y ordena (peor valor primero por defecto, por `case_id`, por categoría) con desempate estable; el recuento «F fallan de
   M medidos» usa `casesMeasured`
-- [ ] T038 [US2] Implementar `FE/case-failures.ts` (puro) hasta que T037 pase
-- [ ] T039 [P] [US2] Ampliar `FE/eval-api.client.spec.ts` y `FE/eval-store.spec.ts` (detalle): `getRun(runId)` traduce los campos,
+- [X] T038 [US2] Implementar `FE/case-failures.ts` (puro) hasta que T037 pase
+- [X] T039 [P] [US2] Ampliar `FE/eval-api.client.spec.ts` y `FE/eval-store.spec.ts` (detalle): `getRun(runId)` traduce los campos,
   conserva los `null` de `scores` y de parámetros desconocidos; elegir una ejecución la carga **una vez** y la cachea por `runId`
   (elegirla otra vez no pide nada: es inmutable); el criterio de fallo inicia en `DEFAULT_THRESHOLD` (0,5) en calidad y en el mayor
   k en recuperación y cambiarlo **no hace peticiones**; un 404 deja `runNotFound` y limpia la selección; un error de red del
   detalle deja `detailError` sin tocar `listing`
-- [ ] T040 [US2] Ampliar `FE/eval-api.client.ts` (`getRun`) y `FE/eval-store.ts` (`selectedRunId`, `detail` en caché,
+- [X] T040 [US2] Ampliar `FE/eval-api.client.ts` (`getRun`) y `FE/eval-store.ts` (`selectedRunId`, `detail` en caché,
   `failureCriterion`, filtros y orden de fallos, `selectRun`, `clearSelection`) hasta que T039 pase
-- [ ] T041 [P] [US2] `FE/run-detail/run-detail.spec.ts` y `FE/run-detail/run-detail.ts`/`.html`/`.scss`: lista de definición «Con
+- [X] T041 [P] [US2] `FE/run-detail/run-detail.spec.ts` y `FE/run-detail/run-detail.ts`/`.html`/`.scss`: lista de definición «Con
   qué se midió» (cada prompt con su versión numérica y «fijada por petición» o «producción»; modelo del asistente o
   «desconocido»; embeddings; juez, sus ajustes y la biblioteca solo en calidad; recuperación con top-k, umbral, presupuesto y, en
   recuperación, profundidad y k; origen; commit o «desconocido»; huella del dataset abreviada; casos medidos, excluidos y sin
   puntuar por métrica = `cases − n`) y tabla de resumen (`Conjunto completo` y cada categoría, una columna por métrica con media
   a 4 decimales y `n`; **«sin valor»** donde `mean` es nulo, nunca 0). **Primero** el spec
-- [ ] T042 [P] [US2] `FE/failing-cases/failing-cases.spec.ts`: control de umbral en calidad (0–1, paso 0,05, inicial 0,5; un valor
+- [X] T042 [P] [US2] `FE/failing-cases/failing-cases.spec.ts`: control de umbral en calidad (0–1, paso 0,05, inicial 0,5; un valor
   fuera de rango se limita) y selector de k en recuperación; texto «F casos fallan de M medidos» o «Ningún caso falla con este
   criterio»; filtros por categoría y métrica y orden; cada fila muestra id, categoría, pregunta y el valor de cada métrica con
   **icono y texto** («por debajo del umbral») en las que bajan, y «sin valor» en las nulas; abrir una fila muestra la respuesta de
@@ -287,9 +287,9 @@ con una métrica vacía y un caso sin respuesta (V9–V14).
   con `traceUrl` el enlace «Ver traza en Langfuse» abre en pestaña nueva con `rel="noopener noreferrer"`, sin `traceUrl` muestra
   el `traceId` con botón «Copiar»; **no existe ningún elemento con texto de respuesta o de fragmentos** y se explica que viven en
   Langfuse; mover el umbral actualiza la lista sin peticiones
-- [ ] T043 [US2] Componente `FE/failing-cases/failing-cases.ts`, `.html` y `.scss` (usa `case-failures.ts`; tabla en contenedor
+- [X] T043 [US2] Componente `FE/failing-cases/failing-cases.ts`, `.html` y `.scss` (usa `case-failures.ts`; tabla en contenedor
   desplazable con nombre accesible; fila expandible accesible por teclado con `aria-expanded`) hasta que T042 pase
-- [ ] T044 [US2] Integrar en `FE/admin-eval.ts`/`.html`: elegir una ejecución desde la lista o con `Enter` en un punto de la
+- [X] T044 [US2] Integrar en `FE/admin-eval.ts`/`.html`: elegir una ejecución desde la lista o con `Enter` en un punto de la
   gráfica la selecciona, escribe `?ejecucion=<runId>` en la dirección (ignorar un id con formato inválido) y muestra `run-detail` y
   `failing-cases` debajo; un 404 muestra «La ejecución no existe (¿enlace antiguo?)» y limpia la dirección. **Primero** ampliar
   `FE/admin-eval.spec.ts` (selección desde lista y gráfica, `?ejecucion=` válido, inválido e inexistente)
