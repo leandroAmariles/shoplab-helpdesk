@@ -356,6 +356,11 @@ Códigos de salida: `0` medida y, si se pidió, guardada; `1` medición inválid
 
 ## Leer el historial (LAB-31)
 
+**La forma principal de leer el historial es la pantalla Evaluación (`/admin-eval`, LAB-32)**: la gráfica de cada métrica
+ejecución a ejecución, el detalle de una ejecución con sus casos que fallan y la comparación de dos. Cómo se usa está en
+[`docs/admin-eval.md`](../docs/admin-eval.md). Las consultas SQL de abajo son la forma **secundaria**: sirven para mirar a mano
+lo que la pantalla no ofrece, y la pantalla usa la misma regla que ellas (una prueba del backend lo comprueba).
+
 Las consultas están en [`queries/`](queries/): una por pregunta, solo lectura, cada una con su cabecera (qué responde, qué
 parámetros lleva y cómo ejecutarla). Se ejecutan con `psql` desde cualquier conexión de **quien consulta** (la herramienta no
 tiene ninguna), pasando los parámetros con `-v`:
