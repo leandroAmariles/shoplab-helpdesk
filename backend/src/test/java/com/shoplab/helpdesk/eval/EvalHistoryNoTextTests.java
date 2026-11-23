@@ -63,6 +63,17 @@ class EvalHistoryNoTextTests {
             "$.results[].scores", "$.results[].scores.*", "$.results[].retrieved_documents",
             "$.results[].abstained", "$.results[].trace_id", "$.results[].trace_url");
 
+    private static final Set<String> COMPARE_FIELDS = Set.of("$.base", "$.base.run_id", "$.base.kind",
+            "$.base.started_at", "$.base.origin", "$.target", "$.target.run_id", "$.target.kind",
+            "$.target.started_at", "$.target.origin", "$.metric", "$.drop", "$.metrics", "$.metrics[].metric",
+            "$.metrics[].base", "$.metrics[].base.mean", "$.metrics[].base.n", "$.metrics[].target",
+            "$.metrics[].target.mean", "$.metrics[].target.n", "$.metrics[].delta", "$.parameters",
+            "$.parameters[].field", "$.parameters[].base", "$.parameters[].target",
+            "$.parameters[].affects_comparability", "$.warnings", "$.counts", "$.counts.worse", "$.counts.better",
+            "$.counts.same", "$.counts.no_value", "$.counts.not_comparable", "$.counts.only_base",
+            "$.counts.only_target", "$.cases", "$.cases[].case_id", "$.cases[].category", "$.cases[].question",
+            "$.cases[].status", "$.cases[].base_value", "$.cases[].target_value", "$.cases[].delta");
+
     @LocalServerPort
     private int port;
 
@@ -75,6 +86,7 @@ class EvalHistoryNoTextTests {
     @BeforeEach
     void seed() {
         store.save(hashed(EvalRunFixtures.quality("hnt-q", 8).build())).block();
+        store.save(hashed(EvalRunFixtures.quality("hnt-q2", 8).build())).block();
         store.save(hashed(EvalRunFixtures.retrieval("hnt-r", 8).build())).block();
     }
 
@@ -137,6 +149,16 @@ class EvalHistoryNoTextTests {
             assertThat(response.statusCode()).as(runId).isEqualTo(200);
             assertThat(unexpected(fieldsOf(response.body()), DETAIL_FIELDS)).as(runId).isEmpty();
         }
+    }
+
+    @Test
+    void theFieldsOfAComparisonAreExactlyTheOnesOfTheContractAndItNeedsNoToken() throws Exception {
+        HttpResponse<String> response = get(
+                "/api/eval/history/compare?base=hnt-q&target=hnt-q2&metric=faithfulness");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(unexpected(fieldsOf(response.body()), COMPARE_FIELDS)).isEmpty();
+        assertThat(response.body().toLowerCase()).doesNotContain("token");
     }
 
     @Test

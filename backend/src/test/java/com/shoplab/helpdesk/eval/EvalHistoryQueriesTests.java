@@ -3,19 +3,13 @@ package com.shoplab.helpdesk.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.shoplab.helpdesk.eval.application.port.out.EvalRunStorePort;
-import com.shoplab.helpdesk.eval.domain.model.EvalCase;
-import com.shoplab.helpdesk.eval.domain.model.PromptVersion;
-import com.shoplab.helpdesk.eval.domain.model.enums.PromptSource;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +27,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class EvalHistoryQueriesTests {
 
     private static final Path QUERIES = Path.of("../eval/queries");
-    private static final Pattern VARIABLE = Pattern.compile(":'(\\w+)'");
 
     @Autowired
     private EvalRunStorePort store;
@@ -43,49 +36,16 @@ class EvalHistoryQueriesTests {
 
     @BeforeEach
     void seedThreeRuns() {
-        // A: quality. B: quality later, with another version of a prompt, another model and the case G401 rewritten.
-        EvalRunFixtures.Builder a = EvalRunFixtures.quality("hist-a", 4);
-        EvalRunFixtures.Builder b = EvalRunFixtures.quality("hist-b", 4);
-        b.startedAt = Instant.parse("2026-11-21T15:00:00Z");
-        b.finishedAt = Instant.parse("2026-11-21T15:09:00Z");
-        b.assistantModel = "qwen2.5:3b";
-        b.prompts.set(0, new PromptVersion("chat-system", 4, PromptSource.LANGFUSE, false));
-        b.mapCase(0, c -> new EvalCase(c.caseId(), null, c.category(), c.question() + " (reescrita)",
-                c.referenceAnswer(), c.expectedDocuments()));
-        b.mapResult(0, r -> EvalRunFixtures.qualityResult(r.evalCase(), 0.9, 0.9, 0.8));
-        b.mapResult(1, r -> EvalRunFixtures.qualityResult(r.evalCase(), 0.2, 0.4, 0.3));
-        // C: retrieval, the latest.
-        EvalRunFixtures.Builder c = EvalRunFixtures.retrieval("hist-c", 4);
-        c.startedAt = Instant.parse("2026-11-21T16:00:00Z");
-        c.finishedAt = Instant.parse("2026-11-21T16:01:00Z");
-        for (EvalRunFixtures.Builder run : List.of(a, b, c)) {
-            store.save(EvalRunFixtures.hashed(run.build())).block();
-        }
+        HistoryQueryFixtures.seedThreeRuns(store);
     }
 
     @AfterEach
     void removeTestRows() {
-        jdbc.update("DELETE FROM eval.eval_result WHERE run_ref IN (SELECT id FROM eval.eval_run "
-                + "WHERE run_id LIKE 'hist-%')");
-        jdbc.update("DELETE FROM eval.eval_run WHERE run_id LIKE 'hist-%'");
-        jdbc.update("DELETE FROM eval.eval_case WHERE case_id ~ '^G4[0-9]{2}$'");
+        HistoryQueryFixtures.removeTestRows(jdbc);
     }
 
     private List<Map<String, Object>> run(String file, String... variables) throws IOException {
-        String sql = Files.readString(QUERIES.resolve(file));
-        Map<String, String> values = new java.util.HashMap<>();
-        for (int index = 0; index < variables.length; index += 2) {
-            values.put(variables[index], variables[index + 1]);
-        }
-        Matcher matcher = VARIABLE.matcher(sql);
-        StringBuilder replaced = new StringBuilder();
-        while (matcher.find()) {
-            String value = values.get(matcher.group(1));
-            assertThat(value).as("variable %s of %s", matcher.group(1), file).isNotNull();
-            matcher.appendReplacement(replaced, Matcher.quoteReplacement("'" + value.replace("'", "''") + "'"));
-        }
-        matcher.appendTail(replaced);
-        return jdbc.queryForList(replaced.toString());
+        return HistoryQueryFixtures.run(jdbc, file, variables);
     }
 
     private static List<Map<String, Object>> mine(List<Map<String, Object>> rows) {

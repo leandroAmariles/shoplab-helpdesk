@@ -1,16 +1,23 @@
 package com.shoplab.helpdesk.eval.infrastructure.in.rest.util.mapper;
 
 import com.shoplab.helpdesk.eval.application.usecase.TraceUrlBuilder;
+import com.shoplab.helpdesk.eval.domain.model.CaseComparison;
+import com.shoplab.helpdesk.eval.domain.model.ComparisonCounts;
 import com.shoplab.helpdesk.eval.domain.model.EvaluatorInfo;
 import com.shoplab.helpdesk.eval.domain.model.JudgeInfo;
+import com.shoplab.helpdesk.eval.domain.model.MetricComparison;
 import com.shoplab.helpdesk.eval.domain.model.MetricStat;
+import com.shoplab.helpdesk.eval.domain.model.ParameterDifference;
 import com.shoplab.helpdesk.eval.domain.model.PromptVersion;
 import com.shoplab.helpdesk.eval.domain.model.RetrievalConfig;
+import com.shoplab.helpdesk.eval.domain.model.RunComparison;
+import com.shoplab.helpdesk.eval.domain.model.RunHeader;
 import com.shoplab.helpdesk.eval.domain.model.RunListItem;
 import com.shoplab.helpdesk.eval.domain.model.RunListing;
 import com.shoplab.helpdesk.eval.domain.model.ScopeSummary;
 import com.shoplab.helpdesk.eval.domain.model.StoredResult;
 import com.shoplab.helpdesk.eval.domain.model.StoredRun;
+import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunComparisonResponse;
 import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunDetailResponse;
 import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunListResponse;
 import java.util.LinkedHashMap;
@@ -38,6 +45,43 @@ public final class EvalHistoryMapper {
                 retrieval(run.retrievalConfig()));
         return new RunDetailResponse(header, run.summary().stream().map(EvalHistoryMapper::scope).toList(),
                 run.results().stream().map(result -> result(result, trace)).toList());
+    }
+
+    public static RunComparisonResponse toResponse(RunComparison comparison) {
+        return new RunComparisonResponse(header(comparison.base()), header(comparison.target()),
+                comparison.metric(), comparison.drop().doubleValue(),
+                comparison.metrics().stream().map(EvalHistoryMapper::metric).toList(),
+                comparison.parameters().stream().map(EvalHistoryMapper::parameter).toList(), comparison.warnings(),
+                counts(comparison.counts()), comparison.cases().stream().map(EvalHistoryMapper::comparedCase).toList());
+    }
+
+    private static RunComparisonResponse.RunPart header(RunHeader header) {
+        return new RunComparisonResponse.RunPart(header.runId(), header.kind().name(), header.startedAt(),
+                header.origin());
+    }
+
+    private static RunComparisonResponse.MetricPart metric(MetricComparison metric) {
+        return new RunComparisonResponse.MetricPart(metric.metric(), stat(metric.base()), stat(metric.target()),
+                metric.delta());
+    }
+
+    private static RunComparisonResponse.StatPart stat(MetricStat stat) {
+        return new RunComparisonResponse.StatPart(stat.mean(), stat.n());
+    }
+
+    private static RunComparisonResponse.ParameterPart parameter(ParameterDifference difference) {
+        return new RunComparisonResponse.ParameterPart(difference.field(), difference.base(), difference.target(),
+                difference.affectsComparability());
+    }
+
+    private static RunComparisonResponse.CountsPart counts(ComparisonCounts counts) {
+        return new RunComparisonResponse.CountsPart(counts.worse(), counts.better(), counts.same(),
+                counts.noValue(), counts.notComparable(), counts.onlyBase(), counts.onlyTarget());
+    }
+
+    private static RunComparisonResponse.CasePart comparedCase(CaseComparison comparison) {
+        return new RunComparisonResponse.CasePart(comparison.caseId(), comparison.category(), comparison.question(),
+                comparison.status().name(), comparison.baseValue(), comparison.targetValue(), comparison.delta());
     }
 
     private static RunListResponse.RunPart toPart(RunListItem item) {

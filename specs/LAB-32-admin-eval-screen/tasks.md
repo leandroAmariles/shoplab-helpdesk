@@ -309,7 +309,7 @@ aparece como no comparable (V15–V17).
 
 ### Pruebas de US3 (primero)
 
-- [ ] T045 [P] [US3] `TEST/eval/domain/RunComparatorTests.java` (JUnit puro, sin Spring ni base): tabla de casos con `drop`
+- [X] T045 [P] [US3] `TEST/eval/domain/RunComparatorTests.java` (JUnit puro, sin Spring ni base): tabla de casos con `drop`
   estricto en `BigDecimal` — `0.80 → 0.75` con `drop = 0.05` es `SAME` (**no** `WORSE`: en `double` daría 0,05000000000000004),
   `0.80 → 0.7499` es `WORSE`, `0.75 → 0.80` es `SAME` y `0.70 → 0.80` es `BETTER`; valor nulo en cualquiera de las dos →
   `NO_VALUE` y sin `delta`; misma `case_id` con otra `revision` → `NOT_COMPARABLE` y sin valores; `case_id` solo en una →
@@ -320,32 +320,32 @@ aparece como no comparable (V15–V17).
   `commit_sha`, `origin`— con `affects_comparability = true` solo para juez, evaluador, `assistant_model`, `embedding_model`,
   `retrieval_config` y `dataset_hash`; `warnings` = los campos con `affects_comparability`; un `null` frente a un valor es una
   diferencia («desconocido»); `metrics` lista la unión de las métricas con `delta` nulo si alguna media es nula
-- [ ] T046 [P] [US3] `TEST/eval/application/usecase/CompareEvalRunsUseCaseTests.java` (Mockito): `base = target` → 422 con
+- [X] T046 [P] [US3] `TEST/eval/application/usecase/CompareEvalRunsUseCaseTests.java` (Mockito): `base = target` → 422 con
   `detail`; `metric` que ninguna de las dos tiene → 422 con `detail` (no una comparación vacía); tipos distintos →
   `EvalRunsNotComparableException`; una ejecución ausente → `EvalRunNotFoundException`; `drop` por defecto 0,05; la validación de
   parámetros ocurre antes de leer ninguna ejecución; no consulta token
-- [ ] T047 [P] [US3] `TEST/eval/EvalHistoryEquivalenceTests.java` (`@PostgresTest`, mismas fixtures `hist-a`/`hist-b`/`hist-c` que
+- [X] T047 [P] [US3] `TEST/eval/EvalHistoryEquivalenceTests.java` (`@PostgresTest`, mismas fixtures `hist-a`/`hist-b`/`hist-c` que
   `EvalHistoryQueriesTests`; reutilizar su método `run` o extraerlo a un apoyo compartido en `TEST/eval/`): para `drop` 0,05, 0,5
   y 0 la lista de `WORSE` de la comparación es **idéntica** a las filas de `eval/queries/07-regressions.sql` (mismos
   `case_id`, mismos valores); los valores por caso coinciden con `05-compare-runs.sql`; el caso reescrito aparece como
   `NOT_COMPARABLE` donde esa consulta lo marca «no comparable»; las medias de `metrics` coinciden con `03-run-summary.sql`; el
   conjunto de `parameters` con `affects_comparability` coincide con `06-compare-parameters.sql` (FR-019, SC-005)
-- [ ] T048 [P] [US3] Ampliar `TEST/eval/infrastructure/in/rest/EvalHistoryControllerTests.java` (comparación): `GET
+- [X] T048 [P] [US3] Ampliar `TEST/eval/infrastructure/in/rest/EvalHistoryControllerTests.java` (comparación): `GET
   /api/eval/history/compare` 200 con los campos exactos del contrato; `base` o `target` inexistentes → 404; `metric` o `drop`
   inválidos y `base = target` → 422 `SLHD_EVAL_00002` con `detail`; tipos distintos → 422 `SLHD_EVAL_00006`; 503; sin token
 
 ### Implementación de US3 (backend)
 
-- [ ] T049 [US3] Modelos en `BASE/eval/domain/model/`: `CaseComparison`, `ParameterDifference` (`field`, `base`, `target`,
+- [X] T049 [US3] Modelos en `BASE/eval/domain/model/`: `CaseComparison`, `ParameterDifference` (`field`, `base`, `target`,
   `affectsComparability`), `MetricComparison`, `ComparisonCounts`, `RunHeader` y `RunComparison`; enum
   `BASE/eval/domain/model/enums/CaseComparisonStatus.java` (`WORSE`, `BETTER`, `SAME`, `NO_VALUE`, `NOT_COMPARABLE`, `ONLY_BASE`,
   `ONLY_TARGET`) con su `wire()` en `snake_case` si el contrato lo pide (el JSON usa el nombre en mayúsculas del enum)
-- [ ] T050 [US3] `BASE/eval/domain/RunComparator.java` (clase pura, sin Spring, aritmética `BigDecimal` con la comparación estricta
+- [X] T050 [US3] `BASE/eval/domain/RunComparator.java` (clase pura, sin Spring, aritmética `BigDecimal` con la comparación estricta
   de `07-regressions.sql`, `compareTo`, nunca `double`) hasta que T045 pase
-- [ ] T051 [US3] `BASE/eval/application/port/in/CompareEvalRunsServicePort.java` y
+- [X] T051 [US3] `BASE/eval/application/port/in/CompareEvalRunsServicePort.java` y
   `BASE/eval/application/usecase/CompareEvalRunsUseCase.java` (`@Service`: valida, lee las dos ejecuciones con
   `EvalHistoryPort.find`, comprueba el tipo y delega en `RunComparator`) hasta que T046 pase; T047 y T048 pasan con T052
-- [ ] T052 [US3] DTOs (`RunComparisonResponse`, `MetricComparisonResponse`, `ParameterDifferenceResponse`,
+- [X] T052 [US3] DTOs (`RunComparisonResponse`, `MetricComparisonResponse`, `ParameterDifferenceResponse`,
   `CaseComparisonResponse`, `ComparisonCountsResponse`), `EvalHistoryMapper.toResponse(RunComparison)` y `GET /compare` en
   `EvalHistoryController` (`base`, `target`, `metric`, `drop` como `@RequestParam`), hasta que T047 y T048 pasen
 

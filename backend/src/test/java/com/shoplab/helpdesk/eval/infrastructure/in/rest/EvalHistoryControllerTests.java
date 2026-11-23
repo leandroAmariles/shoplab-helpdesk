@@ -5,29 +5,40 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.shoplab.helpdesk.eval.application.port.in.CompareEvalRunsCommand;
+import com.shoplab.helpdesk.eval.application.port.in.CompareEvalRunsServicePort;
 import com.shoplab.helpdesk.eval.application.port.in.GetEvalRunServicePort;
 import com.shoplab.helpdesk.eval.application.port.in.ListEvalRunsCommand;
 import com.shoplab.helpdesk.eval.application.port.in.ListEvalRunsServicePort;
 import com.shoplab.helpdesk.eval.application.usecase.TraceUrlBuilder;
 import com.shoplab.helpdesk.eval.domain.exception.EvalRunInvalidException;
 import com.shoplab.helpdesk.eval.domain.exception.EvalRunNotFoundException;
+import com.shoplab.helpdesk.eval.domain.exception.EvalRunsNotComparableException;
 import com.shoplab.helpdesk.eval.domain.exception.EvalStoreUnavailableException;
+import com.shoplab.helpdesk.eval.domain.model.CaseComparison;
+import com.shoplab.helpdesk.eval.domain.model.ComparisonCounts;
 import com.shoplab.helpdesk.eval.domain.model.EvaluatorInfo;
 import com.shoplab.helpdesk.eval.domain.model.JudgeInfo;
+import com.shoplab.helpdesk.eval.domain.model.MetricComparison;
 import com.shoplab.helpdesk.eval.domain.model.MetricStat;
 import com.shoplab.helpdesk.eval.domain.model.OriginCount;
+import com.shoplab.helpdesk.eval.domain.model.ParameterDifference;
 import com.shoplab.helpdesk.eval.domain.model.PromptVersion;
 import com.shoplab.helpdesk.eval.domain.model.RetrievalConfig;
+import com.shoplab.helpdesk.eval.domain.model.RunComparison;
+import com.shoplab.helpdesk.eval.domain.model.RunHeader;
 import com.shoplab.helpdesk.eval.domain.model.RunListItem;
 import com.shoplab.helpdesk.eval.domain.model.RunListing;
 import com.shoplab.helpdesk.eval.domain.model.ScopeSummary;
 import com.shoplab.helpdesk.eval.domain.model.StoredResult;
 import com.shoplab.helpdesk.eval.domain.model.StoredRun;
+import com.shoplab.helpdesk.eval.domain.model.enums.CaseComparisonStatus;
 import com.shoplab.helpdesk.eval.domain.model.enums.CaseKind;
 import com.shoplab.helpdesk.eval.domain.model.enums.PromptSource;
 import com.shoplab.helpdesk.eval.domain.model.enums.RunKind;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.handler.GlobalExceptionHandler;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,6 +68,9 @@ class EvalHistoryControllerTests {
 
     @MockitoBean
     private GetEvalRunServicePort get;
+
+    @MockitoBean
+    private CompareEvalRunsServicePort compare;
 
     @MockitoBean
     private TraceUrlBuilder trace;
@@ -323,6 +337,138 @@ class EvalHistoryControllerTests {
         when(trace.urlFor(any())).thenReturn(Optional.empty());
 
         webTestClient.get().uri("/api/eval/history/runs/t031-1").exchange()
+                .expectBody(String.class).value(body -> assertThat(body.toLowerCase())
+                        .doesNotContain("token", "\"answer\"", "\"response\"", "\"fragment", "\"chunk"));
+    }
+
+    private static RunComparison comparison() {
+        Instant at = Instant.parse("2026-11-21T14:02:11Z");
+        return new RunComparison(new RunHeader("t031-1", RunKind.QUALITY, at, "dev"),
+                new RunHeader("t031-2", RunKind.QUALITY, at.plusSeconds(86400), "dev"), "faithfulness",
+                new BigDecimal("0.05"),
+                List.of(new MetricComparison("faithfulness", new MetricStat(0.7134, 96), new MetricStat(0.68, 96),
+                        -0.0334), new MetricComparison("context_precision", new MetricStat(null, 0),
+                        new MetricStat(0.5, 10), null)),
+                List.of(new ParameterDifference("prompts.chat-system.version", "3", "4", false),
+                        new ParameterDifference("judge.temperature", "0.0", "0.2", true)),
+                List.of("judge.temperature"), new ComparisonCounts(1, 0, 0, 0, 1, 0, 0),
+                List.of(new CaseComparison("G044", "returns", "¿Cuántos días tengo para devolver un producto?",
+                        CaseComparisonStatus.WORSE, 0.8, 0.2, -0.6),
+                        new CaseComparison("G050", "shipping", "Otra pregunta", CaseComparisonStatus.NOT_COMPARABLE,
+                                null, null, null)));
+    }
+
+    @Test
+    void twoRunsAreComparedWithoutAnyTokenAndWithTheContractFields() {
+        when(compare.compare(any())).thenReturn(Mono.just(comparison()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=t031-1&target=t031-2&metric=faithfulness")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.base.run_id").isEqualTo("t031-1")
+                .jsonPath("$.base.kind").isEqualTo("QUALITY")
+                .jsonPath("$.base.started_at").isEqualTo("2026-11-21T14:02:11Z")
+                .jsonPath("$.base.origin").isEqualTo("dev")
+                .jsonPath("$.target.run_id").isEqualTo("t031-2")
+                .jsonPath("$.metric").isEqualTo("faithfulness")
+                .jsonPath("$.drop").isEqualTo(0.05)
+                .jsonPath("$.metrics[0].metric").isEqualTo("faithfulness")
+                .jsonPath("$.metrics[0].base.mean").isEqualTo(0.7134)
+                .jsonPath("$.metrics[0].base.n").isEqualTo(96)
+                .jsonPath("$.metrics[0].target.mean").isEqualTo(0.68)
+                .jsonPath("$.metrics[0].delta").isEqualTo(-0.0334)
+                .jsonPath("$.metrics[1].base.mean").value(value -> assertThat(value).isNull())
+                .jsonPath("$.metrics[1].base.n").isEqualTo(0)
+                .jsonPath("$.metrics[1].delta").value(value -> assertThat(value).isNull())
+                .jsonPath("$.parameters[0].field").isEqualTo("prompts.chat-system.version")
+                .jsonPath("$.parameters[0].affects_comparability").isEqualTo(false)
+                .jsonPath("$.parameters[1].affects_comparability").isEqualTo(true)
+                .jsonPath("$.warnings[0]").isEqualTo("judge.temperature")
+                .jsonPath("$.counts.worse").isEqualTo(1)
+                .jsonPath("$.counts.not_comparable").isEqualTo(1)
+                .jsonPath("$.counts.no_value").isEqualTo(0)
+                .jsonPath("$.counts.only_base").isEqualTo(0)
+                .jsonPath("$.counts.only_target").isEqualTo(0)
+                .jsonPath("$.cases[0].case_id").isEqualTo("G044")
+                .jsonPath("$.cases[0].status").isEqualTo("WORSE")
+                .jsonPath("$.cases[0].base_value").isEqualTo(0.8)
+                .jsonPath("$.cases[0].target_value").isEqualTo(0.2)
+                .jsonPath("$.cases[0].delta").isEqualTo(-0.6);
+    }
+
+    @Test
+    void aCaseThatCannotBeComparedClaimsNoValues() {
+        when(compare.compare(any())).thenReturn(Mono.just(comparison()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=t031-1&target=t031-2&metric=faithfulness")
+                .exchange()
+                .expectBody()
+                .jsonPath("$.cases[1].status").isEqualTo("NOT_COMPARABLE")
+                .jsonPath("$.cases[1].base_value").doesNotExist()
+                .jsonPath("$.cases[1].target_value").doesNotExist()
+                .jsonPath("$.cases[1].delta").doesNotExist();
+    }
+
+    @Test
+    void theParametersOfTheComparisonReachTheUseCaseAsTheyCame() {
+        when(compare.compare(any())).thenReturn(Mono.just(comparison()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=t031-1&target=t031-2&metric=faithfulness&drop=0.04")
+                .exchange().expectStatus().isOk();
+
+        ArgumentCaptor<CompareEvalRunsCommand> command = ArgumentCaptor.forClass(CompareEvalRunsCommand.class);
+        verify(compare).compare(command.capture());
+        assertThat(command.getValue()).isEqualTo(new CompareEvalRunsCommand("t031-1", "t031-2", "faithfulness",
+                "0.04"));
+    }
+
+    @Test
+    void aRunThatDoesNotExistInTheComparisonIsNotFound() {
+        when(compare.compare(any())).thenReturn(Mono.error(new EvalRunNotFoundException()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=nope&target=t031-2&metric=faithfulness").exchange()
+                .expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_EVAL_00004");
+    }
+
+    @Test
+    void invalidParametersOfTheComparisonAreAnUnprocessableRunWithTheName() {
+        when(compare.compare(any())).thenReturn(Mono.error(new EvalRunInvalidException("drop: must be a number")));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=a&target=b&metric=faithfulness&drop=x").exchange()
+                .expectStatus().isEqualTo(422)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("SLHD_EVAL_00002")
+                .jsonPath("$.detail").isEqualTo("drop: must be a number");
+    }
+
+    @Test
+    void runsOfDifferentKindsAreAnUnprocessableComparison() {
+        when(compare.compare(any())).thenReturn(Mono.error(new EvalRunsNotComparableException()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=a&target=b&metric=faithfulness").exchange()
+                .expectStatus().isEqualTo(422)
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_EVAL_00006");
+    }
+
+    @Test
+    void aComparisonWhoseDatabaseFailsIsServiceUnavailableWithoutItsDetails() {
+        when(compare.compare(any())).thenReturn(Mono.error(new EvalStoreUnavailableException(
+                new RuntimeException("secret database detail"))));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=a&target=b&metric=faithfulness").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody(String.class).value(text -> assertThat(text)
+                        .contains("SLHD_EVAL_00005").doesNotContain("secret database detail"));
+    }
+
+    @Test
+    void theBodyOfAComparisonNeverHasAToken() {
+        when(compare.compare(any())).thenReturn(Mono.just(comparison()));
+
+        webTestClient.get().uri("/api/eval/history/compare?base=t031-1&target=t031-2&metric=faithfulness")
+                .exchange()
                 .expectBody(String.class).value(body -> assertThat(body.toLowerCase())
                         .doesNotContain("token", "\"answer\"", "\"response\"", "\"fragment", "\"chunk"));
     }

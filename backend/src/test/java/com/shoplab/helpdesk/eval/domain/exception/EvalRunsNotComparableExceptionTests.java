@@ -15,7 +15,8 @@ class EvalRunsNotComparableExceptionTests {
 
         assertThat(exception.getResponseCode()).isEqualTo(ResponseCodeEnum.EVAL_RUNS_NOT_COMPARABLE);
         assertThat(ResponseCodeEnum.EVAL_RUNS_NOT_COMPARABLE.getCode()).isEqualTo("SLHD_EVAL_00006");
-        assertThat(ResponseCodeEnum.EVAL_RUNS_NOT_COMPARABLE.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(ResponseCodeEnum.EVAL_RUNS_NOT_COMPARABLE.getHttpStatus())
+                .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
     }
 
     @Test

@@ -1,9 +1,12 @@
 package com.shoplab.helpdesk.eval.infrastructure.in.rest;
 
+import com.shoplab.helpdesk.eval.application.port.in.CompareEvalRunsCommand;
+import com.shoplab.helpdesk.eval.application.port.in.CompareEvalRunsServicePort;
 import com.shoplab.helpdesk.eval.application.port.in.GetEvalRunServicePort;
 import com.shoplab.helpdesk.eval.application.port.in.ListEvalRunsCommand;
 import com.shoplab.helpdesk.eval.application.port.in.ListEvalRunsServicePort;
 import com.shoplab.helpdesk.eval.application.usecase.TraceUrlBuilder;
+import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunComparisonResponse;
 import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunDetailResponse;
 import com.shoplab.helpdesk.eval.infrastructure.in.rest.dto.RunListResponse;
 import com.shoplab.helpdesk.eval.infrastructure.in.rest.util.mapper.EvalHistoryMapper;
@@ -26,11 +29,14 @@ public class EvalHistoryController {
 
     private final ListEvalRunsServicePort list;
     private final GetEvalRunServicePort get;
+    private final CompareEvalRunsServicePort compare;
     private final TraceUrlBuilder trace;
 
-    public EvalHistoryController(ListEvalRunsServicePort list, GetEvalRunServicePort get, TraceUrlBuilder trace) {
+    public EvalHistoryController(ListEvalRunsServicePort list, GetEvalRunServicePort get,
+            CompareEvalRunsServicePort compare, TraceUrlBuilder trace) {
         this.list = list;
         this.get = get;
+        this.compare = compare;
         this.trace = trace;
     }
 
@@ -44,5 +50,14 @@ public class EvalHistoryController {
     @GetMapping("/runs/{runId}")
     public Mono<RunDetailResponse> get(@PathVariable("runId") String runId) {
         return get.get(runId).map(run -> EvalHistoryMapper.toResponse(run, trace));
+    }
+
+    @GetMapping("/compare")
+    public Mono<RunComparisonResponse> compare(@RequestParam(name = "base", required = false) String base,
+            @RequestParam(name = "target", required = false) String target,
+            @RequestParam(name = "metric", required = false) String metric,
+            @RequestParam(name = "drop", required = false) String drop) {
+        return compare.compare(new CompareEvalRunsCommand(base, target, metric, drop))
+                .map(EvalHistoryMapper::toResponse);
     }
 }
