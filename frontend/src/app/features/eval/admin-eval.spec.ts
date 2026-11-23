@@ -222,4 +222,121 @@ describe('AdminEval (chart)', () => {
     await settle();
     expect(root.querySelectorAll('svg.plot g.point')).toHaveLength(4);
   });
+
+  describe('states', () => {
+    function status(selector: string): HTMLElement | null {
+      return root.querySelector<HTMLElement>(selector);
+    }
+
+    it('says that it is loading the first time, and marks the screen as busy', async () => {
+      await open();
+      await settle();
+
+      const loading = status('.loading') as HTMLElement;
+      expect(loading.getAttribute('role')).toBe('status');
+      expect(loading.textContent).toContain('Cargando evaluaciones');
+      expect(status('section.admin-eval')?.getAttribute('aria-busy')).toBe('true');
+      expect(root.querySelector('svg.plot')).toBeNull();
+
+      listRequest().flush(listing());
+      await settle();
+
+      expect(status('.loading')).toBeNull();
+      expect(status('section.admin-eval')?.getAttribute('aria-busy')).toBe('false');
+    });
+
+    it('keeps what it shows while it reads again and disables the button meanwhile', async () => {
+      await open();
+      listRequest().flush(listing());
+      await settle();
+
+      button('button.refresh').click();
+      await settle();
+
+      expect(button('button.refresh').disabled).toBe(true);
+      expect(status('.loading')).toBeNull();
+      expect(root.querySelectorAll('svg.plot g.point').length).toBeGreaterThan(0);
+      listRequest().flush(listing());
+      await settle();
+      expect(button('button.refresh').disabled).toBe(false);
+    });
+
+    it('says that there are no runs yet and how to generate them, without an empty chart', async () => {
+      await open();
+      listRequest().flush(listing({ runs: [], total: 0, totalAllOrigins: 0 }));
+      await settle();
+
+      const empty = status('.empty') as HTMLElement;
+      expect(empty.getAttribute('role')).toBe('status');
+      expect(empty.textContent).toContain('Todavía no hay ejecuciones guardadas');
+      expect(empty.textContent).toContain('quality --save');
+      const link = empty.querySelector('a') as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toContain('eval/README.md');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(root.querySelector('svg.plot')).toBeNull();
+    });
+
+    it('says that the origin filter leaves no run and offers to remove it', async () => {
+      await open();
+      listRequest().flush(listing());
+      await settle();
+      const select = root.querySelector('select#origin-filter') as HTMLSelectElement;
+      select.value = 'local';
+      select.dispatchEvent(new Event('change'));
+      http
+        .expectOne(
+          (r) => r.url === `${EVAL_HISTORY_URL}/runs` && r.params.get('origin') === 'local',
+        )
+        .flush(listing({ runs: [], total: 0, totalAllOrigins: 3 }));
+      await settle();
+
+      const empty = status('.empty-filter') as HTMLElement;
+      expect(empty.getAttribute('role')).toBe('status');
+      expect(empty.textContent).toContain('Ninguna ejecución con este origen');
+      expect(status('.empty')).toBeNull();
+
+      button('.empty-filter button', 'Quitar filtro').click();
+      const again = listRequest();
+      expect(again.request.params.has('origin')).toBe(false);
+      again.flush(listing());
+      await settle();
+      expect(status('.empty-filter')).toBeNull();
+    });
+
+    it('says that the evaluation could not be read, with a retry, and never shows the detail of the server', async () => {
+      await open();
+      listRequest().flush(
+        { code: 'SLHD_EVAL_00005', detail: 'secret internal detail' },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
+      await settle();
+
+      const alert = status('.load-error') as HTMLElement;
+      expect(alert.getAttribute('role')).toBe('alert');
+      expect(alert.textContent).toContain('No se pudo cargar la evaluación');
+      expect(alert.textContent).not.toContain('SLHD_EVAL_00005');
+      expect(alert.textContent).not.toContain('secret internal detail');
+      expect(status('.empty')).toBeNull();
+
+      button('.load-error button', 'Reintentar').click();
+      listRequest().flush(listing());
+      await settle();
+      expect(status('.load-error')).toBeNull();
+      expect(root.querySelectorAll('svg.plot g.point').length).toBeGreaterThan(0);
+    });
+
+    it('keeps the chart and the list when reading again fails', async () => {
+      await open();
+      listRequest().flush(listing());
+      await settle();
+
+      button('button.refresh').click();
+      listRequest().flush(null, { status: 0, statusText: 'Network' });
+      await settle();
+
+      expect(status('.load-error')?.getAttribute('role')).toBe('alert');
+      expect(root.querySelectorAll('svg.plot g.point').length).toBeGreaterThan(0);
+      expect(root.querySelectorAll('app-run-list tbody tr')).toHaveLength(3);
+    });
+  });
 });

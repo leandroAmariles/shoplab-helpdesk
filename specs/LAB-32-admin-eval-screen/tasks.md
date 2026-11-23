@@ -384,28 +384,28 @@ comprobar los cuatro estados y el uso solo con teclado (V18–V21).
 
 ### Pruebas de US4 (primero)
 
-- [ ] T058 [P] [US4] Ampliar `FE/admin-eval.spec.ts` (estados): primera carga → «Cargando evaluaciones…» con `role="status"` y
+- [X] T058 [P] [US4] Ampliar `FE/admin-eval.spec.ts` (estados): primera carga → «Cargando evaluaciones…» con `role="status"` y
   `aria-busy`; recarga → lo mostrado se conserva y «Actualizar» se deshabilita; sin ejecuciones → «Todavía no hay ejecuciones
   guardadas» y cómo generarlas (`eval/` con `quality --save` y el token de guardado, con enlace a `eval/README.md`) sin gráfica
   vacía; filtro sin resultados → «Ninguna ejecución con este origen» y botón «Quitar filtro»; error de la lista → `role="alert"` «No se
   pudo cargar la evaluación» con «Reintentar» que **no vacía** lo mostrado; el mensaje **no** contiene el `detail` ni el código
   interno del servidor (se mapea por `code`); un error del detalle o de la comparación queda en su sección y la gráfica sigue
   utilizable
-- [ ] T059 [P] [US4] Ampliar `FE/metric-chart/metric-chart.spec.ts` (teclado): `Tab` llega a un punto, `←`/`→` mueven el foco entre
+- [X] T059 [P] [US4] Ampliar `FE/metric-chart/metric-chart.spec.ts` (teclado): `Tab` llega a un punto, `←`/`→` mueven el foco entre
   los puntos de la **misma serie** (sin salir por los extremos), `Enter` y `Space` emiten `runSelected`, `Escape` cierra el panel;
   el panel también aparece al tocar; `prefers-reduced-motion` no activa animaciones
-- [ ] T060 [P] [US4] `FE/a11y.spec.ts`: la pantalla completa renderizada con datos tiene un único `h1`, cada control con
+- [X] T060 [P] [US4] `FE/a11y.spec.ts`: la pantalla completa renderizada con datos tiene un único `h1`, cada control con
   etiqueta accesible, los iconos decorativos con `aria-hidden="true"`, las tablas anchas dentro de `role="region"` con nombre
   accesible y `tabindex="0"`, y los estados comunicados con texto además de color (los casos por debajo del umbral y la ejecución
   elegida llevan texto o icono con etiqueta)
 
 ### Implementación de US4
 
-- [ ] T061 [US4] Estados en `FE/admin-eval.html`/`.ts`/`.scss` (cargando, recargando, vacío, vacío por filtro, error con
+- [X] T061 [US4] Estados en `FE/admin-eval.html`/`.ts`/`.scss` (cargando, recargando, vacío, vacío por filtro, error con
   «Reintentar», ejecución inexistente) con los textos de [contracts/admin-eval-screen.md](contracts/admin-eval-screen.md), hasta
   que T058 pase; el mapeo del error usa `ApiError.code` de `frontend/src/app/core/api/api-error.ts`, no `detail`
-- [ ] T062 [US4] Teclado de la gráfica en `FE/metric-chart/metric-chart.ts` hasta que T059 pase
-- [ ] T063 [US4] Adaptación y accesibilidad en los `.scss` de la pantalla y de sus componentes: a ≤ 600 px los controles se apilan,
+- [X] T062 [US4] Teclado de la gráfica en `FE/metric-chart/metric-chart.ts` hasta que T059 pase
+- [X] T063 [US4] Adaptación y accesibilidad en los `.scss` de la pantalla y de sus componentes: a ≤ 600 px los controles se apilan,
   la gráfica reduce su altura, las tablas viven en contenedores desplazables y **la página no tiene scroll horizontal**; objetivos
   táctiles ≥ 44 × 44 px; foco visible con los tokens del tema; colores solo de tokens Material 3 (contraste ≥ 4,5:1);
   `@media (prefers-reduced-motion: reduce)` sin transiciones. Hasta que T060 pase

@@ -61,6 +61,38 @@
     </fieldset>
   </section>
 
+  @if (!store.loaded() && store.loading()) {
+    <p class="loading" role="status">Cargando evaluaciones…</p>
+  }
+
+  @if (store.loadError(); as message) {
+    <div class="load-error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+      <button mat-stroked-button type="button" (click)="store.reload()">Reintentar</button>
+    </div>
+  }
+
+  @if (store.isEmpty()) {
+    <div class="empty" role="status">
+      <h2>Todavía no hay ejecuciones guardadas</h2>
+      <p>
+        Las ejecuciones se guardan al medir el asistente con
+        <code>quality --save</code> (o <code>retrieval --save</code>) desde <code>eval/</code>, con
+        el token de guardado. Mira
+        <a [href]="readmeUrl" target="_blank" rel="noopener noreferrer">eval/README.md</a>
+        para ver cómo.
+      </p>
+    </div>
+  }
+
+  @if (store.isEmptyByFilter()) {
+    <div class="empty-filter" role="status">
+      <p>Ninguna ejecución con este origen.</p>
+      <button mat-stroked-button type="button" (click)="onOriginChange('')">Quitar filtro</button>
+    </div>
+  }
+
   @if (store.loaded()) {
     <p class="range-info">
       Mostrando {{ store.runs().length }} de {{ store.total() }}
@@ -91,7 +123,7 @@
       [runs]="store.runs()"
       [metrics]="store.selectedMetrics()"
       [selectedRunId]="store.selectedRunId()"
-      [referenceRunId]="store.referenceRunId()"
+      [referenceRunId]="store.shownReferenceId()"
       [availability]="store.compareAvailability()"
       (runSelected)="onRunSelected($event)"
       (referenceChosen)="store.setReference($event)"

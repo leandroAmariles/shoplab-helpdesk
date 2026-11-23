@@ -13,6 +13,9 @@ import { RunList } from './run-list/run-list';
 
 const KINDS: readonly RunKind[] = ['QUALITY', 'RETRIEVAL'];
 
+/** Where the way of generating the runs is explained (the screen only reads them). */
+const README_URL = 'https://github.com/leandroAmariles/shoplab-helpdesk/blob/main/eval/README.md';
+
 function isRunKind(value: string | null): value is RunKind {
   return value !== null && (KINDS as readonly string[]).includes(value);
 }
@@ -39,6 +42,7 @@ export class AdminEval {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  protected readonly readmeUrl = README_URL;
   protected readonly kinds = KINDS;
   protected readonly kindLabels = KIND_LABELS;
   protected readonly metricLabel = metricLabel;

@@ -86,3 +86,26 @@ button {
   background: var(--mat-sys-tertiary);
   color: var(--mat-sys-on-tertiary);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none;
+    animation: none;
+    scroll-behavior: auto;
+  }
+}
+
+.table-region:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 220px;
+  }
+}

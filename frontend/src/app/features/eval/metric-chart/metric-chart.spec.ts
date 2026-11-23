@@ -186,6 +186,101 @@ describe('MetricChart', () => {
     expect(chosen).toEqual(['r1', 'r3', 'r4']);
   });
 
+  describe('keyboard', () => {
+    function press(element: Element, key: string): void {
+      element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      fixture.detectChanges();
+    }
+
+    function pointsOf(metric: string): SVGGElement[] {
+      return Array.from(root.querySelectorAll<SVGGElement>(`g.point[data-series="${metric}"]`));
+    }
+
+    it('moves the focus to the next and the previous point of the same series with the arrows', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+      const points = pointsOf('faithfulness');
+      points[0].focus();
+
+      press(points[0], 'ArrowRight');
+      expect(document.activeElement).toBe(points[1]);
+      press(points[1], 'ArrowRight');
+      expect(document.activeElement).toBe(points[2]);
+      press(points[2], 'ArrowLeft');
+      expect(document.activeElement).toBe(points[1]);
+    });
+
+    it('jumps over a gap, where the run has no point to reach', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+      const points = pointsOf('faithfulness');
+
+      expect(points.map((point) => point.getAttribute('data-run'))).toEqual(['r1', 'r3', 'r4']);
+      points[0].focus();
+      press(points[0], 'ArrowRight');
+
+      expect(document.activeElement?.getAttribute('data-run')).toBe('r3');
+    });
+
+    it('stays on the first and the last point instead of leaving the series', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+      const points = pointsOf('faithfulness');
+
+      points[0].focus();
+      press(points[0], 'ArrowLeft');
+      expect(document.activeElement).toBe(points[0]);
+
+      points[2].focus();
+      press(points[2], 'ArrowRight');
+      expect(document.activeElement).toBe(points[2]);
+    });
+
+    it('does not move the focus to a point of another series', () => {
+      render(buildSeries(RUNS, ['faithfulness', 'answer_relevancy']));
+      const points = pointsOf('faithfulness');
+      points[2].focus();
+
+      press(points[2], 'ArrowRight');
+
+      expect(document.activeElement).toBe(points[2]);
+      press(points[2], 'ArrowLeft');
+      expect(document.activeElement?.getAttribute('data-series')).toBe('faithfulness');
+    });
+
+    it('opens the run with Enter and Space and does not scroll the page with Space', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+      const chosen: string[] = [];
+      fixture.componentInstance.runSelected.subscribe((id) => chosen.push(id));
+      const point = pointsOf('faithfulness')[0];
+      const space = new KeyboardEvent('keydown', { key: ' ', cancelable: true });
+
+      point.dispatchEvent(space);
+      point.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+      expect(chosen).toEqual(['r1', 'r1']);
+      expect(space.defaultPrevented).toBe(true);
+    });
+
+    it('closes the panel with Escape', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+      const point = pointsOf('faithfulness')[0];
+      point.dispatchEvent(new FocusEvent('focus'));
+      fixture.detectChanges();
+      expect(root.querySelector('.detail')?.textContent).toContain('r1');
+
+      press(point, 'Escape');
+
+      expect(root.querySelector('.detail')?.textContent).toContain('Elige un punto');
+    });
+
+    it('also shows the panel when a point is touched', () => {
+      render(buildSeries(RUNS, ['faithfulness']));
+
+      pointsOf('faithfulness')[1].dispatchEvent(new MouseEvent('click'));
+      fixture.detectChanges();
+
+      expect(root.querySelector('.detail')?.textContent).toContain('r3');
+    });
+  });
+
   it('marks the chosen run with a vertical line and aria-current', () => {
     render(buildSeries(RUNS, ['faithfulness']), 'r3');
 

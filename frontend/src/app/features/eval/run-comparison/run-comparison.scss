@@ -151,3 +151,26 @@ table {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none;
+    animation: none;
+    scroll-behavior: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .title-row,
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field select,
+  .field input {
+    width: 100%;
+  }
+}

@@ -310,6 +310,11 @@ export class EvalStore {
     this.detailError.set(null);
   }
 
+  /** The reference to mark in the list: the one of the comparison that is shown, else the one the viewer chose. */
+  readonly shownReferenceId = computed(
+    () => this.comparison()?.base.runId ?? this.referenceRunId(),
+  );
+
   /** For each run of the list, whether it can be compared with its reference and, if not, why. */
   readonly compareAvailability = computed<Record<string, CompareAvailability>>(() =>
     Object.fromEntries(

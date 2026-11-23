@@ -93,6 +93,8 @@ describe('AdminEval (comparison)', () => {
 
     expect(root.querySelector('app-run-comparison section')).not.toBeNull();
     expect(root.querySelector('app-run-comparison')?.textContent).toContain('Empeoraron (1)');
+    // The reference that was used is marked in the list although nobody chose it
+    expect(root.querySelectorAll('app-run-list tbody tr')[0].textContent).toContain('Referencia');
   });
 
   it('compares with the run the viewer chose as reference and marks it', async () => {
@@ -106,7 +108,11 @@ describe('AdminEval (comparison)', () => {
     const request = compareRequest();
     expect(request.request.params.get('base')).toBe('t031-3');
     expect(request.request.params.get('target')).toBe('t031-1');
-    request.flush(COMPARISON_BODY);
+    request.flush({
+      ...COMPARISON_BODY,
+      base: { ...COMPARISON_BODY.base, run_id: 't031-3' },
+      target: { ...COMPARISON_BODY.target, run_id: 't031-1' },
+    });
     await settle();
     expect(root.querySelectorAll('app-run-list tbody tr')[2].textContent).toContain('Referencia');
   });

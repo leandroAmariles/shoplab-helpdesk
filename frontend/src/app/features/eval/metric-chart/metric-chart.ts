@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { ChartBox, segments, X_TICKS_MAX, xFor, yFor, Y_TICKS } from '../chart-scale';
 import { formatDate, formatShortDate } from '../eval-format';
 import { describeSeries, formatValue, Series } from '../metric-series';
@@ -68,6 +77,8 @@ interface ActivePoint {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricChart {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
   readonly series = input.required<Series[]>();
   readonly selectedRunId = input<string | null>(null);
   readonly runSelected = output<string>();
@@ -160,10 +171,48 @@ export class MetricChart {
     this.runSelected.emit(runId);
   }
 
-  protected onKeydown(event: KeyboardEvent, runId: string): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.select(runId);
+  /** A click or a tap shows the panel too: on a touch screen there is no hover or focus ring to show it. */
+  protected onClick(plot: Plot, point: PlottedPoint): void {
+    this.activate(plot, point);
+    this.select(point.runId);
+  }
+
+  /**
+   * Enter and Space open the run; the arrows move the focus along the points of the same series (a gap has no point to
+   * reach, and the first and the last stay where they are); Escape closes the panel.
+   */
+  protected onKeydown(event: KeyboardEvent, plot: Plot, point: PlottedPoint): void {
+    switch (event.key) {
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        this.select(point.runId);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.focusNeighbour(plot, point, 1);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.focusNeighbour(plot, point, -1);
+        break;
+      case 'Escape':
+        this.deactivate();
+        break;
+      default:
+        break;
     }
+  }
+
+  private focusNeighbour(plot: Plot, point: PlottedPoint, step: number): void {
+    const reachable = plot.points.filter((candidate) => candidate.y !== null);
+    const next = reachable[reachable.indexOf(point) + step];
+    if (next === undefined) {
+      return;
+    }
+    const element = this.host.nativeElement.querySelector<SVGGElement>(
+      `g.point[data-series="${plot.metric}"][data-run="${next.runId}"]`,
+    );
+    element?.focus();
   }
 }
