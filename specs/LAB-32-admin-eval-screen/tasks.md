@@ -418,17 +418,17 @@ comprobar los cuatro estados y el uso solo con teclado (V18–V21).
 
 **Propósito**: documentación, datos de prueba, `requests.http`, puertas de calidad y validación de punta a punta.
 
-- [ ] T064 [P] ADR de la decisión: crear `docs/adr/0029-lectura-del-historial-de-evaluacion.md` (usa el número de T001) con la
+- [X] T064 [P] ADR de la decisión: crear `docs/adr/0029-lectura-del-historial-de-evaluacion.md` (usa el número de T001) con la
   plantilla `docs/adr/0000-plantilla.md` y **Complementa a** ADR-0013, ADR-0015 y ADR-0028; recoger R1 (lectura abierta sin token en
   el módulo `eval`), R2 (medias en SQL), R4 (gráfica SVG propia sin biblioteca) y R9 (comparación en el backend con `BigDecimal`)
   con sus alternativas descartadas y consecuencias (riesgo de lectura abierta sin autenticación, la gráfica se reevalúa si crece);
   añadir su fila a `docs/adr/README.md`
-- [ ] T065 [P] Documentación de uso (FR-026): crear `docs/admin-eval.md` (para qué sirve la pantalla, cómo leer la gráfica y el
+- [X] T065 [P] Documentación de uso (FR-026): crear `docs/admin-eval.md` (para qué sirve la pantalla, cómo leer la gráfica y el
   detalle, qué significan un hueco, «sin valor», «no comparable» y «caso que falla», la advertencia del dataset en borrador, qué
   hacer sin historial y la propiedad `SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE`); actualizar `eval/README.md` para que la pantalla
   sea la forma principal de **leer** el historial y las consultas SQL de `eval/queries/` la secundaria, y añadir en `docs/modulos.md`
   la lectura del módulo `eval` y un enlace a `docs/admin-eval.md`
-- [ ] T066 [P] Datos de prueba deterministas para el quickstart (R14): crear `SPEC/seed/generate_seed.py` (solo biblioteca
+- [X] T066 [P] Datos de prueba deterministas para el quickstart (R14): crear `SPEC/seed/generate_seed.py` (solo biblioteca
   estándar; lee `eval/golden.jsonl` y escribe en `SPEC/seed/out/` cinco cargas con el formato de
   `specs/LAB-31-eval-run-persistence/contracts/eval-runs-api.md`: tres de calidad —una con un cambio deliberado de la versión de
   `chat-system` y de un caso reescrito, y una con `context_precision` vacío por definición— y dos de recuperación con k
@@ -436,7 +436,7 @@ comprobar los cuatro estados y el uso solo con teclado (V18–V21).
   `X-Eval-Token: {{token}}` (variable, **nunca** un secreto real). Las puntuaciones salen de una función determinista de `case_id`
   y número de ejecución, y todos los textos del dataset respetan los límites de LAB-31 (pregunta 10–300, respuesta de referencia
   20–800, 0 a 2 documentos esperados)
-- [ ] T067 Regla del proyecto «HTTP test requests»: crear `SPEC/requests.http` (sintaxis IntelliJ HTTP Client / VS Code REST
+- [X] T067 Regla del proyecto «HTTP test requests»: crear `SPEC/requests.http` (sintaxis IntelliJ HTTP Client / VS Code REST
   Client; `baseUrl` por defecto `http://localhost:8080`, sin secretos) con **un caso por escenario de aceptación y regla del
   spec que se pueda ejercitar por HTTP**, cada uno titulado con su origen y el resultado esperado (p. ej. `### FR-019 / Escenario
   «Los casos que empeoraron coinciden con la consulta» — expects 200`): lista por tipo, por origen y con `limit` 1 y 500 (frontera
@@ -445,20 +445,20 @@ comprobar los cuatro estados y el uso solo con teclado (V18–V21).
   **ninguna** necesita `X-Eval-Token`; en un bloque de comentarios al inicio, «Not covered here»: los requisitos de pantalla
   (FR-001–FR-006, FR-010–FR-015, FR-021–FR-023), que no son alcanzables por HTTP. Capturar `runId` de respuestas previas donde el
   orden lo requiera. Terminar el resumen de la implementación con la ruta y el número de peticiones
-- [ ] T068 Regenerar la documentación de módulos: ejecutar `TEST/ModularityTests` (`cd backend && ./mvnw -q test
+- [X] T068 Regenerar la documentación de módulos: ejecutar `TEST/ModularityTests` (`cd backend && ./mvnw -q test
   -Dtest=ModularityTests`) y `ModuleArchitectureTests`/`SchemaIsolationTests`/`ModuleSchemasIntegrationTests`; commitear lo que
   cambie en `docs/modulos/` (módulo `eval`); comprobar que `eval` sigue dependiendo solo de `chat.api` y que nadie lee su esquema
-- [ ] T069 Puertas del backend: `cd backend && ./mvnw verify -Dskip.srcclr=true --no-transfer-progress` en verde con cobertura
+- [X] T069 Puertas del backend: `cd backend && ./mvnw verify -Dskip.srcclr=true --no-transfer-progress` en verde con cobertura
   JaCoCo ≥ 80 %; `./mvnw checkstyle:check -Dskip.srcclr=true --no-transfer-progress` y PMD sin infracciones; líneas ≤ 121,
   llaves en todos los bloques, sin imports sin usar. Corregir lo que salga en los archivos de esta historia
-- [ ] T070 [P] Puertas del frontend: `cd frontend && npm run lint && npm test -- --watch=false && npm run build` en verde (ESLint
+- [X] T070 [P] Puertas del frontend: `cd frontend && npm run lint && npm test -- --watch=false && npm run build` en verde (ESLint
   y Prettier limpios, sin avisos de presupuesto de tamaño; la ruta `admin-eval` queda en su propio fragmento perezoso)
 - [ ] T071 Validación de punta a punta: cargar los datos de T066 con `SPEC/seed/seed.http` contra el backend local, recorrer los
   escenarios V1–V24 de [quickstart.md](quickstart.md) con `ng serve` en escritorio y en un ancho de 360 px, con teclado y, si hay uno
   disponible, un lector de pantalla, y registrar en `SPEC/validation.md` el resultado y la evidencia de cada uno. Lo que no se
   pueda verificar (p. ej. V24, que exige el primer tag con esta historia en el clúster, o V21 con lector de pantalla) se marca
   «pendiente» con el motivo, **nunca** como pasado
-- [ ] T072 Higiene antes de commitear (regla 8.4): `git status --short`; el archivo suelto `SPEC/.token-usage.json` debe estar
+- [X] T072 Higiene antes de commitear (regla 8.4): `git status --short`; el archivo suelto `SPEC/.token-usage.json` debe estar
   ignorado o fuera del commit; ningún `*.orig`, `target/`, `out/` de `seed/`, `*.log` ni cargas de depuración; `git diff --staged`
   solo con cambios de esta historia; commits atómicos en formato Conventional Commits (`feat(eval): …`, `docs(eval): …`). Ejecutar
   la skill `new-properties`: la única propiedad nueva es `shoplab.eval.history.trace-url-template` (opcional, con valor por
