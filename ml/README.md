@@ -192,3 +192,55 @@ correcta ni que no se haya colado un nombre: eso lo cubre la revisión manual.
 
 Los comandos de preparación (`candidates`, `paraphrase`, `annotate`) no se ejecutan en CI. Especificación, plan y decisiones en
 [`specs/LAB-117-intent-labeled-dataset/`](../specs/LAB-117-intent-labeled-dataset/); el paquete es `src/intent_dataset/`.
+
+## Clasificador de intención con scikit-learn (LAB-118)
+
+Clasificador supervisado clásico de 5 clases (`politica`, `producto`, `pedido`, `escalado`, `charla`) en español y portugués
+entrenado sobre `ml/data/intents/intents.jsonl`. El paquete reside en [`src/intent/`](src/intent/) y los wrappers de conveniencia en [`intent/`](intent/).
+
+### Protocolo de evaluación y resultados en `test`
+
+Bajo validación cruzada agrupada (`StratifiedGroupKFold`, 5 pliegues) sobre `train` (481 ejemplos) y selección sobre `val` (102 ejemplos),
+se comparan 4 variantes con la semilla fija `118`:
+
+| Variante | Val F1 macro | Val Accuracy | Val Brier | Latencia CPU | Estado |
+|---|---|---|---|---|---|
+| `dummy_majority` | 0.0886 | 0.2843 | 0.7861 | 0.01 ms/msg | Baseline trivial |
+| **`tfidf_logreg`** | **0.8447** | **0.8333** | **0.3567** | **0.13 ms/msg** | **Ganadora (seleccionada)** |
+| `tfidf_linearsvc` | 0.8246 | 0.8137 | 0.2548 | 0.17 ms/msg | Calibrada Sigmoid |
+| `embedding_logreg` | 0.5859 | 0.5784 | 0.5601 | 0.08 ms/msg | Caché densa local |
+
+El pipeline seleccionado (`tfidf_logreg`: `TextPreprocessor` + `FeatureUnion` [palabras (1,2) + caracteres char_wb (3,5)] + `LogisticRegression`)
+se reajusta sobre `train + val` (583 ejemplos) y se evalúa **una única vez** sobre la partición aislada `test` (102 ejemplos):
+
+- **F1 macro en `test`**: **`0.8788`** (supera con holgura el objetivo de calidad **`≥ 0.85`**).
+- **Exactitud en `test`**: **`0.8725`** (frente al baseline mayoritario de `0.2843`).
+- **Latencia media en CPU**: **`0.1711 ms/mensaje`** (muy por debajo del límite de 15 ms).
+- **Desglose lingüístico**: `es` F1 macro = `0.9158`, `pt` F1 macro = `0.8349`.
+- **Calibración**: Brier = `0.3132`, Log-Loss = `0.6573`, ECE = `0.2967`.
+
+### Comandos de ejecución
+
+```bash
+cd ml
+
+# 1. Entrenar y comparar variantes (genera intent_classifier.joblib y train_metadata.json)
+uv run python -m intent.train --seed 118
+
+# 2. Evaluar sobre test (verifica objetivo F1 >= 0.85 y genera eval_report.json)
+uv run python -m intent.evaluate --min-f1-macro 0.85
+
+# 3. Generar / verificar caché de embeddings
+uv run python -m intent embed-cache --mode deterministic-projection
+```
+
+Equivalentes directos mediante scripts:
+- `uv run python intent/train.py`
+- `uv run python intent/evaluate.py`
+
+### Artefactos generados (`artifacts/intent/`)
+
+- [`artifacts/intent/intent_classifier.joblib`](artifacts/intent/intent_classifier.joblib): Artefacto único `Pipeline` de scikit-learn con `predict()` y `predict_proba()` calibrado sobre `CANONICAL_LABELS`.
+- [`artifacts/intent/train_metadata.json`](artifacts/intent/train_metadata.json): Registro de trazabilidad con tabla comparativa de las 4 variantes, mejores hiperparámetros y top features por clase.
+- [`artifacts/intent/eval_report.json`](artifacts/intent/eval_report.json): Informe completo de evaluación en test, matriz de confusión 5×5, calibración, tramos de confianza y desglose por idioma.
+- [`data/intents/embeddings_cache.npz`](data/intents/embeddings_cache.npz): Caché de 685 vectores densos para ejecución determinista en CPU y CI sin contenedores externos.
