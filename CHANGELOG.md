@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.24.0...v0.25.0) (2026-11-23)
+
+
+### Features
+
+* **contracts:** [LAB-108] paquetes versionados para shoplab-contracts ([#167](https://github.com/leandroAmariles/shoplab-helpdesk/issues/167)) ([dae4b9a](https://github.com/leandroAmariles/shoplab-helpdesk/commit/dae4b9af1be839f79014e622e050d5f484438b79))
+
 ## [0.24.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.23.0...v0.24.0) (2026-11-23)
 
 
