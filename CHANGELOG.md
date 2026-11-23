@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.23.0...v0.24.0) (2026-11-23)
+
+
+### Features
+
+* **ml:** [LAB-118] clasificador de intención con scikit-learn ([#165](https://github.com/leandroAmariles/shoplab-helpdesk/issues/165)) ([119717d](https://github.com/leandroAmariles/shoplab-helpdesk/commit/119717dbdf4356103b30624c886e56c06c8bfba1))
+
 ## [0.23.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.22.0...v0.23.0) (2026-11-23)
 
 
