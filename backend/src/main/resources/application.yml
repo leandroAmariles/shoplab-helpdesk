@@ -111,6 +111,11 @@ shoplab:
   eval:
     persistence:
       token: ${SHOPLAB_EVAL_PERSISTENCE_TOKEN:}
+    # Reading of the history by the admin-eval screen (LAB-32). It needs no token and writes nothing. The screen links
+    # each result to its trace in Langfuse with this address ({traceId} is replaced by the id of the trace); empty =
+    # no link, the screen shows the id to copy. The default is the Langfuse of the llmops profile of the local compose.
+    history:
+      trace-url-template: ${SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE:http://localhost:3001/trace/{traceId}}
 
   retrieval:
     ingest:

@@ -14,6 +14,9 @@ public final class EvalConstants {
     public static final Pattern DOCUMENT_ID = Pattern.compile("^[A-Za-z0-9._-]{1,100}$");
     public static final Pattern TRACE_ID = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
 
+    /** The name of a metric as it is read (the scores of a run are saved under these names). */
+    public static final Pattern METRIC = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
+
     public static final String TOKEN_HEADER = "X-Eval-Token";
 
     public static final String FAITHFULNESS = "faithfulness";
@@ -42,6 +45,13 @@ public final class EvalConstants {
     public static final int MIN_CONTEXT_CHARACTERS = 500;
     public static final int DEPTH_MIN = 1;
     public static final int DEPTH_MAX = 50;
+
+    public static final int HISTORY_LIMIT_DEFAULT = 100;
+    public static final int HISTORY_LIMIT_MIN = 1;
+    public static final int HISTORY_LIMIT_MAX = 500;
+    /** What a metric has to change between two runs to count as worse or better, when the request does not say. */
+    public static final String COMPARE_DROP_DEFAULT = "0.05";
+    public static final String SUMMARY_ALL = "all";
 
     public static final double SCORE_MIN = 0.0;
     public static final double SCORE_MAX = 1.0;

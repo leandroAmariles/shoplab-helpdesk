@@ -1,0 +1,88 @@
+<section class="admin-eval" [attr.aria-busy]="store.loading()">
+  <header>
+    <div class="title-row">
+      <h1>Evaluación</h1>
+      <button
+        mat-stroked-button
+        type="button"
+        class="refresh"
+        [disabled]="store.loading()"
+        (click)="store.reload()"
+      >
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Actualizar
+      </button>
+    </div>
+    <p class="intro">
+      Cómo evolucionan las métricas del asistente de una ejecución de evaluación a la siguiente, y
+      qué casos fallan.
+    </p>
+    <p class="notice" role="note">
+      El dataset golden es un borrador hasta su revisión humana; estos valores no son una
+      certificación de calidad.
+    </p>
+  </header>
+
+  <section class="controls" aria-label="Qué ver en la gráfica">
+    <mat-button-toggle-group
+      aria-label="Tipo de medición"
+      [value]="store.kind()"
+      (change)="onKindChange($event.value)"
+    >
+      @for (kind of kinds; track kind) {
+        <mat-button-toggle [value]="kind">{{ kindLabels[kind] }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+
+    <div class="field">
+      <label for="origin-filter">Origen</label>
+      <select id="origin-filter" (change)="onOriginChange($any($event.target).value)">
+        <option value="" [selected]="store.originFilter() === null">Todos</option>
+        @for (origin of store.origins(); track origin.origin) {
+          <option [value]="origin.origin" [selected]="origin.origin === store.originFilter()">
+            {{ origin.origin }} ({{ origin.count }})
+          </option>
+        }
+      </select>
+    </div>
+
+    <fieldset class="metric-options">
+      <legend>Métricas de la gráfica</legend>
+      @for (metric of store.availableMetrics(); track metric) {
+        <button
+          type="button"
+          class="chip"
+          [attr.aria-pressed]="isSelected(metric)"
+          (click)="store.toggleMetric(metric)"
+        >
+          {{ metricLabel(metric) }}
+        </button>
+      }
+    </fieldset>
+  </section>
+
+  @if (store.loaded()) {
+    <p class="range-info">
+      Mostrando {{ store.runs().length }} de {{ store.total() }}
+      {{ store.total() === 1 ? 'ejecución' : 'ejecuciones' }}
+      @if (store.hiddenByOrigin() > 0) {
+        · {{ store.hiddenByOrigin() }} {{ store.hiddenByOrigin() === 1 ? 'oculta' : 'ocultas' }} por
+        el filtro de origen
+      }
+      @if (store.notShownByRange() > 0) {
+        · {{ store.notShownByRange() }} más
+        {{ store.notShownByRange() === 1 ? 'antigua' : 'antiguas' }} fuera del rango
+      }
+    </p>
+    @if (store.canShowMore()) {
+      <button mat-stroked-button type="button" class="show-more" (click)="store.showMore()">
+        Ver más ejecuciones
+      </button>
+    }
+  }
+
+  @if (store.runs().length > 0) {
+    <app-metric-chart [series]="store.series()" />
+    <app-run-list [runs]="store.runs()" [metrics]="store.selectedMetrics()" />
+  }
+</section>

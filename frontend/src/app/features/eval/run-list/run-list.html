@@ -1,0 +1,60 @@
+<div
+  class="table-region"
+  role="region"
+  tabindex="0"
+  aria-label="Ejecuciones, equivalente textual de la gráfica"
+>
+  <table>
+    <caption>
+      Ejecuciones de la gráfica, de la más antigua a la más reciente
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Ejecución</th>
+        <th scope="col">Fecha</th>
+        <th scope="col">Origen</th>
+        <th scope="col">Modelo del asistente</th>
+        @for (metric of metrics(); track metric) {
+          <th scope="col">{{ metricLabel(metric) }}</th>
+        }
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (run of runs(); track run.runId) {
+        <tr
+          [attr.aria-current]="run.runId === selectedRunId() ? 'true' : null"
+          [class.chosen]="run.runId === selectedRunId()"
+        >
+          <th scope="row">
+            {{ run.runId }}
+            @if (run.runId === selectedRunId()) {
+              <span class="badge">Elegida</span>
+            }
+          </th>
+          <td>{{ formatDateTime(run.startedAt) }}</td>
+          <td>{{ run.origin }}</td>
+          <td>{{ run.assistantModel ?? 'desconocido' }}</td>
+          @for (metric of metrics(); track metric) {
+            <td>
+              {{ value(run, metric) }}
+              @if (cases(run, metric); as count) {
+                <span class="cases">{{ count }}</span>
+              }
+            </td>
+          }
+          <td>
+            <button
+              mat-stroked-button
+              type="button"
+              [attr.aria-label]="'Ver detalle de la ejecución ' + run.runId"
+              (click)="runSelected.emit(run.runId)"
+            >
+              Ver detalle
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

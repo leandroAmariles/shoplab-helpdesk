@@ -1,0 +1,129 @@
+@if (series().length > 0) {
+  <figure class="chart">
+    <ul class="legend" aria-label="Series de la gráfica">
+      @for (plot of plots(); track plot.metric) {
+        <li>
+          <svg
+            class="legend-mark"
+            viewBox="0 0 16 16"
+            width="16"
+            height="16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path class="series-{{ plot.index }}" [attr.d]="markerPath(plot.shape, 8, 8)" />
+          </svg>
+          {{ plot.label }}
+        </li>
+      }
+    </ul>
+
+    <svg
+      class="plot"
+      [attr.viewBox]="'0 0 ' + box.width + ' ' + box.height"
+      role="img"
+      [attr.aria-labelledby]="titleId + ' ' + descriptionId"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <title [id]="titleId">Evolución de las métricas de evaluación por ejecución</title>
+      <desc [id]="descriptionId">{{ description() }}</desc>
+
+      @for (tick of yTicks; track tick.label) {
+        <line
+          class="grid"
+          [attr.x1]="box.left"
+          [attr.x2]="box.width - box.right"
+          [attr.y1]="tick.y"
+          [attr.y2]="tick.y"
+        />
+        <text class="y-label" [attr.x]="box.left - 8" [attr.y]="tick.y + 4" text-anchor="end">
+          {{ tick.label }}
+        </text>
+      }
+      <line
+        class="axis-x"
+        [attr.x1]="box.left"
+        [attr.x2]="box.width - box.right"
+        [attr.y1]="zeroY"
+        [attr.y2]="zeroY"
+      />
+
+      @for (label of xLabels(); track label.x) {
+        <text class="x-label" [attr.x]="label.x" [attr.y]="zeroY + 18" text-anchor="middle">
+          {{ label.text }}
+        </text>
+      }
+
+      @if (selectedX() !== null) {
+        <line
+          class="selected-run"
+          [attr.x1]="selectedX()"
+          [attr.x2]="selectedX()"
+          [attr.y1]="box.top"
+          [attr.y2]="zeroY"
+        />
+      }
+
+      @for (plot of plots(); track plot.metric) {
+        @for (line of plot.lines; track $index) {
+          <polyline
+            class="series-line series-{{ plot.index }}"
+            [attr.points]="line"
+            [attr.stroke-dasharray]="plot.dash || null"
+            fill="none"
+          />
+        }
+        @for (point of plot.points; track point.runId) {
+          @if (point.y !== null) {
+            <g
+              class="point series-{{ plot.index }}"
+              role="button"
+              tabindex="0"
+              [attr.data-series]="plot.metric"
+              [attr.data-run]="point.runId"
+              [attr.data-value]="point.value"
+              [attr.aria-label]="pointLabel(plot, point)"
+              [attr.aria-current]="selectedRunId() === point.runId ? 'true' : null"
+              (click)="select(point.runId)"
+              (keydown)="onKeydown($event, point.runId)"
+              (focus)="activate(plot, point)"
+              (blur)="deactivate()"
+              (mouseenter)="activate(plot, point)"
+              (mouseleave)="deactivate()"
+            >
+              <circle class="hit" [attr.cx]="point.x" [attr.cy]="point.y" r="14" />
+              <path [attr.d]="markerPath(plot.shape, point.x, point.y)" />
+            </g>
+          } @else {
+            <text
+              class="gap-mark"
+              [attr.x]="gapX(plot, point)"
+              [attr.y]="zeroY + 40"
+              text-anchor="middle"
+            >
+              <title>{{ plot.label }}: sin valor en la ejecución {{ point.runId }}</title>
+              ∅
+            </text>
+          }
+        }
+      }
+    </svg>
+
+    @if (runCount() === 1) {
+      <p class="single-run" role="status">
+        Hace falta más de una ejecución para ver una evolución.
+      </p>
+    }
+
+    <figcaption class="detail" aria-live="polite">
+      @if (active(); as point) {
+        <strong>{{ point.label }}</strong> · ejecución {{ point.runId }} · {{ point.date }} · valor
+        {{ point.value }} ·
+        {{ point.cases }}
+      } @else {
+        Elige un punto para ver el detalle de la ejecución; el símbolo ∅ bajo el eje marca una
+        ejecución sin valor.
+      }
+    </figcaption>
+  </figure>
+}

@@ -1,0 +1,71 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.table-region {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+}
+
+caption {
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+th,
+td {
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+thead th {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tbody th {
+  font-weight: 500;
+}
+
+tr.chosen {
+  background: var(--mat-sys-secondary-container);
+}
+
+.badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font: var(--mat-sys-label-small);
+}
+
+.cases {
+  display: block;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button {
+  min-height: 44px;
+}
