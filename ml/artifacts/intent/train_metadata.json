@@ -1,0 +1,401 @@
+{
+  "schema_version": "1.0",
+  "seed": 118,
+  "dataset_path": "C:/Users/Leandro/IdeaProjects/shoplab-helpdesk/ml/data/intents/intents.jsonl",
+  "dataset_sha256": "3f9c7df348abd52f5d668f5454c178b25a11f3361b789cb6cd2e8cec263a5689",
+  "split_counts": {
+    "train": 481,
+    "val": 102,
+    "test": 102
+  },
+  "selected_variant": "tfidf_logreg",
+  "selection_reason": "Seleccionada tfidf_logreg (val_f1_macro=0.8447, cv_f1_macro=0.8407, brier=0.3567): alcanza el mejor rendimiento en validación (o empata dentro del margen de 0.01 con embeddings) siendo 100 % autocontenida en CPU sin llamadas de red en inferencia.",
+  "artifact_path": "C:/Users/Leandro/IdeaProjects/shoplab-helpdesk/ml/artifacts/intent/intent_classifier.joblib",
+  "artifact_sha256": "abd8ce4e3f385b2a11536b6cdef96f9985cd9f1a03bf5ef3239991d4fd13e66b",
+  "cv_folds": 5,
+  "variants": [
+    {
+      "variant": "dummy_majority",
+      "best_params": {},
+      "cv_f1_macro_mean": 0.089171,
+      "cv_f1_macro_std": 0.001146,
+      "val_f1_macro": 0.08855,
+      "val_accuracy": 0.284314,
+      "val_brier_score": 0.786118,
+      "val_log_loss": 1.573839,
+      "val_ece": 0.002589,
+      "val_latency_ms_per_msg": 0.0123,
+      "requires_external_service": false
+    },
+    {
+      "variant": "tfidf_logreg",
+      "best_params": {
+        "clf__C": 2.0,
+        "clf__class_weight": "balanced",
+        "features__char__min_df": 2,
+        "features__word__min_df": 1
+      },
+      "cv_f1_macro_mean": 0.840675,
+      "cv_f1_macro_std": 0.041378,
+      "val_f1_macro": 0.84471,
+      "val_accuracy": 0.833333,
+      "val_brier_score": 0.356671,
+      "val_log_loss": 0.72841,
+      "val_ece": 0.267907,
+      "val_latency_ms_per_msg": 0.1303,
+      "requires_external_service": false
+    },
+    {
+      "variant": "tfidf_linearsvc",
+      "best_params": {
+        "clf__estimator__C": 5.0,
+        "clf__estimator__class_weight": null,
+        "features__char__min_df": 2,
+        "features__word__min_df": 1
+      },
+      "cv_f1_macro_mean": 0.848889,
+      "cv_f1_macro_std": 0.025882,
+      "val_f1_macro": 0.824586,
+      "val_accuracy": 0.813725,
+      "val_brier_score": 0.254797,
+      "val_log_loss": 0.485995,
+      "val_ece": 0.120734,
+      "val_latency_ms_per_msg": 0.1694,
+      "requires_external_service": false
+    },
+    {
+      "variant": "embedding_logreg",
+      "best_params": {
+        "clf__C": 5.0,
+        "clf__class_weight": null
+      },
+      "cv_f1_macro_mean": 0.641111,
+      "cv_f1_macro_std": 0.028304,
+      "val_f1_macro": 0.585858,
+      "val_accuracy": 0.578431,
+      "val_brier_score": 0.560074,
+      "val_log_loss": 1.065555,
+      "val_ece": 0.089441,
+      "val_latency_ms_per_msg": 0.0814,
+      "requires_external_service": true
+    }
+  ],
+  "top_features_by_class": {
+    "politica": [
+      {
+        "feature": "word__mi",
+        "weight": 0.826848
+      },
+      {
+        "feature": "word__posso",
+        "weight": 0.773013
+      },
+      {
+        "feature": "char__a? ",
+        "weight": 0.753102
+      },
+      {
+        "feature": "word__vocês",
+        "weight": 0.736821
+      },
+      {
+        "feature": "word__qué",
+        "weight": 0.697837
+      },
+      {
+        "feature": "word__datos",
+        "weight": 0.695262
+      },
+      {
+        "feature": "word__puedo",
+        "weight": 0.670644
+      },
+      {
+        "feature": "char__ pa",
+        "weight": 0.66661
+      },
+      {
+        "feature": "word__r",
+        "weight": 0.664253
+      },
+      {
+        "feature": "char__pag",
+        "weight": 0.65332
+      },
+      {
+        "feature": "char__o? ",
+        "weight": 0.616526
+      },
+      {
+        "feature": "char__ pag",
+        "weight": 0.616038
+      },
+      {
+        "feature": "word__y",
+        "weight": 0.61563
+      },
+      {
+        "feature": "word__garantía",
+        "weight": 0.595498
+      },
+      {
+        "feature": "char__ué ",
+        "weight": 0.582954
+      }
+    ],
+    "producto": [
+      {
+        "feature": "word__é",
+        "weight": 1.004816
+      },
+      {
+        "feature": "word__muito",
+        "weight": 0.828359
+      },
+      {
+        "feature": "word__es",
+        "weight": 0.66424
+      },
+      {
+        "feature": "char__ mu",
+        "weight": 0.627469
+      },
+      {
+        "feature": "char__ é ",
+        "weight": 0.623056
+      },
+      {
+        "feature": "word__este",
+        "weight": 0.618906
+      },
+      {
+        "feature": "word__ps4",
+        "weight": 0.57517
+      },
+      {
+        "feature": "word__original",
+        "weight": 0.552016
+      },
+      {
+        "feature": "word__qualidade",
+        "weight": 0.551
+      },
+      {
+        "feature": "word__bien",
+        "weight": 0.546795
+      },
+      {
+        "feature": "char__ncio",
+        "weight": 0.545599
+      },
+      {
+        "feature": "word__foto",
+        "weight": 0.544335
+      },
+      {
+        "feature": "word__produto",
+        "weight": 0.541109
+      },
+      {
+        "feature": "word__tem",
+        "weight": 0.538152
+      },
+      {
+        "feature": "word__todo",
+        "weight": 0.526547
+      }
+    ],
+    "pedido": [
+      {
+        "feature": "word__pedido",
+        "weight": 1.281651
+      },
+      {
+        "feature": "word__veio",
+        "weight": 0.882845
+      },
+      {
+        "feature": "word__mi pedido",
+        "weight": 0.841117
+      },
+      {
+        "feature": "word__do",
+        "weight": 0.832666
+      },
+      {
+        "feature": "word__antes",
+        "weight": 0.801995
+      },
+      {
+        "feature": "word__chegou",
+        "weight": 0.7512
+      },
+      {
+        "feature": "word__llegó",
+        "weight": 0.701789
+      },
+      {
+        "feature": "word__recebi",
+        "weight": 0.69021
+      },
+      {
+        "feature": "word__produto",
+        "weight": 0.680776
+      },
+      {
+        "feature": "char__do ",
+        "weight": 0.676812
+      },
+      {
+        "feature": "word__não",
+        "weight": 0.670009
+      },
+      {
+        "feature": "char__ped",
+        "weight": 0.668769
+      },
+      {
+        "feature": "char__ ped",
+        "weight": 0.657427
+      },
+      {
+        "feature": "char__pedid",
+        "weight": 0.652195
+      },
+      {
+        "feature": "char__edido",
+        "weight": 0.652195
+      }
+    ],
+    "escalado": [
+      {
+        "feature": "word__falar com",
+        "weight": 1.025632
+      },
+      {
+        "feature": "word__falar",
+        "weight": 1.025632
+      },
+      {
+        "feature": "word__me",
+        "weight": 0.924176
+      },
+      {
+        "feature": "word__si no",
+        "weight": 0.850279
+      },
+      {
+        "feature": "word__vou",
+        "weight": 0.828728
+      },
+      {
+        "feature": "word__hablar",
+        "weight": 0.802755
+      },
+      {
+        "feature": "word__hablar con",
+        "weight": 0.802755
+      },
+      {
+        "feature": "word__si",
+        "weight": 0.793114
+      },
+      {
+        "feature": "word__necesito",
+        "weight": 0.772532
+      },
+      {
+        "feature": "word__com",
+        "weight": 0.751003
+      },
+      {
+        "feature": "char__lam",
+        "weight": 0.72179
+      },
+      {
+        "feature": "word__voy a",
+        "weight": 0.716878
+      },
+      {
+        "feature": "word__voy",
+        "weight": 0.716878
+      },
+      {
+        "feature": "word__por favor",
+        "weight": 0.707369
+      },
+      {
+        "feature": "word__con",
+        "weight": 0.688113
+      }
+    ],
+    "charla": [
+      {
+        "feature": "word__você",
+        "weight": 1.125787
+      },
+      {
+        "feature": "word__hola",
+        "weight": 1.032523
+      },
+      {
+        "feature": "word__gracias",
+        "weight": 0.987532
+      },
+      {
+        "feature": "word__tchau",
+        "weight": 0.953556
+      },
+      {
+        "feature": "word__tu",
+        "weight": 0.926184
+      },
+      {
+        "feature": "word__obrigado",
+        "weight": 0.894057
+      },
+      {
+        "feature": "word__adiós",
+        "weight": 0.82617
+      },
+      {
+        "feature": "char__str",
+        "weight": 0.810549
+      },
+      {
+        "feature": "char__ tu",
+        "weight": 0.650054
+      },
+      {
+        "feature": "word__tardes",
+        "weight": 0.578977
+      },
+      {
+        "feature": "word__prompt",
+        "weight": 0.540649
+      },
+      {
+        "feature": "word__oi",
+        "weight": 0.539969
+      },
+      {
+        "feature": "char__você ",
+        "weight": 0.514705
+      },
+      {
+        "feature": "char__cê ",
+        "weight": 0.514705
+      },
+      {
+        "feature": "char__ocê ",
+        "weight": 0.514705
+      }
+    ]
+  },
+  "environment": {
+    "python": "3.12.13",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.5",
+    "joblib": "1.6.0"
+  }
+}

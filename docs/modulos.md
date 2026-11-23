@@ -2,8 +2,10 @@
 
 El backend es un monolito modular (Spring Modulith, [ADR-0001](adr/0001-monolito-modular-primero.md)) dividido por
 contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verifican en CI
+
 ([ADR-0015](adr/0015-limites-de-contexto-y-repositorios.md)). El mapa de extracción temprana hacia microservicios
 se describe en [mapa-servicios.md](mapa-servicios.md) ([ADR-0031](adr/0031-extraccion-temprana-de-servicios.md)).
+
 
 | Módulo | Contexto | Esquema | Migraciones |
 |---|---|---|---|

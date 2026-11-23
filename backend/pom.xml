@@ -11,7 +11,7 @@
 
     <groupId>com.shoplab</groupId>
     <artifactId>helpdesk-backend</artifactId>
-    <version>0.22.0</version>
+    <version>0.24.0</version>
     <name>helpdesk-backend</name>
     <description>ShopLab Helpdesk modular monolith (Spring Modulith + Spring AI)</description>
 
@@ -24,8 +24,20 @@
         <checkstyle.version>14.4.0</checkstyle.version>
         <pmd.version>3.28.0</pmd.version>
         <blockhound.version>1.0.18.RELEASE</blockhound.version>
+        <shoplab-contracts.version>1.1.0</shoplab-contracts.version>
         <argLine/>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>github-shoplab-contracts</id>
+            <name>GitHub Packages ShopLab Contracts</name>
+            <url>https://maven.pkg.github.com/leandroAmariles/shoplab-contracts</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <dependencyManagement>
         <dependencies>
@@ -42,6 +54,11 @@
                 <version>${spring-modulith.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.shoplab</groupId>
+                <artifactId>shoplab-contracts</artifactId>
+                <version>${shoplab-contracts.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

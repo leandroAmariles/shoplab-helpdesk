@@ -44,3 +44,7 @@ eval/results/*
 
 # LAB-117: working files of the intent dataset (review CSVs, paraphrase drafts, annotator sheet)
 ml/data/intents/work/
+
+# LAB-118: serialized scikit-learn pipeline artifacts (JSON reports stay versioned)
+ml/artifacts/intent/*.joblib
+
