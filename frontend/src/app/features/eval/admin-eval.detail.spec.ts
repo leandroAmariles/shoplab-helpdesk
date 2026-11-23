@@ -79,7 +79,9 @@ describe('AdminEval (run detail)', () => {
     listRequest().flush(listing());
     await settle();
 
-    (root.querySelectorAll('app-run-list tbody button')[1] as HTMLButtonElement).click();
+    (
+      root.querySelectorAll('app-run-list tbody button.view-detail')[1] as HTMLButtonElement
+    ).click();
     await settle();
     runRequest('t031-2').flush({ ...RUN_BODY, run: { ...RUN_BODY.run, run_id: 't031-2' } });
     await settle();
@@ -147,7 +149,7 @@ describe('AdminEval (run detail)', () => {
     listRequest().flush(listing());
     await settle();
 
-    (root.querySelector('app-run-list tbody button') as HTMLButtonElement).click();
+    (root.querySelector('app-run-list tbody button.view-detail') as HTMLButtonElement).click();
     await settle();
 
     expect(root.querySelector('.detail-loading')?.textContent).toContain('Cargando la ejecución');
@@ -160,7 +162,7 @@ describe('AdminEval (run detail)', () => {
     listRequest().flush(listing());
     await settle();
 
-    (root.querySelector('app-run-list tbody button') as HTMLButtonElement).click();
+    (root.querySelector('app-run-list tbody button.view-detail') as HTMLButtonElement).click();
     await settle();
     runRequest('t031-1').flush(null, { status: 0, statusText: 'Network' });
     await settle();
@@ -182,7 +184,7 @@ describe('AdminEval (run detail)', () => {
     await open();
     listRequest().flush(listing());
     await settle();
-    (root.querySelector('app-run-list tbody button') as HTMLButtonElement).click();
+    (root.querySelector('app-run-list tbody button.view-detail') as HTMLButtonElement).click();
     await settle();
     runRequest('t031-1').flush(RUN_BODY);
     await settle();

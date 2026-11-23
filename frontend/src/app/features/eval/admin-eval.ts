@@ -7,6 +7,7 @@ import { EvalStore, RUN_ID } from './eval-store';
 import { FailingCases } from './failing-cases/failing-cases';
 import { KIND_LABELS, metricLabel, RunKind } from './eval-history';
 import { MetricChart } from './metric-chart/metric-chart';
+import { RunComparisonView } from './run-comparison/run-comparison';
 import { RunDetailView } from './run-detail/run-detail';
 import { RunList } from './run-list/run-list';
 
@@ -25,6 +26,7 @@ function isRunKind(value: string | null): value is RunKind {
     MatIconModule,
     FailingCases,
     MetricChart,
+    RunComparisonView,
     RunDetailView,
     RunList,
   ],

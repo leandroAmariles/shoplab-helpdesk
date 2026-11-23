@@ -174,6 +174,9 @@ export interface RunComparison {
   cases: CaseComparison[];
 }
 
+/** Whether a run can be compared with the reference, and if not, why. */
+export type CompareAvailability = 'available' | 'is-reference' | 'no-reference' | 'other-kind';
+
 export const DEFAULT_KIND: RunKind = 'QUALITY';
 export const DEFAULT_LIMIT = 100;
 export const LIMIT_STEPS: readonly number[] = [100, 250, 500];

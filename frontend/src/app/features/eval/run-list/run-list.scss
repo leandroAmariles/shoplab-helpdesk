@@ -69,3 +69,20 @@ tr.chosen {
 button {
   min-height: 44px;
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-hint {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+.badge.reference {
+  background: var(--mat-sys-tertiary);
+  color: var(--mat-sys-on-tertiary);
+}

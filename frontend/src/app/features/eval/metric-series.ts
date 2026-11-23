@@ -84,6 +84,19 @@ export function formatValue(value: number | null): string {
   return value === null ? NO_VALUE : value.toFixed(4).replace('.', ',');
 }
 
+/** A difference with its sign and four decimals (`+0,0500`, `−0,0334`), or «sin valor». */
+export function formatDelta(value: number | null): string {
+  if (value === null) {
+    return NO_VALUE;
+  }
+  const rounded = Number(value.toFixed(4));
+  const text = Math.abs(rounded).toFixed(4).replace('.', ',');
+  if (rounded > 0) {
+    return `+${text}`;
+  }
+  return rounded < 0 ? `−${text}` : text;
+}
+
 /** A sentence that summarizes a series for assistive technology. */
 export function describeSeries(series: Series): string {
   const count = series.points.length;

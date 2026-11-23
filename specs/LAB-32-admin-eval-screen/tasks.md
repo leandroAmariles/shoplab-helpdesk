@@ -351,21 +351,21 @@ aparece como no comparable (V15–V17).
 
 ### Pruebas de US3 (frontend, primero)
 
-- [ ] T053 [P] [US3] Ampliar `FE/eval-api.client.spec.ts` y `FE/eval-store.spec.ts` (comparación): `compare(base, target, metric,
+- [X] T053 [P] [US3] Ampliar `FE/eval-api.client.spec.ts` y `FE/eval-store.spec.ts` (comparación): `compare(base, target, metric,
   drop)` traduce la respuesta y conserva los `null`; la referencia por defecto de una ejecución elegida es **la anterior del mismo
   tipo** de la lista mostrada (ninguna si es la primera); `canCompare(a, b)` es falso si los tipos difieren; elegir referencia y
   objetivo pide la comparación una vez y cambiar `metric` o `drop` la repide; un 422 `SLHD_EVAL_00006` o 404 deja
   `comparisonError` sin tocar el resto
-- [ ] T054 [US3] Ampliar `FE/eval-api.client.ts` y `FE/eval-store.ts` (`comparison`, `setReference`, `compareWith`,
+- [X] T054 [US3] Ampliar `FE/eval-api.client.ts` y `FE/eval-store.ts` (`comparison`, `setReference`, `compareWith`,
   `comparisonMetric`, `comparisonDrop` con `DEFAULT_DROP = 0.05`, métrica por defecto `faithfulness` o `reciprocal_rank`) hasta que
   T053 pase
-- [ ] T055 [P] [US3] `FE/run-comparison/run-comparison.spec.ts`: banner de **advertencia** con los campos de `warnings` («Puede no
+- [X] T055 [P] [US3] `FE/run-comparison/run-comparison.spec.ts`: banner de **advertencia** con los campos de `warnings` («Puede no
   reflejar un cambio de calidad: difiere …»); tabla de parámetros con el valor de cada lado, «desconocido» para los nulos y los
   que no afectan marcados como informativos; diferencia de cada métrica del conjunto completo (sin valor donde `delta` es nulo);
   tres listas — **empeoraron**, **mejoraron** y **no comparables** (motivo «el caso cambió» o «solo está en una ejecución») —
   con valor de cada lado y diferencia; `SAME` y `NO_VALUE` solo como cifra; controles de métrica y tolerancia (0–1)
-- [ ] T056 [US3] Componente `FE/run-comparison/run-comparison.ts`, `.html` y `.scss` hasta que T055 pase
-- [ ] T057 [US3] Integrar en `FE/run-list/run-list.ts`/`.html` y `FE/admin-eval.ts`/`.html`: acciones «Usar como referencia» y
+- [X] T056 [US3] Componente `FE/run-comparison/run-comparison.ts`, `.html` y `.scss` hasta que T055 pase
+- [X] T057 [US3] Integrar en `FE/run-list/run-list.ts`/`.html` y `FE/admin-eval.ts`/`.html`: acciones «Usar como referencia» y
   «Comparar con la referencia» por fila; con una ejecución de otro tipo la acción está **deshabilitada** con el texto «Sus métricas
   no son las mismas» (HU3·5); mostrar `run-comparison` debajo del detalle. **Primero** ampliar `FE/run-list/run-list.spec.ts` y
   `FE/admin-eval.spec.ts` (referencia por defecto, acción deshabilitada, comparación visible)

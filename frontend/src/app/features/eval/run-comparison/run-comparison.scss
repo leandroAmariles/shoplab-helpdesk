@@ -1,0 +1,153 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+h3 {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+}
+
+h4 {
+  margin: 16px 0 4px;
+  font: var(--mat-sys-title-medium);
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runs,
+.others {
+  margin: 8px 0;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: 8px;
+    background: var(--mat-sys-surface);
+    color: var(--mat-sys-on-surface);
+    font: var(--mat-sys-body-medium);
+  }
+}
+
+.hint {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.comparison-loading,
+.comparison-error,
+.warnings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.comparison-loading {
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.comparison-error {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.warnings {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.table-region {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  thead th {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-large);
+  }
+
+  code {
+    overflow-wrap: anywhere;
+  }
+}
+
+.cases {
+  ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin: 4px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .values,
+  .reason {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

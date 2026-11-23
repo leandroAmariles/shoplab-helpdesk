@@ -118,7 +118,7 @@ describe('RunList', () => {
     const chosen: string[] = [];
     fixture.componentInstance.runSelected.subscribe((id) => chosen.push(id));
 
-    (root.querySelectorAll('tbody tr button')[1] as HTMLButtonElement).click();
+    (root.querySelectorAll('tbody tr button.view-detail')[1] as HTMLButtonElement).click();
 
     expect(chosen).toEqual(['r2']);
   });
@@ -126,7 +126,7 @@ describe('RunList', () => {
   it('names the run in the button so that a screen reader can tell the rows apart', () => {
     render([run('r1', 0.5)]);
 
-    const button = root.querySelector('tbody tr button') as HTMLButtonElement;
+    const button = root.querySelector('tbody tr button.view-detail') as HTMLButtonElement;
     expect(button.getAttribute('aria-label')).toContain('r1');
   });
 
@@ -138,5 +138,80 @@ describe('RunList', () => {
     expect(rows[1].textContent).toContain('Elegida');
     expect(rows[0].hasAttribute('aria-current')).toBe(false);
     expect(rows[0].textContent).not.toContain('Elegida');
+  });
+
+  describe('comparison actions', () => {
+    function button(row: number, label: string): HTMLButtonElement {
+      const rows = root.querySelectorAll('tbody tr');
+      return Array.from(rows[row].querySelectorAll('button')).find((b) =>
+        (b.textContent ?? '').includes(label),
+      ) as HTMLButtonElement;
+    }
+
+    it('lets the viewer use a run as the reference and compare a run with it', () => {
+      render([run('r1', 0.5), run('r2', 0.6)]);
+      fixture.componentRef.setInput('availability', { r1: 'no-reference', r2: 'available' });
+      fixture.detectChanges();
+      const references: string[] = [];
+      const compared: string[] = [];
+      fixture.componentInstance.referenceChosen.subscribe((id) => references.push(id));
+      fixture.componentInstance.compareRequested.subscribe((id) => compared.push(id));
+
+      button(0, 'Usar como referencia').click();
+      button(1, 'Comparar con la referencia').click();
+
+      expect(references).toEqual(['r1']);
+      expect(compared).toEqual(['r2']);
+    });
+
+    it('names the run in each action so that a screen reader can tell the rows apart', () => {
+      render([run('r1', 0.5)]);
+
+      expect(button(0, 'Usar como referencia').getAttribute('aria-label')).toContain('r1');
+      expect(button(0, 'Comparar con la referencia').getAttribute('aria-label')).toContain('r1');
+    });
+
+    it('marks the reference with text', () => {
+      render([run('r1', 0.5), run('r2', 0.6)]);
+      fixture.componentRef.setInput('referenceRunId', 'r1');
+      fixture.detectChanges();
+
+      const rows = Array.from(root.querySelectorAll('tbody tr'));
+      expect(rows[0].textContent).toContain('Referencia');
+      expect(rows[1].textContent).not.toContain('Referencia');
+    });
+
+    it('disables the comparison with a run of another kind and says why', () => {
+      render([run('r1', 0.5), run('r2', 0.6)]);
+      fixture.componentRef.setInput('availability', { r1: 'available', r2: 'other-kind' });
+      fixture.detectChanges();
+
+      expect(button(1, 'Comparar con la referencia').disabled).toBe(true);
+      expect(root.querySelectorAll('tbody tr')[1].textContent).toContain(
+        'Sus métricas no son las mismas',
+      );
+      expect(button(0, 'Comparar con la referencia').disabled).toBe(false);
+    });
+
+    it('disables the comparison of a run that has no reference and of the reference itself', () => {
+      render([run('r1', 0.5), run('r2', 0.6)]);
+      fixture.componentRef.setInput('availability', { r1: 'no-reference', r2: 'is-reference' });
+      fixture.detectChanges();
+
+      expect(button(0, 'Comparar con la referencia').disabled).toBe(true);
+      expect(root.querySelectorAll('tbody tr')[0].textContent).toContain('Elige una referencia');
+      expect(button(1, 'Comparar con la referencia').disabled).toBe(true);
+      expect(root.querySelectorAll('tbody tr')[1].textContent).toContain('Es la referencia');
+    });
+
+    it('explains a disabled action with text that the button points to', () => {
+      render([run('r1', 0.5)]);
+      fixture.componentRef.setInput('availability', { r1: 'other-kind' });
+      fixture.detectChanges();
+
+      const compare = button(0, 'Comparar con la referencia');
+      const hint = root.querySelector(`#${compare.getAttribute('aria-describedby')}`);
+      expect(hint?.textContent).toContain('Sus métricas no son las mismas');
+    });
   });
 });

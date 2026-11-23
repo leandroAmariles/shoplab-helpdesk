@@ -65,3 +65,74 @@ export const RUN_BODY = {
     },
   ],
 };
+
+/** A comparison of two quality runs as the read API answers it (wire format). */
+export const COMPARISON_BODY = {
+  base: { run_id: 't031-1', kind: 'QUALITY', started_at: '2026-11-21T14:02:11Z', origin: 'dev' },
+  target: { run_id: 't031-2', kind: 'QUALITY', started_at: '2026-11-22T10:00:00Z', origin: 'dev' },
+  metric: 'faithfulness',
+  drop: 0.05,
+  metrics: [
+    {
+      metric: 'faithfulness',
+      base: { mean: 0.7134, n: 96 },
+      target: { mean: 0.68, n: 96 },
+      delta: -0.0334,
+    },
+    {
+      metric: 'context_precision',
+      base: { mean: null, n: 0 },
+      target: { mean: 0.5, n: 10 },
+      delta: null,
+    },
+  ],
+  parameters: [
+    { field: 'prompts.chat-system.version', base: '3', target: '4', affects_comparability: false },
+    { field: 'judge.temperature', base: '0.0', target: '0.2', affects_comparability: true },
+    { field: 'commit_sha', base: null, target: 'abc1234', affects_comparability: false },
+  ],
+  warnings: ['judge.temperature'],
+  counts: {
+    worse: 1,
+    better: 1,
+    same: 0,
+    no_value: 1,
+    not_comparable: 1,
+    only_base: 1,
+    only_target: 1,
+  },
+  cases: [
+    {
+      case_id: 'G044',
+      category: 'returns',
+      question: '¿Cuántos días tengo para devolver un producto?',
+      status: 'WORSE',
+      base_value: 0.8,
+      target_value: 0.2,
+      delta: -0.6,
+    },
+    {
+      case_id: 'G010',
+      category: 'shipping',
+      question: '¿Cuánto tarda un envío?',
+      status: 'BETTER',
+      base_value: 0.4,
+      target_value: 0.9,
+      delta: 0.5,
+    },
+    { case_id: 'G020', category: 'payments', question: '¿Aceptan boleto?', status: 'NO_VALUE' },
+    {
+      case_id: 'G030',
+      category: 'payments',
+      question: '¿Puedo pagar en cuotas?',
+      status: 'NOT_COMPARABLE',
+    },
+    { case_id: 'G031', category: 'returns', question: 'Solo en la base', status: 'ONLY_BASE' },
+    {
+      case_id: 'G032',
+      category: 'returns',
+      question: 'Solo en el objetivo',
+      status: 'ONLY_TARGET',
+    },
+  ],
+};

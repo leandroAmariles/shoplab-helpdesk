@@ -11,11 +11,14 @@ import {
 } from './case-failures';
 import { EvalApiClient } from './eval-api.client';
 import {
+  CompareAvailability,
+  DEFAULT_DROP,
   DEFAULT_KIND,
   DEFAULT_LIMIT,
   DEFAULT_THRESHOLD,
   LIMIT_STEPS,
   MAX_SELECTED_METRICS,
+  RunComparison,
   RunDetail,
   RunKind,
   RunListing,
@@ -26,7 +29,25 @@ export const LOAD_ERROR_MESSAGE =
   'No se pudo cargar la evaluación. Se muestra el último estado conocido.';
 export const DETAIL_ERROR_MESSAGE = 'No se pudo cargar la ejecución.';
 
+export const COMPARISON_ERROR_MESSAGES = {
+  notComparable: 'Las ejecuciones no son del mismo tipo: sus métricas no son las mismas.',
+  notFound: 'Una de las ejecuciones ya no existe.',
+  other: 'No se pudo comparar las ejecuciones.',
+};
+
+const NOT_COMPARABLE_CODE = 'SLHD_EVAL_00006';
+
 export const RUN_ID = /^[A-Za-z0-9._-]{1,32}$/;
+
+/** The cause shown for a failed comparison comes from the code of the error, never from its detail. */
+function comparisonMessage(error: Partial<ApiError>): string {
+  if (error.code === NOT_COMPARABLE_CODE) {
+    return COMPARISON_ERROR_MESSAGES.notComparable;
+  }
+  return error.status === 404
+    ? COMPARISON_ERROR_MESSAGES.notFound
+    : COMPARISON_ERROR_MESSAGES.other;
+}
 
 /**
  * State of the admin-eval screen: the list of runs of a kind with the metrics, the filters and the range, and the
@@ -145,13 +166,32 @@ export class EvalStore {
     return detail === null ? '' : summarizeFailures(this.failureTotal(), detail.run.casesMeasured);
   });
 
+  // The comparison of a run with a reference run of the same kind.
+  /** The run the viewer chose as reference; without one, each run is compared with the one before it. */
+  readonly referenceRunId = signal<string | null>(null);
+  readonly comparisonTargetId = signal<string | null>(null);
+  readonly comparison = signal<RunComparison | null>(null);
+  readonly comparisonLoading = signal(false);
+  readonly comparisonError = signal<string | null>(null);
+  private readonly chosenComparisonMetric = signal<string | null>(null);
+  readonly comparisonMetric = computed(
+    () =>
+      this.chosenComparisonMetric() ??
+      (this.kind() === 'QUALITY' ? 'faithfulness' : 'reciprocal_rank'),
+  );
+  readonly comparisonDrop = signal(DEFAULT_DROP);
+  /** What the comparison that is shown was asked with, so the same request is not made twice. */
+  private comparisonKey: string | null = null;
+
   private listSubscription?: Subscription;
   private detailSubscription?: Subscription;
+  private comparisonSubscription?: Subscription;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.listSubscription?.unsubscribe();
       this.detailSubscription?.unsubscribe();
+      this.comparisonSubscription?.unsubscribe();
     });
   }
 
@@ -196,6 +236,9 @@ export class EvalStore {
     this.listing.set(null);
     this.loaded.set(false);
     this.clearSelection();
+    this.referenceRunId.set(null);
+    this.chosenComparisonMetric.set(null);
+    this.closeComparison();
     this.loadListing();
   }
 
@@ -267,6 +310,77 @@ export class EvalStore {
     this.detailError.set(null);
   }
 
+  /** For each run of the list, whether it can be compared with its reference and, if not, why. */
+  readonly compareAvailability = computed<Record<string, CompareAvailability>>(() =>
+    Object.fromEntries(
+      this.runs().map((run): [string, CompareAvailability] => {
+        const base = this.referenceFor(run.runId);
+        if (base === null || !this.runs().some((other) => other.runId === base)) {
+          return [run.runId, 'no-reference'];
+        }
+        if (base === run.runId) {
+          return [run.runId, 'is-reference'];
+        }
+        return [run.runId, this.canCompare(base, run.runId) ? 'available' : 'other-kind'];
+      }),
+    ),
+  );
+
+  /** The run a target is compared with: the one the viewer chose, or else the run before it in the list. */
+  referenceFor(targetId: string): string | null {
+    const chosen = this.referenceRunId();
+    if (chosen !== null) {
+      return chosen;
+    }
+    const index = this.runs().findIndex((run) => run.runId === targetId);
+    return index > 0 ? this.runs()[index - 1].runId : null;
+  }
+
+  setReference(runId: string): void {
+    this.referenceRunId.set(runId);
+  }
+
+  /** Two different runs of the same kind: the only ones whose metrics are the same. */
+  canCompare(baseId: string, targetId: string): boolean {
+    const base = this.runs().find((run) => run.runId === baseId);
+    const target = this.runs().find((run) => run.runId === targetId);
+    return (
+      base !== undefined && target !== undefined && baseId !== targetId && base.kind === target.kind
+    );
+  }
+
+  /** Compares a run with its reference. The same comparison is not asked for again. */
+  compareWith(targetId: string): void {
+    this.comparisonTargetId.set(targetId);
+    this.requestComparison(false);
+  }
+
+  retryComparison(): void {
+    this.requestComparison(true);
+  }
+
+  setComparisonMetric(metric: string): void {
+    this.chosenComparisonMetric.set(metric);
+    this.requestComparison(false);
+  }
+
+  /** The tolerance of the comparison, between 0 and 1 with two decimals. */
+  setComparisonDrop(value: number): void {
+    this.comparisonDrop.set(
+      Number.isNaN(value) ? DEFAULT_DROP : Math.round(Math.min(1, Math.max(0, value)) * 100) / 100,
+    );
+    this.requestComparison(false);
+  }
+
+  closeComparison(): void {
+    this.comparisonSubscription?.unsubscribe();
+    this.comparisonTargetId.set(null);
+    this.comparison.set(null);
+    this.comparisonError.set(null);
+    this.comparisonLoading.set(false);
+    this.comparisonKey = null;
+  }
+
   /** The threshold of the quality criterion, kept between 0 and 1 with two decimals. */
   setThreshold(value: number): void {
     if (Number.isNaN(value)) {
@@ -290,6 +404,36 @@ export class EvalStore {
 
   setSort(sort: FailureSort): void {
     this.sort.set(sort);
+  }
+
+  private requestComparison(force: boolean): void {
+    const target = this.comparisonTargetId();
+    const base = target === null ? null : this.referenceFor(target);
+    if (target === null || base === null || !this.canCompare(base, target)) {
+      return;
+    }
+    const metric = this.comparisonMetric();
+    const drop = this.comparisonDrop();
+    const key = `${base}|${target}|${metric}|${drop}`;
+    if (!force && this.comparisonKey === key && this.comparison() !== null) {
+      return;
+    }
+    this.comparisonSubscription?.unsubscribe();
+    this.comparisonLoading.set(true);
+    this.comparisonError.set(null);
+    this.comparisonSubscription = this.client.compare(base, target, metric, drop).subscribe({
+      next: (comparison) => {
+        this.comparison.set(comparison);
+        this.comparisonKey = key;
+        this.comparisonLoading.set(false);
+      },
+      error: (error: unknown) => {
+        this.comparison.set(null);
+        this.comparisonKey = null;
+        this.comparisonLoading.set(false);
+        this.comparisonError.set(comparisonMessage(error as Partial<ApiError>));
+      },
+    });
   }
 
   private loadDetail(runId: string): void {

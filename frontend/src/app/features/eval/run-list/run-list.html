@@ -31,6 +31,9 @@
             @if (run.runId === selectedRunId()) {
               <span class="badge">Elegida</span>
             }
+            @if (run.runId === referenceRunId()) {
+              <span class="badge reference">Referencia</span>
+            }
           </th>
           <td>{{ formatDateTime(run.startedAt) }}</td>
           <td>{{ run.origin }}</td>
@@ -43,15 +46,37 @@
               }
             </td>
           }
-          <td>
+          <td class="actions">
             <button
               mat-stroked-button
               type="button"
+              class="view-detail"
               [attr.aria-label]="'Ver detalle de la ejecución ' + run.runId"
               (click)="runSelected.emit(run.runId)"
             >
               Ver detalle
             </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [attr.aria-label]="'Usar como referencia la ejecución ' + run.runId"
+              (click)="referenceChosen.emit(run.runId)"
+            >
+              Usar como referencia
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [attr.aria-label]="'Comparar con la referencia la ejecución ' + run.runId"
+              [attr.aria-describedby]="hint(availabilityOf(run)) ? 'compare-hint-' + $index : null"
+              [disabled]="availabilityOf(run) !== 'available'"
+              (click)="compareRequested.emit(run.runId)"
+            >
+              Comparar con la referencia
+            </button>
+            @if (hint(availabilityOf(run)); as text) {
+              <span class="compare-hint" [id]="'compare-hint-' + $index">{{ text }}</span>
+            }
           </td>
         </tr>
       }

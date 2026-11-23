@@ -3,11 +3,14 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { HANDLES_OWN_ERRORS } from '../../core/api/api-error';
 import {
+  ComparedRun,
+  ComparisonStatus,
   EvaluatorInfo,
   JudgeInfo,
   MetricStat,
   OriginCount,
   RetrievalConfig,
+  RunComparison,
   RunDetail,
   RunHeader,
   RunKind,
@@ -248,6 +251,91 @@ function toDetail(wire: WireDetail): RunDetail {
   };
 }
 
+interface WireComparedRun {
+  run_id: string;
+  kind: RunKind;
+  started_at: string;
+  origin: string;
+}
+
+interface WireComparison {
+  base: WireComparedRun;
+  target: WireComparedRun;
+  metric: string;
+  drop: number;
+  metrics: { metric: string; base: WireMetric; target: WireMetric; delta: number | null }[];
+  parameters: {
+    field: string;
+    base: string | null;
+    target: string | null;
+    affects_comparability: boolean;
+  }[];
+  warnings: string[];
+  counts: {
+    worse: number;
+    better: number;
+    same: number;
+    no_value: number;
+    not_comparable: number;
+    only_base: number;
+    only_target: number;
+  };
+  /** A case that cannot be compared has no values: they are not in the body. */
+  cases: {
+    case_id: string;
+    category: string;
+    question: string;
+    status: ComparisonStatus;
+    base_value?: number | null;
+    target_value?: number | null;
+    delta?: number | null;
+  }[];
+}
+
+function toComparedRun(wire: WireComparedRun): ComparedRun {
+  return { runId: wire.run_id, kind: wire.kind, startedAt: wire.started_at, origin: wire.origin };
+}
+
+function toComparison(wire: WireComparison): RunComparison {
+  return {
+    base: toComparedRun(wire.base),
+    target: toComparedRun(wire.target),
+    metric: wire.metric,
+    drop: wire.drop,
+    metrics: wire.metrics.map((metric) => ({
+      metric: metric.metric,
+      base: toMetric(metric.base),
+      target: toMetric(metric.target),
+      delta: metric.delta ?? null,
+    })),
+    parameters: wire.parameters.map((parameter) => ({
+      field: parameter.field,
+      base: parameter.base ?? null,
+      target: parameter.target ?? null,
+      affectsComparability: parameter.affects_comparability,
+    })),
+    warnings: wire.warnings,
+    counts: {
+      worse: wire.counts.worse,
+      better: wire.counts.better,
+      same: wire.counts.same,
+      noValue: wire.counts.no_value,
+      notComparable: wire.counts.not_comparable,
+      onlyBase: wire.counts.only_base,
+      onlyTarget: wire.counts.only_target,
+    },
+    cases: wire.cases.map((item) => ({
+      caseId: item.case_id,
+      category: item.category,
+      question: item.question,
+      status: item.status,
+      baseValue: item.base_value ?? null,
+      targetValue: item.target_value ?? null,
+      delta: item.delta ?? null,
+    })),
+  };
+}
+
 /** Reads the history of evaluation runs of the backend (read only; it needs no token). */
 @Injectable({ providedIn: 'root' })
 export class EvalApiClient {
@@ -271,5 +359,17 @@ export class EvalApiClient {
         context: ownErrors(),
       })
       .pipe(map(toDetail));
+  }
+
+  /** Two runs of the same kind for one metric; a case is worse or better when it moves more than `drop`. */
+  compare(base: string, target: string, metric: string, drop: number): Observable<RunComparison> {
+    const params = new HttpParams()
+      .set('base', base)
+      .set('target', target)
+      .set('metric', metric)
+      .set('drop', drop);
+    return this.http
+      .get<WireComparison>(`${EVAL_HISTORY_URL}/compare`, { params, context: ownErrors() })
+      .pipe(map(toComparison));
   }
 }

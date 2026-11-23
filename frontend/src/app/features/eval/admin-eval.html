@@ -91,7 +91,11 @@
       [runs]="store.runs()"
       [metrics]="store.selectedMetrics()"
       [selectedRunId]="store.selectedRunId()"
+      [referenceRunId]="store.referenceRunId()"
+      [availability]="store.compareAvailability()"
       (runSelected)="onRunSelected($event)"
+      (referenceChosen)="store.setReference($event)"
+      (compareRequested)="store.compareWith($event)"
     />
   }
 
@@ -114,4 +118,6 @@
     <app-run-detail [detail]="detail" />
     <app-failing-cases />
   }
+
+  <app-run-comparison />
 </section>

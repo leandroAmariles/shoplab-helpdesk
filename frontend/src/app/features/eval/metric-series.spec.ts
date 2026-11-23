@@ -4,6 +4,7 @@ import {
   buildSeries,
   defaultMetrics,
   describeSeries,
+  formatDelta,
   formatValue,
 } from './metric-series';
 
@@ -159,6 +160,22 @@ describe('metric-series', () => {
       expect(formatValue(1)).toBe('1,0000');
       expect(formatValue(0)).toBe('0,0000');
       expect(formatValue(null)).toBe('sin valor');
+    });
+  });
+
+  describe('formatDelta', () => {
+    it('shows the sign of a change with four decimals and a comma', () => {
+      expect(formatDelta(0.05)).toBe('+0,0500');
+      expect(formatDelta(-0.0334)).toBe('−0,0334');
+    });
+
+    it('shows no sign for no change, not even for a change that rounds to none', () => {
+      expect(formatDelta(0)).toBe('0,0000');
+      expect(formatDelta(-0.00001)).toBe('0,0000');
+    });
+
+    it('says «sin valor» for null, never a zero', () => {
+      expect(formatDelta(null)).toBe('sin valor');
     });
   });
 
