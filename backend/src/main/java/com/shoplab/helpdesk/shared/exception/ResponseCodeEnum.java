@@ -47,6 +47,8 @@ public enum ResponseCodeEnum {
     EVAL_RUN_NOT_FOUND("SLHD_EVAL_00004", HttpStatus.NOT_FOUND, "There is no evaluation run with that id"),
     EVAL_STORE_UNAVAILABLE("SLHD_EVAL_00005", HttpStatus.SERVICE_UNAVAILABLE,
             "The evaluation history is not available"),
+    EVAL_RUNS_NOT_COMPARABLE("SLHD_EVAL_00006", HttpStatus.UNPROCESSABLE_CONTENT,
+            "The evaluation runs are not of the same kind"),
     DATABASE_UNAVAILABLE("SLHD_DBAS_00001", HttpStatus.SERVICE_UNAVAILABLE, "The database is not available"),
     DATABASE_MIGRATION_FAILED("SLHD_DBAS_00002", HttpStatus.INTERNAL_SERVER_ERROR,
             "A module schema migration failed"),

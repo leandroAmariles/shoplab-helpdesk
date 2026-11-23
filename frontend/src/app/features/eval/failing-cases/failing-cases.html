@@ -1,0 +1,220 @@
+@if (store.detail(); as detail) {
+  <section class="failing" aria-labelledby="failing-title">
+    <h3 id="failing-title">Casos que fallan</h3>
+
+    <div class="criterion">
+      @if (isQuality()) {
+        <div class="field">
+          <label for="threshold">Umbral</label>
+          <input
+            id="threshold"
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+            [value]="store.threshold()"
+            (input)="onThreshold($event)"
+          />
+        </div>
+        <p class="hint">
+          Un caso falla si alguna de sus métricas con valor queda por debajo de este umbral. Es solo
+          informativo: no bloquea nada.
+        </p>
+      } @else if (isRetrieval()) {
+        <div class="field">
+          <label for="k-select">Primeros k recuperados</label>
+          <select id="k-select" (change)="onK($event)">
+            @for (k of store.availableKs(); track k) {
+              <option [value]="k" [selected]="k === store.k()">{{ k }}</option>
+            }
+          </select>
+        </div>
+        <p class="hint">
+          Un caso falla si ninguno de sus documentos esperados aparece entre los primeros k
+          recuperados.
+        </p>
+      }
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="category-filter">Categoría</label>
+        <select id="category-filter" (change)="onCategory($event)">
+          <option value="">Todas</option>
+          @for (category of categories(); track category) {
+            <option [value]="category" [selected]="category === store.categoryFilter()">
+              {{ category }}
+            </option>
+          }
+        </select>
+      </div>
+      @if (isQuality()) {
+        <div class="field">
+          <label for="metric-filter">Métrica que falla</label>
+          <select id="metric-filter" (change)="onMetric($event)">
+            <option value="">Cualquiera</option>
+            @for (metric of metrics(); track metric) {
+              <option [value]="metric" [selected]="metric === store.metricFilter()">
+                {{ metricLabel(metric) }}
+              </option>
+            }
+          </select>
+        </div>
+      }
+      <div class="field">
+        <label for="sort">Ordenar por</label>
+        <select id="sort" (change)="onSort($event)">
+          <option value="worst" [selected]="store.sort() === 'worst'">Peor valor primero</option>
+          <option value="caseId" [selected]="store.sort() === 'caseId'">Caso</option>
+          <option value="category" [selected]="store.sort() === 'category'">Categoría</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="status" role="status">{{ store.failureSummary() }}</p>
+
+    @if (store.failures().length > 0) {
+      <div
+        class="cases-region"
+        role="region"
+        tabindex="0"
+        aria-label="Casos que fallan de la ejecución"
+      >
+        <table>
+          <caption class="visually-hidden">
+            Casos que fallan, con su categoría, su pregunta y el valor de sus métricas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Caso</th>
+              <th scope="col">Categoría</th>
+              <th scope="col">Pregunta</th>
+              <th scope="col">Métricas</th>
+              <th scope="col"><span class="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (failure of store.failures(); track failure.result.caseId) {
+              <tr class="case-row">
+                <th scope="row">{{ failure.result.caseId }}</th>
+                <td>{{ failure.result.category }}</td>
+                <td class="question" [attr.title]="failure.result.question">
+                  {{ failure.result.question }}
+                </td>
+                <td>
+                  <ul class="scores">
+                    @for (score of shownScores(failure); track score.metric) {
+                      <li class="score" [class.below]="score.below">
+                        {{ score.label }}: {{ score.value }}
+                        @if (score.below && isQuality()) {
+                          <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+                          <span class="below-text">por debajo del umbral</span>
+                        }
+                        @if (score.below && isRetrieval()) {
+                          <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+                          <span class="below-text">no encontró ningún documento esperado</span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                </td>
+                <td>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="toggle"
+                    [attr.aria-expanded]="isOpen(failure.result)"
+                    [attr.aria-label]="
+                      (isOpen(failure.result) ? 'Cerrar el caso ' : 'Abrir el caso ') +
+                      failure.result.caseId
+                    "
+                    (click)="toggle(failure.result)"
+                  >
+                    {{ isOpen(failure.result) ? 'Cerrar' : 'Ver' }}
+                  </button>
+                </td>
+              </tr>
+              @if (isOpen(failure.result)) {
+                <tr class="case-detail">
+                  <td colspan="5">
+                    <h4>{{ failure.result.caseId }} · {{ failure.result.question }}</h4>
+                    <p class="reference">
+                      <strong>Respuesta de referencia:</strong> {{ failure.result.referenceAnswer }}
+                    </p>
+                    <div class="documents">
+                      <div class="expected">
+                        <h5>Documentos esperados</h5>
+                        @if (failure.result.expectedDocuments.length === 0) {
+                          <p>El caso no espera ningún documento.</p>
+                        } @else {
+                          <ul>
+                            @for (document of failure.result.expectedDocuments; track document) {
+                              <li>
+                                {{ document }} ·
+                                {{
+                                  isExpectedFound(failure.result, document)
+                                    ? 'encontrado'
+                                    : 'no encontrado'
+                                }}
+                              </li>
+                            }
+                          </ul>
+                        }
+                      </div>
+                      <div class="retrieved">
+                        <h5>Documentos recuperados, en orden</h5>
+                        @if (failure.result.retrievedDocuments.length === 0) {
+                          <p>No se recuperó ningún documento.</p>
+                        } @else {
+                          <ol>
+                            @for (document of failure.result.retrievedDocuments; track $index) {
+                              <li>
+                                {{ $index + 1 }}. {{ document }} ·
+                                {{
+                                  isRetrievedExpected(failure.result, document)
+                                    ? 'esperado'
+                                    : 'no esperado'
+                                }}
+                              </li>
+                            }
+                          </ol>
+                        }
+                      </div>
+                    </div>
+                    @if (failure.result.abstained === true) {
+                      <p>El asistente se abstuvo de responder.</p>
+                    } @else if (failure.result.abstained === false) {
+                      <p>El asistente respondió.</p>
+                    }
+                    @if (failure.result.traceId; as traceId) {
+                      <p class="trace">
+                        @if (failure.result.traceUrl; as traceUrl) {
+                          <a
+                            class="trace-link"
+                            [href]="traceUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            >Ver traza en Langfuse</a
+                          >
+                        } @else {
+                          Traza: <code class="trace-id">{{ traceId }}</code>
+                          <button mat-button type="button" class="copy" (click)="copy(traceId)">
+                            {{ copied() === traceId ? 'Copiado' : 'Copiar' }}
+                          </button>
+                        }
+                      </p>
+                    }
+                    <p class="hint">
+                      El texto de la respuesta del asistente y el de los fragmentos no se guardan
+                      aquí: viven en la traza de Langfuse.
+                    </p>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

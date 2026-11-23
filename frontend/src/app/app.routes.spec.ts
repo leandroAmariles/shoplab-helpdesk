@@ -6,6 +6,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Chat } from './features/chat/chat';
 import { Documents } from './features/documents/documents';
+import { AdminEval } from './features/eval/admin-eval';
 import { Home } from './features/home/home';
 import { NotFound } from './features/not-found/not-found';
 import { Shell } from './layout/shell/shell';
@@ -55,6 +56,23 @@ describe('routes', () => {
     expect(documents?.title).toBe('Documentos');
     expect(documents?.data?.['nav']).toEqual({ label: 'Documentos', icon: 'description' });
     expect(documents?.loadComponent).toBeTypeOf('function');
+  });
+
+  it('renders the evaluation screen inside the shell and lists it in the navigation', async () => {
+    const harness = await RouterTestingHarness.create('/admin-eval');
+
+    expect(harness.fixture.debugElement.query(By.directive(Shell))).not.toBeNull();
+    expect(harness.fixture.debugElement.query(By.directive(AdminEval))).not.toBeNull();
+
+    const children = routes[0].children ?? [];
+    const evaluation = children.find((route) => route.path === 'admin-eval');
+    expect(evaluation?.title).toBe('Evaluación');
+    expect(evaluation?.data?.['nav']).toEqual({ label: 'Evaluación', icon: 'monitoring' });
+    expect(evaluation?.loadComponent).toBeTypeOf('function');
+    // Listed after Chat and Documents, before the wildcard.
+    const order = children.map((route) => route.path);
+    expect(order.indexOf('admin-eval')).toBeGreaterThan(order.indexOf('documentos'));
+    expect(order.indexOf('admin-eval')).toBeLessThan(order.indexOf('**'));
   });
 
   it('declares the wildcard route last', () => {

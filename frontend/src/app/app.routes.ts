@@ -26,6 +26,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/documents/documents').then((m) => m.Documents),
       },
       {
+        path: 'admin-eval',
+        title: 'Evaluación',
+        data: { nav: { label: 'Evaluación', icon: 'monitoring' } },
+        loadComponent: () => import('./features/eval/admin-eval').then((m) => m.AdminEval),
+      },
+      {
         path: '**',
         title: 'Página no encontrada',
         loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),

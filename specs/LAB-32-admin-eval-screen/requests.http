@@ -1,0 +1,269 @@
+# Pruebas HTTP de LAB-32 (lectura del historial de evaluación). Sintaxis de IntelliJ HTTP Client / VS Code REST Client.
+#
+# Antes: backend en marcha con el guardado de LAB-31 activo, y las cinco cargas de seed/ guardadas
+# (`python seed/generate_seed.py` y luego las peticiones de seed/seed.http). Sus ejecuciones son:
+#   seed-q1, seed-q2, seed-q3 (calidad: q2 cambia la versión de chat-system y reescribe el caso G001;
+#   q3 tiene context_precision vacío por definición) y seed-r1, seed-r2 (recuperación, con k distintos).
+#
+# Ninguna petición necesita X-Eval-Token: la lectura no lo usa (FR-020). Cada una dice de dónde sale y qué espera.
+#
+# Not covered here (no alcanzables por HTTP; los cubren las pruebas del frontend y la validación manual V1–V24 de
+# validation.md): FR-001 a FR-006 (pantalla, gráfica, tipo, métricas, puntos, hueco y filtro de origen en el cliente),
+# FR-010 a FR-015 (criterio de fallo con umbral o k, orden, «sin valor», caso abierto y enlace a la traza en el cliente),
+# FR-021 a FR-023 (estados, accesibilidad y rango). Tampoco la advertencia de la comparación por juez, modelo, embeddings,
+# recuperación o dataset distintos (FR-018): las cargas de seed/ solo cambian el prompt; la cubre RunComparatorTests.
+
+@baseUrl = http://localhost:8080
+
+### US1·1 y FR-020 — lista de ejecuciones de calidad, la más reciente a la derecha, sin token — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY
+
+> {%
+  client.test("200 y las tres ejecuciones sembradas", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.runs.length >= 3);
+  });
+%}
+
+### US1·4 — lista de recuperación: solo ejecuciones de recuperación, nunca mezcladas con calidad — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=RETRIEVAL
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}
+
+### US1·6 — filtro de origen: `total` cambia, `total_all_origins` y `origins` no — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&origin=dev
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}
+
+### FR-023 / límite (frontera, dentro) — limit=1 devuelve solo la más reciente — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=1
+
+> {%
+  client.test("200 y una ejecución", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.shown === 1);
+  });
+%}
+
+### FR-023 / límite (frontera, dentro) — limit=500 es el máximo permitido — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=500
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}
+
+### FR-023 / límite (frontera, fuera) — limit=501 supera el máximo — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=501
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### FR-023 / límite (frontera, fuera) — limit=0 no es válido — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=0
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US1·4 — un tipo desconocido se rechaza con la causa — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs?kind=OTHER
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US1·4 — sin tipo no se adivina — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US2 / FR-008 y FR-009 — detalle de una ejecución de calidad: parámetros, resumen y resultados — expects 200
+GET {{baseUrl}}/api/eval/history/runs/seed-q1
+
+> {%
+  client.test("200 con resumen y resultados", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.summary.length > 0);
+    client.assert(response.body.results.length === 96);
+  });
+%}
+
+### US1·5 y FR-013 — una métrica vacía por definición sale como media nula y n = 0, nunca 0 — expects 200
+GET {{baseUrl}}/api/eval/history/runs/seed-q3
+
+> {%
+  client.test("context_precision sin valor", function () {
+    client.assert(response.status === 200);
+    const all = response.body.summary.find(function (s) { return s.scope === "all"; });
+    client.assert(all.metrics.context_precision.mean === null);
+    client.assert(all.metrics.context_precision.n === 0);
+  });
+%}
+
+### US2 — detalle de una ejecución de recuperación: lleva depth y ks, sin juez ni evaluador — expects 200
+GET {{baseUrl}}/api/eval/history/runs/seed-r2
+
+> {%
+  client.test("200 sin juez", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.run.judge === null);
+  });
+%}
+
+### US2 / enlace antiguo — una ejecución que no existe — expects 404 SLHD_EVAL_00004
+GET {{baseUrl}}/api/eval/history/runs/no-existe
+
+> {%
+  client.test("404 SLHD_EVAL_00004", function () {
+    client.assert(response.status === 404);
+    client.assert(response.body.code === "SLHD_EVAL_00004");
+  });
+%}
+
+### US2 / validación — un identificador con formato inválido no llega a la base — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs/a%20b
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US3·1, US3·2 y FR-019 — comparación con el cambio deliberado de prompt, tolerancia 0,05 (frontera exacta) — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness&drop=0.05
+
+> {%
+  client.test("200 con el prompt que cambió y los casos clasificados", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.parameters.some(function (p) {
+      return p.field === "prompts.chat-system.version" && p.base === "3" && p.target === "4";
+    }));
+    client.assert(response.body.counts.worse > 0);
+  });
+%}
+
+### US3·3 — el caso reescrito (G001) es no comparable y no figura entre los que empeoraron ni mejoraron — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness
+
+> {%
+  client.test("G001 no comparable y sin valores", function () {
+    client.assert(response.status === 200);
+    const g001 = response.body.cases.find(function (c) { return c.case_id === "G001"; });
+    client.assert(g001.status === "NOT_COMPARABLE");
+    client.assert(g001.base_value === undefined && g001.target_value === undefined);
+  });
+%}
+
+### US3·2 y regla de tolerancia (frontera, dentro) — con tolerancia 0,04 se empeoran más casos que con 0,05 — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness&drop=0.04
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}
+
+### Regla de tolerancia (frontera, extremos) — tolerancia 0 y tolerancia 1 son válidas — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness&drop=0
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}
+
+### Regla de tolerancia (frontera, extremos) — con tolerancia 1 ningún caso cambia más que ella — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness&drop=1
+
+> {%
+  client.test("200 sin empeoramientos", function () {
+    client.assert(response.status === 200);
+    client.assert(response.body.counts.worse === 0);
+  });
+%}
+
+### Regla de tolerancia (fuera) — una tolerancia mayor que 1 se rechaza — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=faithfulness&drop=1.5
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US3·5 — dos ejecuciones de tipos distintos no se comparan — expects 422 SLHD_EVAL_00006
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-r1&metric=faithfulness
+
+> {%
+  client.test("422 SLHD_EVAL_00006", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00006");
+  });
+%}
+
+### US3 / validación — una ejecución comparada consigo misma — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q1&metric=faithfulness
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US3 / validación — una métrica que ninguna de las dos tiene no da una comparación vacía — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=seed-q2&metric=reciprocal_rank
+
+> {%
+  client.test("422 SLHD_EVAL_00002", function () {
+    client.assert(response.status === 422);
+    client.assert(response.body.code === "SLHD_EVAL_00002");
+  });
+%}
+
+### US3 / ejecución inexistente — comparar con una ejecución que no existe — expects 404 SLHD_EVAL_00004
+GET {{baseUrl}}/api/eval/history/compare?base=seed-q1&target=no-existe&metric=faithfulness
+
+> {%
+  client.test("404 SLHD_EVAL_00004", function () {
+    client.assert(response.status === 404);
+    client.assert(response.body.code === "SLHD_EVAL_00004");
+  });
+%}
+
+### US3·6 — recuperación con k distintos: solo se comparan las métricas que existen (hit_at_10 solo en r2) — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base=seed-r1&target=seed-r2&metric=reciprocal_rank
+
+> {%
+  client.test("200 con hit_at_10 solo en el objetivo", function () {
+    client.assert(response.status === 200);
+    const hit10 = response.body.metrics.find(function (m) { return m.metric === "hit_at_10"; });
+    client.assert(hit10.base.mean === null && hit10.base.n === 0);
+    client.assert(hit10.delta === null);
+  });
+%}
+
+### FR-020 / sin token — la lectura funciona aunque se envíe un token de guardado equivocado (se ignora) — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=1
+X-Eval-Token: valor-que-no-se-usa
+
+> {%
+  client.test("200", function () { client.assert(response.status === 200); });
+%}

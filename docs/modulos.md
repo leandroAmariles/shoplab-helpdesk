@@ -11,7 +11,7 @@ contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verific
 | `orders` | Pedidos | `orders` | `db/migration/orders` |
 | `catalog` | Catálogo de productos | `catalog` | `db/migration/catalog` |
 | `tickets` | Tickets de soporte | `tickets` | `db/migration/tickets` |
-| `eval` | Historial de las ejecuciones de evaluación (LAB-31) | `eval` | `db/migration/eval` |
+| `eval` | Historial de las ejecuciones de evaluación (LAB-31) y su lectura para la pantalla `admin-eval` (LAB-32, [`admin-eval.md`](admin-eval.md)) | `eval` | `db/migration/eval` |
 | `shared` | Errores y correlación comunes (módulo abierto, sin datos) | — | — |
 
 ## Estructura de un módulo

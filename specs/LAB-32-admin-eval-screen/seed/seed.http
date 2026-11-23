@@ -1,0 +1,42 @@
+# Guarda las cinco ejecuciones de prueba de LAB-32 (las genera generate_seed.py en ./out).
+# Cada petición es el POST de guardado de LAB-31 (contracts/eval-runs-api.md) y necesita el token de guardado.
+# El token NO está aquí: ponlo en la variable de abajo (el mismo valor de SHOPLAB_EVAL_PERSISTENCE_TOKEN del backend).
+# Si una ejecución ya está guardada responde 409 SLHD_EVAL_00003: no se duplica ni se sobrescribe.
+
+@baseUrl = http://localhost:8080
+@token = <token-de-guardado>
+
+### seed-q1 — calidad, la base — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+< ./out/seed-q1.json
+
+### seed-q2 — calidad, con chat-system 3 -> 4 y el caso G001 reescrito — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+< ./out/seed-q2.json
+
+### seed-q3 — calidad, con context_precision vacío por definición — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+< ./out/seed-q3.json
+
+### seed-r1 — recuperación, k = 1, 3, 5 — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+< ./out/seed-r1.json
+
+### seed-r2 — recuperación, k = 1, 3, 5, 10 — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{token}}
+
+< ./out/seed-r2.json
