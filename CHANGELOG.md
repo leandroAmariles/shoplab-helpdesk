@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.24.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.23.0...v0.24.0) (2026-11-23)
+
+
+### Features
+
+* **ml:** [LAB-118] clasificador de intención con scikit-learn ([#165](https://github.com/leandroAmariles/shoplab-helpdesk/issues/165)) ([119717d](https://github.com/leandroAmariles/shoplab-helpdesk/commit/119717dbdf4356103b30624c886e56c06c8bfba1))
+
+## [0.23.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.22.0...v0.23.0) (2026-11-23)
+
+
+### Features
+
+* **chat:** [LAB-33] feedback de respuestas y promoción a casos golden ([#164](https://github.com/leandroAmariles/shoplab-helpdesk/issues/164)) ([8b1f8fe](https://github.com/leandroAmariles/shoplab-helpdesk/commit/8b1f8fecab2861e41db69fb371c1a9f690bca15b))
+* **eval:** [LAB-32] pantalla de administración de evaluación con historial y métricas ([#162](https://github.com/leandroAmariles/shoplab-helpdesk/issues/162)) ([fca581f](https://github.com/leandroAmariles/shoplab-helpdesk/commit/fca581f6b718fb826b5467d03efe87bd224e482e))
+
 ## [0.22.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.21.0...v0.22.0) (2026-11-21)
 
 

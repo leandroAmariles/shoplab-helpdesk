@@ -1,0 +1,375 @@
+{
+  "schema_version": "1.0",
+  "artifact_path": "C:/Users/Leandro/IdeaProjects/shoplab-helpdesk/ml/artifacts/intent/intent_classifier.joblib",
+  "artifact_sha256": "abd8ce4e3f385b2a11536b6cdef96f9985cd9f1a03bf5ef3239991d4fd13e66b",
+  "dataset_sha256": "3f9c7df348abd52f5d668f5454c178b25a11f3361b789cb6cd2e8cec263a5689",
+  "test_count": 102,
+  "target_f1_macro": 0.85,
+  "passed_target": true,
+  "test_f1_macro": 0.878818,
+  "test_accuracy": 0.872549,
+  "baseline_majority_label": "pedido",
+  "baseline_f1_macro": 0.08855,
+  "baseline_accuracy": 0.284314,
+  "per_class": {
+    "politica": {
+      "precision": 0.9,
+      "recall": 0.9,
+      "f1": 0.9,
+      "support": 20
+    },
+    "producto": {
+      "precision": 0.8,
+      "recall": 0.761905,
+      "f1": 0.780488,
+      "support": 21
+    },
+    "pedido": {
+      "precision": 0.794118,
+      "recall": 0.931034,
+      "f1": 0.857143,
+      "support": 29
+    },
+    "escalado": {
+      "precision": 1.0,
+      "recall": 0.9,
+      "f1": 0.947368,
+      "support": 20
+    },
+    "charla": {
+      "precision": 1.0,
+      "recall": 0.833333,
+      "f1": 0.909091,
+      "support": 12
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "politica",
+      "producto",
+      "pedido",
+      "escalado",
+      "charla"
+    ],
+    "matrix": [
+      [
+        18,
+        1,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        16,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        27,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        2,
+        18,
+        0
+      ],
+      [
+        1,
+        1,
+        0,
+        0,
+        10
+      ]
+    ]
+  },
+  "calibration": {
+    "brier_score": 0.313188,
+    "log_loss": 0.657268,
+    "ece": 0.296697,
+    "bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.1,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null,
+        "gap": null
+      },
+      {
+        "bin_lower": 0.1,
+        "bin_upper": 0.2,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null,
+        "gap": null
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.3,
+        "count": 6,
+        "mean_confidence": 0.274405,
+        "accuracy": 0.5,
+        "gap": 0.225595
+      },
+      {
+        "bin_lower": 0.3,
+        "bin_upper": 0.4,
+        "count": 9,
+        "mean_confidence": 0.359189,
+        "accuracy": 0.777778,
+        "gap": 0.418589
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.5,
+        "count": 20,
+        "mean_confidence": 0.447707,
+        "accuracy": 0.75,
+        "gap": 0.302293
+      },
+      {
+        "bin_lower": 0.5,
+        "bin_upper": 0.6,
+        "count": 20,
+        "mean_confidence": 0.551021,
+        "accuracy": 0.9,
+        "gap": 0.348979
+      },
+      {
+        "bin_lower": 0.6,
+        "bin_upper": 0.7,
+        "count": 24,
+        "mean_confidence": 0.648633,
+        "accuracy": 0.958333,
+        "gap": 0.3097
+      },
+      {
+        "bin_lower": 0.7,
+        "bin_upper": 0.8,
+        "count": 12,
+        "mean_confidence": 0.754061,
+        "accuracy": 1.0,
+        "gap": 0.245939
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 0.9,
+        "count": 10,
+        "mean_confidence": 0.833501,
+        "accuracy": 1.0,
+        "gap": 0.166499
+      },
+      {
+        "bin_lower": 0.9,
+        "bin_upper": 1.0,
+        "count": 1,
+        "mean_confidence": 0.932295,
+        "accuracy": 1.0,
+        "gap": 0.067705
+      }
+    ]
+  },
+  "confidence_thresholds": [
+    {
+      "threshold": 0.5,
+      "retained_count": 67,
+      "fallback_count": 35,
+      "coverage": 0.656863,
+      "accuracy_retained": 0.955224,
+      "f1_macro_retained": 0.959664
+    },
+    {
+      "threshold": 0.6,
+      "retained_count": 47,
+      "fallback_count": 55,
+      "coverage": 0.460784,
+      "accuracy_retained": 0.978723,
+      "f1_macro_retained": 0.966551
+    },
+    {
+      "threshold": 0.7,
+      "retained_count": 23,
+      "fallback_count": 79,
+      "coverage": 0.22549,
+      "accuracy_retained": 1.0,
+      "f1_macro_retained": 1.0
+    },
+    {
+      "threshold": 0.75,
+      "retained_count": 19,
+      "fallback_count": 83,
+      "coverage": 0.186275,
+      "accuracy_retained": 1.0,
+      "f1_macro_retained": 1.0
+    },
+    {
+      "threshold": 0.8,
+      "retained_count": 11,
+      "fallback_count": 91,
+      "coverage": 0.107843,
+      "accuracy_retained": 1.0,
+      "f1_macro_retained": 1.0
+    },
+    {
+      "threshold": 0.85,
+      "retained_count": 3,
+      "fallback_count": 99,
+      "coverage": 0.029412,
+      "accuracy_retained": 1.0,
+      "f1_macro_retained": 1.0
+    },
+    {
+      "threshold": 0.9,
+      "retained_count": 1,
+      "fallback_count": 101,
+      "coverage": 0.009804,
+      "accuracy_retained": 1.0,
+      "f1_macro_retained": 1.0
+    }
+  ],
+  "by_language": {
+    "es": {
+      "count": 45,
+      "f1_macro": 0.915778,
+      "accuracy": 0.911111
+    },
+    "pt": {
+      "count": 57,
+      "f1_macro": 0.834924,
+      "accuracy": 0.842105
+    }
+  },
+  "non_golden_subset": {
+    "count": 73,
+    "f1_macro": 0.730333,
+    "accuracy": 0.835616
+  },
+  "misclassified_examples": [
+    {
+      "id": "I0079",
+      "language": "es",
+      "source": "golden",
+      "text": "¿Hacen envíos a otros países o solo dentro del territorio nacional?",
+      "true_label": "politica",
+      "predicted_label": "pedido",
+      "confidence": 0.26421
+    },
+    {
+      "id": "I0159",
+      "language": "pt",
+      "source": "olist_review",
+      "text": "Produto com codigo correto, mas a impressora não reconhece o toner.",
+      "true_label": "producto",
+      "predicted_label": "pedido",
+      "confidence": 0.543143
+    },
+    {
+      "id": "I0186",
+      "language": "pt",
+      "source": "olist_review",
+      "text": "Bom dia!estou insatisfeita com a demora",
+      "true_label": "pedido",
+      "predicted_label": "producto",
+      "confidence": 0.353335
+    },
+    {
+      "id": "I0188",
+      "language": "pt",
+      "source": "olist_review",
+      "text": "Em 2 meses de espera não recebi o produto. Dividi em duas vezes paguei as duas vezes e não recebi o produto. UMA VERGONHA! Estou indo no procon pois o baratheon não atende telefone. VERGONHA.",
+      "true_label": "escalado",
+      "predicted_label": "pedido",
+      "confidence": 0.426517
+    },
+    {
+      "id": "I0280",
+      "language": "pt",
+      "source": "olist_review",
+      "text": "A agenda é cara mas quem vale o preço para quem gosta.",
+      "true_label": "producto",
+      "predicted_label": "politica",
+      "confidence": 0.288796
+    },
+    {
+      "id": "I0381",
+      "language": "pt",
+      "source": "manual_seed",
+      "text": "Qual é a política de troca?",
+      "true_label": "politica",
+      "predicted_label": "producto",
+      "confidence": 0.295057
+    },
+    {
+      "id": "I0393",
+      "language": "pt",
+      "source": "manual_seed",
+      "text": "Bom dia!",
+      "true_label": "charla",
+      "predicted_label": "producto",
+      "confidence": 0.412292
+    },
+    {
+      "id": "I0399",
+      "language": "pt",
+      "source": "manual_seed",
+      "text": "Qual a previsão do tempo para amanhã?",
+      "true_label": "charla",
+      "predicted_label": "politica",
+      "confidence": 0.408714
+    },
+    {
+      "id": "I0477",
+      "language": "pt",
+      "source": "paraphrase",
+      "text": "Comprei o produto, mas as rodas não são como na imagem do site. Eram amarelas, mas vieram verdes. Além disso, uma delas não gira como as outras e o desenho é diferente.",
+      "true_label": "producto",
+      "predicted_label": "pedido",
+      "confidence": 0.408477
+    },
+    {
+      "id": "I0487",
+      "language": "pt",
+      "source": "paraphrase",
+      "text": "O código do produto está certo, mas a minha impressora não está lendo o toner.",
+      "true_label": "producto",
+      "predicted_label": "pedido",
+      "confidence": 0.617041
+    },
+    {
+      "id": "I0488",
+      "language": "es",
+      "source": "paraphrase",
+      "text": "Tengo el producto con el código correcto, pero la impresora no está detectando el tóner.",
+      "true_label": "producto",
+      "predicted_label": "pedido",
+      "confidence": 0.54192
+    },
+    {
+      "id": "I0591",
+      "language": "es",
+      "source": "paraphrase",
+      "text": "El único inconveniente es que tuve que localizar el producto con la empresa de envíos",
+      "true_label": "pedido",
+      "predicted_label": "producto",
+      "confidence": 0.432786
+    },
+    {
+      "id": "I0617",
+      "language": "es",
+      "source": "paraphrase",
+      "text": "El sitio no actualiza nada y no hay forma de quejarse de que la mercancía se demoró, es una porquería",
+      "true_label": "escalado",
+      "predicted_label": "pedido",
+      "confidence": 0.340977
+    }
+  ],
+  "latency_ms_total": 17.4472,
+  "latency_ms_per_example": 0.1711
+}
