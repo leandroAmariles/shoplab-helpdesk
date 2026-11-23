@@ -17,6 +17,76 @@
       <app-source-list [sources]="listing().sources" [label]="listing().label" (open)="openSource($event)" />
     }
 
+    @if (canRate()) {
+      <div class="feedback-bar" aria-label="Valorar respuesta">
+        <div class="feedback-actions">
+          <button mat-button type="button" class="feedback-btn"
+                  aria-label="Respuesta útil"
+                  [class.selected]="feedback()?.rating === 'UP'"
+                  [attr.aria-pressed]="feedback()?.rating === 'UP'"
+                  [disabled]="feedback()?.saving ?? false"
+                  (click)="onRate('UP')">
+            <span aria-hidden="true">👍</span>
+            <span>Útil</span>
+          </button>
+          <button mat-button type="button" class="feedback-btn"
+                  aria-label="Respuesta no útil"
+                  [class.selected]="feedback()?.rating === 'DOWN'"
+                  [attr.aria-pressed]="feedback()?.rating === 'DOWN'"
+                  [disabled]="feedback()?.saving ?? false"
+                  (click)="onRate('DOWN')">
+            <span aria-hidden="true">👎</span>
+            <span>No útil</span>
+          </button>
+          @if (feedback()?.rating) {
+            <button mat-button type="button" class="feedback-comment-toggle"
+                    aria-label="Añadir comentario"
+                    [attr.aria-expanded]="feedback()?.commentOpen ?? false"
+                    [disabled]="feedback()?.saving ?? false"
+                    (click)="toggleComment.emit()">
+              {{ feedback()?.comment ? 'Editar comentario' : 'Comentar' }}
+            </button>
+          }
+          @if (feedback()?.saved && !feedback()?.error) {
+            <span class="feedback-status" role="status">Valoración guardada</span>
+          }
+        </div>
+
+        @if (feedback()?.commentOpen) {
+          <div class="feedback-comment-box">
+            <label class="feedback-comment-label" [attr.for]="commentInputId()">
+              Comentario opcional (máx. {{ maxCommentLength }} caracteres)
+            </label>
+            <textarea class="feedback-comment-input"
+                      [id]="commentInputId()"
+                      rows="2"
+                      [attr.maxlength]="maxCommentLength"
+                      [value]="feedback()?.commentDraft ?? ''"
+                      [disabled]="feedback()?.saving ?? false"
+                      placeholder="¿Qué faltó o qué se puede mejorar?"
+                      (input)="onCommentInput($event)"></textarea>
+            <div class="feedback-comment-footer">
+              <span class="feedback-comment-count">
+                {{ feedback()?.commentDraft?.length ?? 0 }} / {{ maxCommentLength }}
+              </span>
+              <button mat-stroked-button type="button"
+                      aria-label="Guardar comentario"
+                      [disabled]="feedback()?.saving ?? false"
+                      (click)="onSaveComment()">
+                Guardar comentario
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (feedback()?.error) {
+          <div class="feedback-error" role="alert">
+            <span>{{ feedback()?.error }}</span>
+          </div>
+        }
+      </div>
+    }
+
     @switch (message().status) {
       @case ('streaming') {
         <div class="typing" role="status" aria-label="El asistente está escribiendo">

@@ -23,8 +23,12 @@ public sealed interface ChatEvent {
     record TokenEvent(String content) implements ChatEvent {
     }
 
-    /** The answer finished correctly after {@code fragments} token events. */
-    record DoneEvent(int fragments) implements ChatEvent {
+    /** The answer finished correctly after {@code fragments} token events, with an optional persisted {@code turnId}. */
+    record DoneEvent(int fragments, String turnId) implements ChatEvent {
+
+        public DoneEvent(int fragments) {
+            this(fragments, null);
+        }
     }
 
     /** The answer failed after the stream had started. */

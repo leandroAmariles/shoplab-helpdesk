@@ -6,9 +6,24 @@ export const MAX_MESSAGE_LENGTH = 4000;
 /** The character counter is shown from this length on. */
 export const COUNTER_THRESHOLD = 3500;
 
+/** Maximum optional feedback comment length accepted by the backend (LAB-33). */
+export const MAX_FEEDBACK_COMMENT_LENGTH = 500;
+
 export type MessageAuthor = 'user' | 'assistant';
 
 export type MessageStatus = 'streaming' | 'complete' | 'stopped' | 'failed';
+
+export type FeedbackRating = 'UP' | 'DOWN';
+
+export interface MessageFeedbackState {
+  rating?: FeedbackRating;
+  comment?: string;
+  commentDraft: string;
+  commentOpen: boolean;
+  saving: boolean;
+  saved: boolean;
+  error?: string;
+}
 
 /** A fragment of the knowledge base that backs an answer; `number` is what `[n]` cites (LAB-23). */
 export interface ChatSource {
@@ -32,11 +47,15 @@ export interface ChatMessage {
   error?: ChatErrorKind;
   /** Fragments the answer was generated from; empty for the user and for answers without context. */
   sources: ChatSource[];
+  /** Identifier of the persisted turn in `chat.conversation_turn` (LAB-33). */
+  turnId?: string;
+  /** Rating and optional comment state for completed assistant answers (LAB-33). */
+  feedback?: MessageFeedbackState;
 }
 
-/** Events of the `POST /api/chat` stream (contract of LAB-12). */
+/** Events of the `POST /api/chat` stream (contract of LAB-12 and LAB-33). */
 export type ChatStreamEvent =
   | { type: 'sources'; sources: ChatSource[] }
   | { type: 'token'; content: string }
-  | { type: 'done'; fragments: number }
+  | { type: 'done'; fragments: number; turnId?: string }
   | { type: 'error'; code: string; message: string };

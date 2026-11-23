@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,11 +87,12 @@ public class StreamChatUseCase implements StreamChatServicePort {
             AtomicBoolean firstTokenSeen = new AtomicBoolean();
             AtomicBoolean responseRecorded = new AtomicBoolean();
             AtomicBoolean fixedMessageAnswer = new AtomicBoolean();
+            AtomicReference<List<String>> deliveredDocuments = new AtomicReference<>(List.of());
             StringBuilder answerText = new StringBuilder();
             return chatTrace.traceTurn(command, trace -> turn(command, conversation.orElse(null), trace, startedAt,
-                    fragments, firstTokenSeen, fixedMessageAnswer, answerText)
+                    fragments, firstTokenSeen, fixedMessageAnswer, deliveredDocuments, answerText)
                     .concatWith(Mono.defer(() -> finish(command, conversation.orElse(null), answerText,
-                            fragments)))
+                            fragments, deliveredDocuments.get())))
                     .doOnComplete(() -> record(responseRecorded, ChatOutcome.COMPLETED, startedAt))
                     .doOnCancel(() -> record(responseRecorded, ChatOutcome.CANCELLED, startedAt))
                     .onErrorResume(error -> {
@@ -108,7 +110,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
      */
     private Flux<ChatEvent> turn(StreamChatCommand command, ConversationId conversation, TurnTrace trace,
             long startedAt, AtomicInteger fragments, AtomicBoolean firstTokenSeen, AtomicBoolean fixedMessageAnswer,
-            StringBuilder answerText) {
+            AtomicReference<List<String>> deliveredDocuments, StringBuilder answerText) {
         if (smallTalk.handles(command.message())) {
             return smallTalkTurn(command, trace, fragments, firstTokenSeen, answerText);
         }
@@ -119,6 +121,7 @@ public class StreamChatUseCase implements StreamChatServicePort {
                     trace.historyTurns(selection.turns().size());
                     return retrieveContext(command, selection, trace)
                             .flatMapMany(context -> {
+                                deliveredDocuments.set(ConversationTurn.documentIdsOf(context));
                                 fixedMessageAnswer.set(answersWithFixedMessage(context));
                                 if (fixedMessageAnswer.get()) {
                                     trace.fixedMessageAnswer();
@@ -221,12 +224,15 @@ public class StreamChatUseCase implements StreamChatServicePort {
      * @param conversation the conversation of the request, or {@code null} when it has none (no memory)
      */
     private Mono<ChatEvent> finish(StreamChatCommand command, ConversationId conversation, StringBuilder answerText,
-            AtomicInteger fragments) {
+            AtomicInteger fragments, List<String> deliveredDocuments) {
         Mono<ChatEvent> done = Mono.fromSupplier(() -> new DoneEvent(fragments.get()));
         if (conversation == null || answerText.toString().isBlank()) {
             return done;
         }
-        return history.save(conversation, command.requestId(), command.message(), answerText.toString()).then(done);
+        return history.save(conversation, command.requestId(), command.message(), answerText.toString(),
+                        deliveredDocuments)
+                .map(turnId -> (ChatEvent) new DoneEvent(fragments.get(), turnId.isBlank() ? null : turnId))
+                .switchIfEmpty(done);
     }
 
     private boolean answersWithFixedMessage(List<ContextFragment> context) {

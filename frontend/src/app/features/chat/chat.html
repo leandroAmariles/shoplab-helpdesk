@@ -14,7 +14,11 @@
     }
     @for (message of store.messages(); track message.id) {
       <app-message-bubble [message]="message" [canRetry]="message.id === retryableId()"
-                          (retry)="store.retry()" />
+                          (retry)="store.retry()"
+                          (rate)="store.rateMessage(message.id, $event)"
+                          (toggleComment)="store.toggleFeedbackComment(message.id)"
+                          (commentDraftChange)="store.updateFeedbackDraft(message.id, $event)"
+                          (saveComment)="store.saveFeedbackComment(message.id, $event)" />
     }
   </div>
 

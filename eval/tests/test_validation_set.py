@@ -36,7 +36,7 @@ def test_the_minimal_valid_set_has_no_set_issues(tmp_path: Path, toy_kb: Path) -
     assert set_issues(tmp_path, toy_kb, valid_default_set()) == []
 
 
-@pytest.mark.parametrize(("size", "valid"), [(79, False), (80, True), (100, True), (101, False)])
+@pytest.mark.parametrize(("size", "valid"), [(79, False), (80, True), (150, True), (151, False)])
 def test_total_number_of_cases(tmp_path: Path, toy_kb: Path, size: int, valid: bool) -> None:
     base = valid_knowledge_set()
     cases = base[:size] if size <= len(base) else base + extra_answered(size - len(base), len(base) + 1)

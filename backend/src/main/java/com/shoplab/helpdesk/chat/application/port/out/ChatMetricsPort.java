@@ -3,6 +3,7 @@ package com.shoplab.helpdesk.chat.application.port.out;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.FeedbackRating;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import java.time.Duration;
@@ -27,4 +28,14 @@ public interface ChatMetricsPort {
 
     /** The conversation memory failed while reading or writing. */
     void recordMemoryFailure(MemoryOperation operation);
+
+    /** A customer rating (UP or DOWN) was recorded or updated in {@code chat.feedback}. */
+    default void recordFeedback(FeedbackRating rating) {
+        // optional in test doubles
+    }
+
+    /** A negative feedback turn was promoted to a golden dataset case. */
+    default void recordFeedbackPromoted() {
+        // optional in test doubles
+    }
 }

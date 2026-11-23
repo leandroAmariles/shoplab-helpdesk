@@ -11,6 +11,9 @@ public interface ConversationMemoryPort {
     /** The most recent {@code limit} turns of the conversation, oldest first; empty when it has none yet. */
     Mono<List<ConversationTurn>> recent(ConversationId id, int limit);
 
-    /** Stores a complete turn in one step: a question is never stored without its answer. */
-    Mono<Void> saveTurn(ConversationId id, ConversationTurn turn);
+    /**
+     * Stores a complete turn in one step and emits its generated public {@code turnId} (UUID): a question is never
+     * stored without its answer.
+     */
+    Mono<String> saveTurn(ConversationId id, ConversationTurn turn);
 }

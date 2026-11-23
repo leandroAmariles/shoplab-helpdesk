@@ -19,6 +19,9 @@ public final class ChatConstants {
     public static final String OPERATION_TAG = "operation";
     public static final String TURNS_METRIC = "shoplab.chat.turns";
     public static final String KIND_TAG = "kind";
+    public static final String FEEDBACK_METRIC = "shoplab.chat.feedback";
+    public static final String FEEDBACK_PROMOTED_METRIC = "shoplab.chat.feedback.promoted";
+    public static final String RATING_TAG = "rating";
 
     /** Longest text the knowledge base is searched with when a follow-up adds the previous question. */
     public static final int FOLLOW_UP_QUERY_MAX_CHARACTERS = 2000;

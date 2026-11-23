@@ -58,7 +58,7 @@ class ChatMemoryDownIntegrationTests {
                 }
 
                 @Override
-                public Mono<Void> saveTurn(ConversationId id, ConversationTurn turn) {
+                public Mono<String> saveTurn(ConversationId id, ConversationTurn turn) {
                     return failWrites ? Mono.error(new ConversationMemoryException(MemoryOperation.WRITE, null))
                             : Mono.empty();
                 }

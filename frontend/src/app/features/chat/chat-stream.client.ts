@@ -63,7 +63,10 @@ function toChatEvent(raw: SseEvent): ChatStreamEvent | null {
       return { type: 'token', content: payload['content'] };
     }
     if (raw.event === 'done' && typeof payload['fragments'] === 'number') {
-      return { type: 'done', fragments: payload['fragments'] };
+      const turnId = isNonEmptyString(payload['turnId']) ? payload['turnId'] : undefined;
+      return turnId === undefined
+        ? { type: 'done', fragments: payload['fragments'] }
+        : { type: 'done', fragments: payload['fragments'], turnId };
     }
     if (
       raw.event === 'error' &&

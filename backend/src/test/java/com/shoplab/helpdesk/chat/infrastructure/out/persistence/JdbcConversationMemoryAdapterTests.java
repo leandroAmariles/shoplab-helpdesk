@@ -95,6 +95,23 @@ class JdbcConversationMemoryAdapterTests {
     }
 
     @Test
+    void saveTurnReturnsTheGeneratedUuidAndStoresDeliveredDocumentsAndTraceId() {
+        String traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        List<String> docs = List.of("returns-01-return-policy", "returns-05-faq-returns");
+        String turnId = adapter.saveTurn(
+                first, new ConversationTurn("question", "answer", docs, traceId)).block();
+
+        assertThat(turnId).isNotBlank();
+        assertThat(UUID.fromString(turnId)).isNotNull();
+        var row = jdbc.queryForMap(
+                "SELECT delivered_documents, trace_id FROM chat.conversation_turn WHERE turn_id = ?",
+                UUID.fromString(turnId));
+        assertThat(row.get("trace_id")).isEqualTo(traceId);
+        Object sqlArray = row.get("delivered_documents");
+        assertThat(sqlArray).isInstanceOf(java.sql.Array.class);
+    }
+
+    @Test
     void theCallsDoNotBlockAThreadOfTheEventLoop() {
         // BlockHound is active in the whole suite: subscribing from a non-blocking thread proves the JDBC work is
         // moved to the elastic scheduler by BlockingCalls.

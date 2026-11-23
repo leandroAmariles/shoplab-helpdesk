@@ -103,6 +103,7 @@ describe('AdminEval (chart)', () => {
 
     expect(root.querySelectorAll('h1')).toHaveLength(1);
     expect(root.querySelector('.notice')?.textContent).toContain('borrador');
+    expect(root.querySelector('app-feedback-promotion')).not.toBeNull();
   });
 
   it('opens with the quality runs: the chart has a point for each run and the table lists them', async () => {

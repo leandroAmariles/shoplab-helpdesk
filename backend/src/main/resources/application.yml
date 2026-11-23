@@ -54,6 +54,9 @@ shoplab:
       max-history-characters: ${SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS:4000}
       # Previous questions added to the search of context so a follow-up finds the topic; 0 uses the message alone.
       retrieval-turns: ${SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS:1}
+    feedback:
+      # Highest G<NNN> number in the base eval/golden.jsonl file; promotions suggest from base + 1 onwards (G121...).
+      base-golden-case-number: ${SHOPLAB_CHAT_FEEDBACK_BASE_GOLDEN_CASE_NUMBER:120}
     # Courtesies (greetings, thanks, farewells, "what can you do?") are answered without retrieval (LAB-114). Anything
     # else goes through the grounded flow. Disabling it restores the behavior before LAB-114.
     small-talk:

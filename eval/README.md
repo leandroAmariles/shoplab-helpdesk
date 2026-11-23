@@ -94,7 +94,7 @@ fallos juntos).
 | `G-NOANSWER-DIGITS` | la respuesta de un caso sin respuesta contiene una cifra (plazo o importe inventado) |
 | `G-QUESTION-VERBATIM` | la pregunta es una frase copiada de un documento: reescríbela como un cliente |
 | `G-PII` | un correo que no es `@shoplab.example` o una secuencia de 8 o más dígitos |
-| `G-COUNT` | los casos de conocimiento (temas y `off_topic`, sin `small_talk` ni `injection`) no son entre 80 y 100 |
+| `G-COUNT` | los casos de conocimiento (temas y `off_topic`, sin `small_talk` ni `injection`) no son entre 80 y 150 |
 | `G-PER-TOPIC` | un tema tiene menos de 12 casos con respuesta |
 | `G-UNANSWERED` | los casos sin respuesta son menos de 12 o están fuera del 15–25 % del total |
 | `G-UNANSWERED-KINDS` | menos de 5 sin respuesta del tema o menos de 5 `off_topic` |
@@ -111,9 +111,9 @@ El resumen añade un **indicador léxico** (porcentaje de preguntas con respuest
 la mitad en sus documentos). Debe ser al menos el 30 % (FR-013) para que medir la recuperación no se reduzca a coincidencia
 de texto; es informativo y no hace fallar la validación.
 
-## Añadir un caso
+## Añadir un caso (manual o promovido desde feedback 👎 en `/admin-eval`, LAB-33)
 
-1. Elige el siguiente `id` libre (`G121`, …). El máximo de 100 se cuenta sobre los casos de conocimiento (hoy 96); subirlo es una decisión de la spec.
+1. Elige el siguiente `id` libre (`G121`, …). El máximo de 150 se cuenta sobre los casos de conocimiento (hoy 96 en la línea base, ampliado en LAB-33 para admitir casos promovidos desde `chat.feedback`). Si promueves una respuesta con 👎 desde `/admin-eval`, el formulario sugiere automáticamente el siguiente `G<NNN>` libre, precarga la pregunta y los documentos entregados en aquel turno, valida las reglas individuales (`G-ID`, `G-CATEGORY`, `G-QUESTION-LENGTH`, `G-ANSWER-LENGTH`, `G-DOC-COUNT`, `G-CATEGORY-TOPIC`, `G-NOANSWER-DIGITS`, `G-PII`) y genera la línea JSONL canónica lista para copiar o descargar.
 2. Abre los documentos del tema en `data/kb/` y redacta la pregunta como un cliente, **con palabras distintas** a las del
    documento. Redacta la respuesta solo con lo que dicen los documentos esperados; **no inventes datos**.
 3. Para un caso **sin respuesta del tema**, busca los términos clave en `data/kb` (`grep -ril "<término>" data/kb`, con y sin

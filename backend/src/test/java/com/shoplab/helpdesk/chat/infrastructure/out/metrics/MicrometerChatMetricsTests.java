@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.FeedbackRating;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Meter;
@@ -121,5 +122,20 @@ class MicrometerChatMetricsTests {
 
         assertThat(registry.getMeters()).extracting(Meter::getId).allSatisfy(id ->
                 assertThat(id.getTags()).extracting(tag -> tag.getKey()).isSubsetOf("outcome"));
+    }
+
+    @Test
+    void countsFeedbackByRatingAndPromotionsWithoutHighCardinalityTags() {
+        metrics.recordFeedback(FeedbackRating.UP);
+        metrics.recordFeedback(FeedbackRating.DOWN);
+        metrics.recordFeedback(FeedbackRating.DOWN);
+        metrics.recordFeedbackPromoted();
+
+        assertThat(registry.get("shoplab.chat.feedback").tag("rating", "up").counter().count()).isEqualTo(1.0);
+        assertThat(registry.get("shoplab.chat.feedback").tag("rating", "down").counter().count()).isEqualTo(2.0);
+        assertThat(registry.find("shoplab.chat.feedback").meters())
+                .allSatisfy(meter -> assertThat(meter.getId().getTags()).hasSize(1));
+        assertThat(registry.get("shoplab.chat.feedback.promoted").counter().count()).isEqualTo(1.0);
+        assertThat(registry.get("shoplab.chat.feedback.promoted").counter().getId().getTags()).isEmpty();
     }
 }

@@ -130,7 +130,8 @@ class StreamChatUseCaseSmallTalkTests {
                 })
                 .verifyComplete();
 
-        verify(memory).saveTurn(any(), org.mockito.ArgumentMatchers.eq(new ConversationTurn("hola", "¡Hola!")));
+        verify(memory).saveTurn(any(), org.mockito.ArgumentMatchers.eq(
+                new ConversationTurn("hola", "¡Hola!", List.of(), ConversationTurn.traceIdOf("req-1"))));
     }
 
     @Test

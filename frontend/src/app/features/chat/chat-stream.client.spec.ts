@@ -355,5 +355,18 @@ describe('ChatStreamClient', () => {
 
       expect(outcome.events).toEqual([{ type: 'done', fragments: 0 }]);
     });
+
+    it('extracts turnId from the done event when present', async () => {
+      const turnId = '2b6f1a04-9c44-4d30-9f51-8f2a10c4c7a9';
+      const body = sse(['token', { content: 'Hola' }], ['done', { fragments: 1, turnId }]);
+      fetchMock.mockResolvedValue(okResponse(bytesStream(body)));
+
+      const outcome = await collect(client.stream('Hola', '3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11'));
+
+      expect(outcome.events).toEqual([
+        { type: 'token', content: 'Hola' },
+        { type: 'done', fragments: 1, turnId },
+      ]);
+    });
   });
 });

@@ -215,6 +215,11 @@ class ModuleSchemasIntegrationTests {
     }
 
     @Test
+    void chatForeignKeysStayInsideItsSchema() {
+        assertThat(foreignKeysOf("chat")).containsExactly("feedback->conversation_turn");
+    }
+
+    @Test
     void retrievalHistoryHasTheBaselineAndTheKnowledgeBaseTablesAppliedOnce() {
         jdbc.update("INSERT INTO retrieval.document (source, title) VALUES ('test/history.md', 'History')");
         try {
@@ -234,7 +239,7 @@ class ModuleSchemasIntegrationTests {
 
     @Test
     void theOtherModulesKeepTheirHistory() {
-        assertThat(appliedVersionsOf("chat")).containsExactly("1", "2");
+        assertThat(appliedVersionsOf("chat")).containsExactly("1", "2", "3");
         assertThat(appliedVersionsOf("tickets")).containsExactly("1");
         assertThat(appliedVersionsOf("orders")).containsExactly("1", "2");
         assertThat(appliedVersionsOf("catalog")).containsExactly("1", "2");

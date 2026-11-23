@@ -4,7 +4,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MarkdownRenderer } from '../../../core/markdown/markdown-renderer';
 import { toUserMessage } from '../chat-error';
-import { ChatMessage, ChatSource } from '../chat-message';
+import {
+  ChatMessage,
+  ChatSource,
+  FeedbackRating,
+  MAX_FEEDBACK_COMMENT_LENGTH,
+} from '../chat-message';
 import { citedNumbers } from '../citations';
 import { SourceList } from '../source-list/source-list';
 import { SourcePreview } from '../source-preview/source-preview';
@@ -19,13 +24,24 @@ export class MessageBubble {
   private readonly renderer = inject(MarkdownRenderer);
   private readonly dialog = inject(MatDialog);
 
+  protected readonly maxCommentLength = MAX_FEEDBACK_COMMENT_LENGTH;
+
   readonly message = input.required<ChatMessage>();
   /** Only the last failed answer offers to retry. */
   readonly canRetry = input(false);
   readonly retry = output<void>();
+  readonly rate = output<FeedbackRating>();
+  readonly toggleComment = output<void>();
+  readonly commentDraftChange = output<string>();
+  readonly saveComment = output<string>();
 
   protected readonly isUser = computed(() => this.message().author === 'user');
   protected readonly authorLabel = computed(() => (this.isUser() ? 'Tú' : 'Asistente'));
+  protected readonly canRate = computed(
+    () => !this.isUser() && this.message().status === 'complete' && Boolean(this.message().turnId),
+  );
+  protected readonly feedback = computed(() => this.message().feedback);
+  protected readonly commentInputId = computed(() => `feedback-comment-${this.message().id}`);
   protected readonly errorText = computed(() => {
     const error = this.message().error;
     return error ? toUserMessage(error) : '';
@@ -52,10 +68,27 @@ export class MessageBubble {
     return { label: 'Fuentes consultadas', sources: finished ? sources : [] };
   });
 
+  protected onRate(rating: FeedbackRating): void {
+    this.rate.emit(rating);
+  }
+
+  protected onCommentInput(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.commentDraftChange.emit(target.value);
+  }
+
+  protected onSaveComment(): void {
+    this.saveComment.emit(this.feedback()?.commentDraft ?? '');
+  }
+
   /** The `[innerHTML]` of the answer cannot carry Angular bindings, so the clicks on its citations are caught here. */
   protected onMarkdownClick(event: Event): void {
-    const citation = (event.target as HTMLElement | null)?.closest<HTMLElement>('button[data-source]');
-    const source = this.message().sources.find((s) => String(s.number) === citation?.dataset['source']);
+    const citation = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+      'button[data-source]',
+    );
+    const source = this.message().sources.find(
+      (s) => String(s.number) === citation?.dataset['source'],
+    );
     if (source !== undefined) {
       this.openSource(source);
     }

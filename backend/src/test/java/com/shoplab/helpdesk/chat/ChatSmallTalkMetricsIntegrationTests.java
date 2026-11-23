@@ -73,10 +73,10 @@ class ChatSmallTalkMetricsIntegrationTests {
         double noContextBefore = turns("no_context");
         ChatTestClient client = new ChatTestClient(port);
 
-        client.post("{\"message\":\"hola\"}");
+        assertThat(client.post("{\"message\":\"hola\"}").status()).isEqualTo(200);
         long firstTokensAfterGreeting = firstTokens();
-        client.post("{\"message\":\"¿cuánto tarda un envío?\"}");
-        client.post("{\"message\":\"¿cuánto tarda el correo a la luna?\"}");
+        assertThat(client.post("{\"message\":\"¿cuánto tarda un envío?\"}").status()).isEqualTo(200);
+        assertThat(client.post("{\"message\":\"¿cuánto tarda el correo a la luna?\"}").status()).isEqualTo(200);
 
         assertThat(turns("small_talk") - smallTalkBefore).isEqualTo(1);
         assertThat(turns("with_context") - withContextBefore).isEqualTo(1);

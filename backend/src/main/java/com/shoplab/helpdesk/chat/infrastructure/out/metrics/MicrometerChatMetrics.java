@@ -5,6 +5,7 @@ import com.shoplab.helpdesk.chat.domain.model.constants.ChatConstants;
 import com.shoplab.helpdesk.chat.domain.model.enums.ChatOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.CitationOutcome;
 import com.shoplab.helpdesk.chat.domain.model.enums.ContextOutcome;
+import com.shoplab.helpdesk.chat.domain.model.enums.FeedbackRating;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.chat.domain.model.enums.TurnKind;
 import io.micrometer.core.instrument.Counter;
@@ -100,6 +101,23 @@ public class MicrometerChatMetrics implements ChatMetricsPort {
         Counter.builder(ChatConstants.MEMORY_FAILURES_METRIC)
                 .description("Failures of the conversation memory, by operation")
                 .tag(ChatConstants.OPERATION_TAG, operation.tagValue())
+                .register(registry)
+                .increment();
+    }
+
+    @Override
+    public void recordFeedback(FeedbackRating rating) {
+        Counter.builder(ChatConstants.FEEDBACK_METRIC)
+                .description("Customer ratings recorded or updated on assistant answers, by rating")
+                .tag(ChatConstants.RATING_TAG, rating.tagValue())
+                .register(registry)
+                .increment();
+    }
+
+    @Override
+    public void recordFeedbackPromoted() {
+        Counter.builder(ChatConstants.FEEDBACK_PROMOTED_METRIC)
+                .description("Negative feedback answers promoted to golden dataset cases")
                 .register(registry)
                 .increment();
     }

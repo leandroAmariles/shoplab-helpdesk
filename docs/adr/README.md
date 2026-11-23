@@ -36,6 +36,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0027 | [Prompts versionados en Langfuse](0027-prompts-versionados-en-langfuse.md) | aceptado |
 | 0028 | [Persistencia de las ejecuciones de evaluación](0028-persistencia-de-ejecuciones-de-evaluacion.md) | aceptado |
 | 0029 | [Lectura del historial de evaluación](0029-lectura-del-historial-de-evaluacion.md) | aceptado |
+| 0030 | [Feedback de respuestas y promoción a casos golden](0030-feedback-de-respuestas-y-promocion-a-golden.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

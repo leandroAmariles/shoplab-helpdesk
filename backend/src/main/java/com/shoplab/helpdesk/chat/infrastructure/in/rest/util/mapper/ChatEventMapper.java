@@ -20,7 +20,8 @@ public final class ChatEventMapper {
             case SourcesEvent sources -> build(ChatConstants.SOURCES_EVENT, new ChatEventPayload.Sources(
                     sources.sources().stream().map(ChatEventMapper::toSource).toList()));
             case TokenEvent token -> build(ChatConstants.TOKEN_EVENT, new ChatEventPayload.Token(token.content()));
-            case DoneEvent done -> build(ChatConstants.DONE_EVENT, new ChatEventPayload.Done(done.fragments()));
+            case DoneEvent done -> build(ChatConstants.DONE_EVENT,
+                    new ChatEventPayload.Done(done.fragments(), done.turnId()));
             case ErrorEvent error -> build(ChatConstants.ERROR_EVENT,
                     new ChatEventPayload.Error(error.code(), error.message()));
         };

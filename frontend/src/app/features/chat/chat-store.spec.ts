@@ -1,8 +1,9 @@
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, Subject } from 'rxjs';
+import { Observable, of, Subject, throwError } from 'rxjs';
 import { ChatStreamError } from './chat-error';
-import { ChatMessage, ChatStreamEvent, MAX_MESSAGE_LENGTH } from './chat-message';
+import { ChatFeedbackClient, FeedbackSubmitResponse } from './chat-feedback.client';
+import { ChatMessage, ChatStreamEvent, FeedbackRating, MAX_MESSAGE_LENGTH } from './chat-message';
 import { ChatStore, FRAME_SCHEDULER } from './chat-store';
 import { ChatStreamClient } from './chat-stream.client';
 
@@ -54,18 +55,46 @@ class ManualFrames {
   }
 }
 
+class FakeFeedbackClient {
+  readonly calls: { turnId: string; rating: FeedbackRating; comment?: string | null }[] = [];
+  nextResult: Observable<FeedbackSubmitResponse> | null = null;
+
+  submitFeedback(
+    turnId: string,
+    rating: FeedbackRating,
+    comment?: string | null,
+  ): Observable<FeedbackSubmitResponse> {
+    this.calls.push({ turnId, rating, comment });
+    if (this.nextResult) {
+      return this.nextResult;
+    }
+    return of({
+      turnId,
+      rating,
+      comment: comment?.trim() ? comment.trim() : null,
+      createdAt: '2026-11-23T15:10:00Z',
+      updatedAt: '2026-11-23T15:10:00Z',
+      promotedCaseId: null,
+      promotedAt: null,
+    });
+  }
+}
+
 describe('ChatStore', () => {
   let client: FakeClient;
+  let feedbackClient: FakeFeedbackClient;
   let frames: ManualFrames;
   let store: ChatStore;
 
   beforeEach(() => {
     client = new FakeClient();
+    feedbackClient = new FakeFeedbackClient();
     frames = new ManualFrames();
     TestBed.configureTestingModule({
       providers: [
         ChatStore,
         { provide: ChatStreamClient, useValue: client },
+        { provide: ChatFeedbackClient, useValue: feedbackClient },
         { provide: FRAME_SCHEDULER, useValue: frames.schedule },
       ],
     });
@@ -487,6 +516,79 @@ describe('ChatStore', () => {
       first.events.next({ type: 'sources', sources });
 
       expect(assistant().sources).toEqual([]);
+    });
+  });
+
+  describe('feedback', () => {
+    const TURN_ID = '2b6f1a04-9c44-4d30-9f51-8f2a10c4c7a9';
+
+    it('stores turnId on the completed assistant message when done carries turnId', () => {
+      send('hola');
+      client.last.events.next({ type: 'token', content: 'Respuesta' });
+      client.last.events.next({ type: 'done', fragments: 1, turnId: TURN_ID });
+
+      expect(assistant()).toMatchObject({
+        content: 'Respuesta',
+        status: 'complete',
+        turnId: TURN_ID,
+      });
+    });
+
+    it('submits UP or DOWN rating and optional comment and updates the message feedback state', () => {
+      send('hola');
+      client.last.events.next({ type: 'token', content: 'Respuesta' });
+      client.last.events.next({ type: 'done', fragments: 1, turnId: TURN_ID });
+
+      const messageId = assistant().id;
+      store.rateMessage(messageId, 'UP');
+      expect(feedbackClient.calls).toEqual([{ turnId: TURN_ID, rating: 'UP', comment: null }]);
+      expect(assistant().feedback).toMatchObject({
+        rating: 'UP',
+        saving: false,
+        saved: true,
+      });
+
+      store.rateMessage(messageId, 'DOWN');
+      store.toggleFeedbackComment(messageId);
+      expect(assistant().feedback?.commentOpen).toBe(true);
+
+      store.updateFeedbackDraft(messageId, 'No indica si son días naturales');
+      store.saveFeedbackComment(messageId);
+
+      expect(feedbackClient.calls.at(-1)).toEqual({
+        turnId: TURN_ID,
+        rating: 'DOWN',
+        comment: 'No indica si son días naturales',
+      });
+      expect(assistant().feedback).toMatchObject({
+        rating: 'DOWN',
+        comment: 'No indica si son días naturales',
+        commentOpen: false,
+        saving: false,
+        saved: true,
+      });
+    });
+
+    it('exposes a Spanish error without losing the comment draft when feedback submission fails', () => {
+      send('hola');
+      client.last.events.next({ type: 'token', content: 'Respuesta' });
+      client.last.events.next({ type: 'done', fragments: 1, turnId: TURN_ID });
+
+      const messageId = assistant().id;
+      store.rateMessage(messageId, 'DOWN');
+      store.toggleFeedbackComment(messageId);
+      store.updateFeedbackDraft(messageId, 'Mi comentario importante');
+
+      feedbackClient.nextResult = throwError(() => new Error('network failure'));
+      store.saveFeedbackComment(messageId);
+
+      expect(assistant().feedback).toMatchObject({
+        rating: 'DOWN',
+        commentDraft: 'Mi comentario importante',
+        saving: false,
+        saved: false,
+        error: 'No se pudo guardar tu valoración. Inténtalo de nuevo.',
+      });
     });
   });
 });

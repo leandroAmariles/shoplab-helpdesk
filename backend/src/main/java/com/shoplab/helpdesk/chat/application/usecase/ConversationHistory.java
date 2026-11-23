@@ -73,9 +73,12 @@ public class ConversationHistory {
                 ChatConstants.FOLLOW_UP_QUERY_MAX_CHARACTERS);
     }
 
-    /** Stores the finished turn; it completes only once the turn is stored. */
-    public Mono<Void> save(ConversationId id, String requestId, String question, String answer) {
-        return memory.saveTurn(id, new ConversationTurn(question, answer))
+    /** Stores the finished turn and emits its public {@code turnId}; completes only once the turn is stored. */
+    public Mono<String> save(ConversationId id, String requestId, String question, String answer,
+            List<String> deliveredDocuments) {
+        ConversationTurn turn = new ConversationTurn(
+                question, answer, deliveredDocuments, ConversationTurn.traceIdOf(requestId));
+        return memory.saveTurn(id, turn)
                 .doOnError(ConversationMemoryException.class, error -> failed(requestId, MemoryOperation.WRITE));
     }
 
