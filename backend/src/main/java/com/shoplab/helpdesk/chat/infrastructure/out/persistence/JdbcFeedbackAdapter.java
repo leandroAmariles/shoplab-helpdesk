@@ -181,7 +181,8 @@ public class JdbcFeedbackAdapter implements FeedbackStorePort {
         int pendingCount = counts == null ? 0 : counts.pendingCount();
         int promotedCount = counts == null ? 0 : counts.promotedCount();
         int total = computeTotal(query.promoted(), pendingCount, promotedCount);
-        int maxPromoted = jdbc.queryForObject(MAX_PROMOTED_CASE_NUMBER, Integer.class);
+        Integer maxPromotedRow = jdbc.queryForObject(MAX_PROMOTED_CASE_NUMBER, Integer.class);
+        int maxPromoted = maxPromotedRow == null ? 0 : maxPromotedRow;
         int nextCaseNumber = Math.max(baseGoldenCaseNumber, maxPromoted) + 1;
         String suggestedNextCaseId = String.format(Locale.ROOT, "G%03d", nextCaseNumber);
 

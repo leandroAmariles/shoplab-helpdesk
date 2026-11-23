@@ -299,6 +299,7 @@ public class GatewayChatAdapter implements ChatModelPort, SmallTalkModelPort {
 
     private static Document toDocument(int number, ContextFragment fragment) {
         return Document.builder()
+                .id(Integer.toString(number))
                 .text(PromptData.neutralize(fragment.text()))
                 .metadata(Map.of(NUMBER_KEY, number, TITLE_KEY, PromptData.neutralize(fragment.title()),
                         SECTION_KEY, PromptData.neutralize(fragment.section())))
