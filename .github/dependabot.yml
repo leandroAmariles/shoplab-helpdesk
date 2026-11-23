@@ -1,8 +1,20 @@
 version: 2
 
+registries:
+  github-maven:
+    type: maven-repository
+    url: https://maven.pkg.github.com/leandroAmariles
+    token: ${{ secrets.DEPENDABOT_PACKAGES_TOKEN }}
+  github-npm:
+    type: npm-registry
+    url: https://npm.pkg.github.com
+    token: ${{ secrets.DEPENDABOT_PACKAGES_TOKEN }}
+
 updates:
   - package-ecosystem: maven
     directory: /backend
+    registries:
+      - github-maven
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -11,6 +23,8 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
+    registries:
+      - github-npm
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

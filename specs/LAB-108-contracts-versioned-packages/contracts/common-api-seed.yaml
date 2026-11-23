@@ -1,0 +1,121 @@
+openapi: 3.1.0
+info:
+  title: ShopLab Common Contracts API
+  description: >
+    Seed contract specification for common service interfaces, health probes, and standard error envelopes
+    used across ShopLab Helpdesk microservices.
+  version: 1.0.0
+  contact:
+    name: ShopLab Core Team
+    url: https://github.com/leandroAmariles/shoplab-contracts
+
+servers:
+  - url: /api/v1/common
+    description: Common service API baseline
+
+paths:
+  /health:
+    get:
+      summary: Service Health Check Probe
+      operationId: getHealthStatus
+      description: Returns service liveness, readiness, and basic build version information.
+      responses:
+        '200':
+          description: Service is healthy and ready to process traffic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service is unhealthy or dependencies are degraded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ping:
+    get:
+      summary: Service Latency Ping
+      operationId: ping
+      description: Lightweight ping endpoint for network latency verification.
+      responses:
+        '200':
+          description: Ping response acknowledging active connection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, DEGRADED]
+          example: UP
+        timestamp:
+          type: string
+          format: date-time
+          example: '2026-11-23T15:00:00Z'
+        serviceName:
+          type: string
+          example: 'shoplab-helpdesk'
+        version:
+          type: string
+          example: '1.0.0'
+
+    PingResponse:
+      type: object
+      required:
+        - echo
+        - serverTimeMillis
+      properties:
+        echo:
+          type: string
+          example: 'pong'
+        serverTimeMillis:
+          type: integer
+          format: int64
+          example: 1795446000000
+
+    ErrorDto:
+      type: object
+      required:
+        - code
+        - description
+      properties:
+        code:
+          type: string
+          description: Unique error code following <SERVICE>_<SUBSYSTEM>_<NNNNN> pattern.
+          example: 'SHOPLAB_GE_00001'
+        description:
+          type: string
+          description: Human-readable error message in English.
+          example: 'Invalid request parameter'
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Optional key-value validation error mappings.
+          example:
+            field: 'username'
+            reason: 'must not be blank'
+
+    ErrorResponse:
+      type: object
+      required:
+        - errors
+      properties:
+        data:
+          type: object
+          nullable: true
+          description: Always null in error responses.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDto'

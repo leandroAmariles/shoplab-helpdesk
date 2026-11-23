@@ -2,7 +2,8 @@
 
 El backend es un monolito modular (Spring Modulith, [ADR-0001](adr/0001-monolito-modular-primero.md)) dividido por
 contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verifican en CI
-([ADR-0015](adr/0015-limites-de-contexto-y-repositorios.md)).
+([ADR-0015](adr/0015-limites-de-contexto-y-repositorios.md)). Los contratos de interfaz compartidos entre servicios
+se gestionan en el repositorio de soporte `shoplab-contracts` ([contratos.md](contratos.md)).
 
 | Módulo | Contexto | Esquema | Migraciones |
 |---|---|---|---|
