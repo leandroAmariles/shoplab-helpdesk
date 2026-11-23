@@ -37,7 +37,7 @@ class GoldenRules:
     """Thresholds of the specification (FR-001, FR-007 to FR-010, FR-013)."""
 
     min_cases: int = 80
-    max_cases: int = 100
+    max_cases: int = 150
     min_answered_per_topic: int = 12
     min_unanswered: int = 12
     unanswered_min_share: float = 0.15

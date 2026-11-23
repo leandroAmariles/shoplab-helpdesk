@@ -140,7 +140,8 @@ class StreamChatUseCaseMemoryTests {
                 .verifyComplete();
 
         assertThat(storedWhenDoneArrived).isTrue();
-        verify(memory).saveTurn(id(ID), turn(FOLLOW_UP, "Tarda diez días"));
+        verify(memory).saveTurn(id(ID), new ConversationTurn(
+                FOLLOW_UP, "Tarda diez días", List.of(), ConversationTurn.traceIdOf("req-1")));
     }
 
     @Test

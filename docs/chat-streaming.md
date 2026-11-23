@@ -27,7 +27,7 @@ Cada evento tiene nombre (`event:`) y una línea de datos JSON (`data:`):
 | Evento | Datos | Significado |
 | --- | --- | --- |
 | `token` | `{"content":"Hola"}` | Un fragmento de la respuesta, en orden. Concatenar los `content` da el texto completo |
-| `done` | `{"fragments":42}` | La respuesta terminó bien. Es el último evento; el servidor cierra la conexión |
+| `done` | `{"fragments":42}` o `{"fragments":42,"turnId":"2b6f1a04-..."}` | La respuesta terminó bien. Es el último evento; el servidor cierra la conexión. Cuando la petición lleva `conversationId` y la memoria está activa, incluye `turnId` (UUID del turno guardado en `chat.conversation_turn`) para poder valorarlo en `PUT /api/chat/feedback/{turnId}` (LAB-33) |
 | `error` | `{"code":"SLHD_CHAT_00003","message":"..."}` | El modelo falló **después** de empezar. Es el último evento, sin `done` |
 | `sources` | `{"sources":[{"number":1,"title":"Política de devoluciones","section":"Plazos","text":"..."}]}` | Los fragmentos de los que sale la respuesta, numerados desde 1. Solo si hay contexto; se envía **una vez, justo antes del primer `token`**. No cuenta en `done.fragments` |
 
@@ -253,6 +253,14 @@ no se usa para completar la búsqueda de la pregunta siguiente («hola» no cont
   `specs/LAB-114-bounded-small-talk/`.
 - Con `no-context-mode=model`, los saludos pasan primero por la vía de charla, así que ese modo ya no hace falta para que el
   bot salude; su comportamiento para el resto de preguntas sin contexto no cambia.
+
+## Feedback 👍/👎 en cada respuesta y promoción a golden (LAB-33)
+
+Cuando una respuesta termina con éxito (`done`) y tiene `turnId`, la burbuja del asistente en `/chat` muestra los botones **👍 Útil** (`UP`) y **👎 No útil** (`DOWN`) junto con la opción de añadir o editar un comentario en texto plano (máximo 500 caracteres).
+
+- `PUT /api/chat/feedback/{turnId}` crea o actualiza la única fila asociada al turno en `chat.feedback` (`turn_ref UNIQUE`). Si el cliente cambia de 👍 a 👎 o añade un comentario después, se actualiza la misma fila.
+- `GET /api/chat/feedback` y `POST /api/chat/feedback/{turnId}/promote` permiten revisar las respuestas con 👎 desde `/admin-eval` y promoverlas a casos golden `G<NNN>` validados con las reglas de LAB-27 ([ADR-0030](adr/0030-feedback-de-respuestas-y-promocion-a-golden.md)). Una valoración promovida queda bloqueada (`409 SLHD_CHAT_00013`) frente a cambios de voto o nuevas promociones.
+- `/actuator/prometheus` publica `shoplab_chat_feedback_total{rating="up|down"}` y `shoplab_chat_feedback_promoted_total`, sin incluir nunca `turnId`, `conversationId` ni textos de la conversación o del comentario.
 
 ## Alcance actual
 

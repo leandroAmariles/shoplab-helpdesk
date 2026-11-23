@@ -89,11 +89,22 @@ La pantalla no enseña el detalle técnico del servidor, solo qué falló.
 | Propiedad | Variable | Por defecto | Qué hace |
 |---|---|---|---|
 | `shoplab.eval.history.trace-url-template` | `SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE` | `http://localhost:3001/trace/{traceId}` | Plantilla del enlace a la traza de Langfuse. **Vacía = sin enlace** (se muestra el identificador). Debe ser `http` o `https` y contener `{traceId}` una vez; si no, el arranque falla |
+| `shoplab.chat.feedback.base-golden-case-number` | `SHOPLAB_CHAT_FEEDBACK_BASE_GOLDEN_CASE_NUMBER` | `120` | Último número `G<NNN>` del archivo `eval/golden.jsonl` base, a partir del cual se sugiere el siguiente identificador libre (`G121`, …) al promover feedback con 👎 |
 
 No hay cambios de infraestructura ni secretos nuevos.
+
+## Feedback 👎 de clientes y promoción a casos golden (LAB-33)
+
+Al final de `/admin-eval` se encuentra la sección **Feedback 👎 de clientes y promoción a casos golden** ([ADR-0030](adr/0030-feedback-de-respuestas-y-promocion-a-golden.md)):
+
+1. **Cargar respuestas con 👎**: consulta bajo demanda `GET /api/chat/feedback?rating=DOWN` y muestra las respuestas valoradas negativamente por los clientes (ordenadas de más reciente a más antigua), con filtro entre *Pendientes de promover*, *Todas* y *Ya promovidas*.
+2. **Promover a caso golden**: sobre cualquier valoración 👎 pendiente, abre el formulario precargado con el siguiente identificador sugerido (`G121`, `G122`…), la pregunta del cliente y hasta 2 documentos entregados en aquel turno (`delivered_documents`), dejando `referenceAnswer` vacía para que quien administra redacte la respuesta de referencia curada.
+3. **Validación LAB-27**: al confirmar (`POST /api/chat/feedback/{turnId}/promote`), el backend valida las reglas del dataset golden (`G-ID`, `G-CATEGORY`, `G-QUESTION-LENGTH`, `G-ANSWER-LENGTH`, `G-DOC-COUNT`, `G-CATEGORY-TOPIC`, `G-NOANSWER-DIGITS` y `G-PII`). Si alguna falla, responde `422 SLHD_CHAT_00014` con el código `G-...` en `detail` para corregirla sin perder lo escrito.
+4. **Incorporación a `eval/golden.jsonl`**: una vez promovida, la valoración queda vinculada de forma inmutable al `G<NNN>` en `chat.feedback` y la pantalla muestra la línea JSONL canónica con botones **Copiar JSONL** y **Descargar .jsonl**. Pega la línea al final de `eval/golden.jsonl`, anota la revisión humana en `eval/REVIEW.md` y ejecuta `cd eval && uv run python -m shoplab_eval validate`.
 
 ## Para quien desarrolla
 
 - API de lectura: [`specs/LAB-32-admin-eval-screen/contracts/eval-history-api.md`](../specs/LAB-32-admin-eval-screen/contracts/eval-history-api.md).
 - Contrato de la pantalla: [`specs/LAB-32-admin-eval-screen/contracts/admin-eval-screen.md`](../specs/LAB-32-admin-eval-screen/contracts/admin-eval-screen.md).
+- API de feedback y promoción a golden: [`specs/LAB-33-answer-feedback/contracts/feedback-api.md`](../specs/LAB-33-answer-feedback/contracts/feedback-api.md).
 - Datos de prueba para verla con datos: `specs/LAB-32-admin-eval-screen/seed/` (ver su `quickstart.md`).

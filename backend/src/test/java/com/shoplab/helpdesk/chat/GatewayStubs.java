@@ -85,7 +85,11 @@ public final class GatewayStubs {
     }
 
     public static ResponseDefinitionBuilder streaming(byte[] body) {
-        return aResponse().withStatus(200).withHeader("Content-Type", SSE).withBody(body);
+        return aResponse()
+                .withStatus(200)
+                .withHeader("Content-Type", SSE)
+                .withHeader("Connection", "close")
+                .withBody(body);
     }
 
     /**

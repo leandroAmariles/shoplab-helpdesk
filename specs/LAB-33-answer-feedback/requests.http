@@ -1,0 +1,144 @@
+# Solicitudes HTTP de verificación — LAB-33 Feedback 👍/👎 en cada respuesta y promoción a casos golden
+# Compatible con IntelliJ HTTP Client y VS Code REST Client.
+# Requisitos: stack local levantado y backend corriendo en {{baseUrl}} (http://localhost:8080).
+
+@baseUrl = http://localhost:8080
+@conversationId = 9c3a2011-7e51-4a0e-88a4-1a1c80f7c111
+@turnId = 2b6f1a04-9c44-4d30-9f51-8f2a10c4c7a9
+@missingTurnId = 00000000-0000-4000-8000-000000000099
+
+### 1. Turno de chat CON conversationId — devuelve turnId en el evento SSE done (200 text/event-stream)
+# Copia el valor de "turnId" del último evento `event:done` en la variable @turnId para las peticiones siguientes.
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "¿Cuántos días tengo para devolver un producto si ya abrí la caja?",
+  "conversationId": "{{conversationId}}"
+}
+
+### 2. Turno de chat SIN conversationId — evento SSE done sin campo turnId (200 text/event-stream)
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "¿Cuántos días tengo para devolver un producto?"
+}
+
+### 3. Valorar respuesta con 👍 (UP) sin comentario en un clic (200 OK)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "UP"
+}
+
+### 4. Cambiar valoración del mismo turno a 👎 (DOWN) con comentario opcional (200 OK, actualiza la misma fila)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "DOWN",
+  "comment": "No aclara si el plazo de 30 días cuenta desde la fecha de compra o desde la entrega."
+}
+
+### 5. Comentario en el límite exacto de 500 caracteres (200 OK)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "DOWN",
+  "comment": "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+}
+
+### 6. Comentario que supera 500 caracteres — rechazado (400 Bad Request, SLHD_CHAT_00011)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "DOWN",
+  "comment": "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890X"
+}
+
+### 7. Valoración con rating inválido — rechazado (400 Bad Request, SLHD_CHAT_00011)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "NEUTRAL"
+}
+
+### 8. Valoración con turnId que no es un UUID — rechazado (400 Bad Request, SLHD_CHAT_00011)
+PUT {{baseUrl}}/api/chat/feedback/no-es-un-uuid
+Content-Type: application/json
+
+{
+  "rating": "DOWN"
+}
+
+### 9. Valoración sobre un turnId que no existe — rechazado (404 Not Found, SLHD_CHAT_00012)
+PUT {{baseUrl}}/api/chat/feedback/{{missingTurnId}}
+Content-Type: application/json
+
+{
+  "rating": "DOWN",
+  "comment": "Turno inexistente"
+}
+
+### 10. Listar valoraciones con 👎 pendientes de promover para admin-eval (200 OK)
+GET {{baseUrl}}/api/chat/feedback?rating=DOWN&promoted=false&limit=100
+Accept: application/json
+
+### 11. Listar valoraciones con parámetro limit fuera de rango (1..500) — rechazado (400 Bad Request, SLHD_CHAT_00011)
+GET {{baseUrl}}/api/chat/feedback?rating=DOWN&limit=501
+Accept: application/json
+
+### 12. Intentar promover con caso golden inválido por G-NOANSWER-DIGITS (cifras sin documentos esperados) — rechazado (422 SLHD_CHAT_00014)
+POST {{baseUrl}}/api/chat/feedback/{{turnId}}/promote
+Content-Type: application/json
+
+{
+  "caseId": "G121",
+  "question": "¿Tienen tienda física en Madrid para devolver un pedido?",
+  "referenceAnswer": "No encontré información sobre tiendas físicas, pero abrimos en 2025.",
+  "expectedDocuments": [],
+  "category": "off_topic"
+}
+
+### 13. Intentar promover con caso golden inválido por G-PII (correo externo ajeno a @shoplab.example) — rechazado (422 SLHD_CHAT_00014)
+POST {{baseUrl}}/api/chat/feedback/{{turnId}}/promote
+Content-Type: application/json
+
+{
+  "caseId": "G121",
+  "question": "¿Cómo solicito la devolución de un producto abierto?",
+  "referenceAnswer": "Escríbenos a cliente@gmail.com dentro del plazo de devolución para tramitar tu solicitud.",
+  "expectedDocuments": ["returns-01-return-policy"],
+  "category": "returns"
+}
+
+### 14. Promover feedback 👎 válido a caso golden G121 — devuelve promotedCaseJsonl canónico (200 OK)
+POST {{baseUrl}}/api/chat/feedback/{{turnId}}/promote
+Content-Type: application/json
+
+{
+  "caseId": "G121",
+  "question": "¿Puedo devolver un producto si ya abrí la caja para revisarlo?",
+  "referenceAnswer": "Sí, puedes solicitar la devolución dentro de los 30 días naturales siguientes a la fecha de entrega, siempre que el producto conserve su empaque original, manuales y accesorios.",
+  "expectedDocuments": ["returns-01-return-policy"],
+  "category": "returns"
+}
+
+### 15. Intentar re-promover o cambiar el voto de un feedback ya promovido — rechazado (409 Conflict, SLHD_CHAT_00013)
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{
+  "rating": "UP"
+}
+
+### 16. Consultar métricas de feedback en Prometheus sin PII ni identificadores de turno (200 OK)
+GET {{baseUrl}}/actuator/prometheus
+Accept: text/plain

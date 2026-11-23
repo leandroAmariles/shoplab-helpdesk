@@ -1,7 +1,15 @@
 import { computed, DestroyRef, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ChatErrorKind, ChatStreamError } from './chat-error';
-import { ChatMessage, ChatStreamEvent, MAX_MESSAGE_LENGTH } from './chat-message';
+import { ChatFeedbackClient } from './chat-feedback.client';
+import {
+  ChatMessage,
+  ChatStreamEvent,
+  FeedbackRating,
+  MAX_FEEDBACK_COMMENT_LENGTH,
+  MAX_MESSAGE_LENGTH,
+  MessageFeedbackState,
+} from './chat-message';
 import { ChatStreamClient } from './chat-stream.client';
 import { newConversationId } from './conversation-id';
 
@@ -16,6 +24,17 @@ export const FRAME_SCHEDULER = new InjectionToken<FrameScheduler>('FRAME_SCHEDUL
   },
 });
 
+const FEEDBACK_ERROR_MESSAGE = 'No se pudo guardar tu valoración. Inténtalo de nuevo.';
+
+function initialFeedbackState(): MessageFeedbackState {
+  return {
+    commentDraft: '',
+    commentOpen: false,
+    saving: false,
+    saved: false,
+  };
+}
+
 /**
  * State of the conversation on screen. Provided by the chat component, not by the root, so the
  * conversation and its open connection die with the screen.
@@ -23,6 +42,7 @@ export const FRAME_SCHEDULER = new InjectionToken<FrameScheduler>('FRAME_SCHEDUL
 @Injectable()
 export class ChatStore {
   private readonly client = inject(ChatStreamClient);
+  private readonly feedbackClient = inject(ChatFeedbackClient);
   private readonly schedule = inject(FRAME_SCHEDULER);
 
   readonly messages = signal<ChatMessage[]>([]);
@@ -103,6 +123,127 @@ export class ChatStore {
     this.updateAssistant({ status: 'stopped' });
   }
 
+  /** Sends a 👍 (`UP`) or 👎 (`DOWN`) rating for a completed assistant message in a single click. */
+  rateMessage(messageId: string, rating: FeedbackRating): void {
+    const message = this.messages().find((item) => item.id === messageId);
+    if (
+      !message ||
+      message.author !== 'assistant' ||
+      message.status !== 'complete' ||
+      !message.turnId ||
+      message.feedback?.saving
+    ) {
+      return;
+    }
+    const current = message.feedback ?? initialFeedbackState();
+    const commentToSend = current.commentDraft.trim() || current.comment || null;
+    this.updateMessageFeedback(messageId, {
+      ...current,
+      rating,
+      saving: true,
+      saved: false,
+      error: undefined,
+    });
+    this.feedbackClient.submitFeedback(message.turnId, rating, commentToSend).subscribe({
+      next: (response) => {
+        const latest = this.findFeedback(messageId);
+        this.updateMessageFeedback(messageId, {
+          ...latest,
+          rating: response.rating,
+          comment: response.comment ?? undefined,
+          commentDraft: response.comment ?? latest.commentDraft,
+          saving: false,
+          saved: true,
+          error: undefined,
+        });
+      },
+      error: () => {
+        const latest = this.findFeedback(messageId);
+        this.updateMessageFeedback(messageId, {
+          ...latest,
+          saving: false,
+          saved: false,
+          error: FEEDBACK_ERROR_MESSAGE,
+        });
+      },
+    });
+  }
+
+  /** Opens or closes the optional comment input for a completed assistant message. */
+  toggleFeedbackComment(messageId: string): void {
+    const message = this.messages().find((item) => item.id === messageId);
+    if (!message || message.author !== 'assistant' || message.status !== 'complete' || !message.turnId) {
+      return;
+    }
+    const current = message.feedback ?? initialFeedbackState();
+    this.updateMessageFeedback(messageId, {
+      ...current,
+      commentOpen: !current.commentOpen,
+      commentDraft: current.commentDraft || current.comment || '',
+    });
+  }
+
+  /** Updates the draft comment for a completed assistant message (capped at 500 characters). */
+  updateFeedbackDraft(messageId: string, draft: string): void {
+    const message = this.messages().find((item) => item.id === messageId);
+    if (!message || message.author !== 'assistant' || message.status !== 'complete' || !message.turnId) {
+      return;
+    }
+    const current = message.feedback ?? initialFeedbackState();
+    this.updateMessageFeedback(messageId, {
+      ...current,
+      commentDraft: draft.slice(0, MAX_FEEDBACK_COMMENT_LENGTH),
+    });
+  }
+
+  /** Submits the optional comment along with the current rating for the turn. */
+  saveFeedbackComment(messageId: string, comment?: string): void {
+    const message = this.messages().find((item) => item.id === messageId);
+    const current = message?.feedback;
+    if (
+      !message ||
+      message.author !== 'assistant' ||
+      message.status !== 'complete' ||
+      !message.turnId ||
+      !current?.rating ||
+      current.saving
+    ) {
+      return;
+    }
+    const draft = (comment ?? current.commentDraft).slice(0, MAX_FEEDBACK_COMMENT_LENGTH);
+    this.updateMessageFeedback(messageId, {
+      ...current,
+      commentDraft: draft,
+      saving: true,
+      saved: false,
+      error: undefined,
+    });
+    this.feedbackClient.submitFeedback(message.turnId, current.rating, draft).subscribe({
+      next: (response) => {
+        const latest = this.findFeedback(messageId);
+        this.updateMessageFeedback(messageId, {
+          ...latest,
+          rating: response.rating,
+          comment: response.comment ?? undefined,
+          commentDraft: response.comment ?? '',
+          commentOpen: false,
+          saving: false,
+          saved: true,
+          error: undefined,
+        });
+      },
+      error: () => {
+        const latest = this.findFeedback(messageId);
+        this.updateMessageFeedback(messageId, {
+          ...latest,
+          saving: false,
+          saved: false,
+          error: FEEDBACK_ERROR_MESSAGE,
+        });
+      },
+    });
+  }
+
   private start(text: string): void {
     const requestId = ++this.requestId;
     const assistant = this.newMessage('assistant', '', 'streaming');
@@ -130,7 +271,10 @@ export class ChatStore {
       });
     } else if (event.type === 'done') {
       this.flush();
-      this.updateAssistant({ status: 'complete' });
+      this.updateAssistant({
+        status: 'complete',
+        ...(event.turnId !== undefined ? { turnId: event.turnId } : {}),
+      });
     } else {
       this.fail('stream');
     }
@@ -173,6 +317,18 @@ export class ChatStore {
       messages.map((message) =>
         message.id === this.currentAssistantId ? { ...message, ...patch } : message,
       ),
+    );
+  }
+
+  private findFeedback(messageId: string): MessageFeedbackState {
+    return (
+      this.messages().find((item) => item.id === messageId)?.feedback ?? initialFeedbackState()
+    );
+  }
+
+  private updateMessageFeedback(messageId: string, feedback: MessageFeedbackState): void {
+    this.messages.update((messages) =>
+      messages.map((message) => (message.id === messageId ? { ...message, feedback } : message)),
     );
   }
 

@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EvalStore, RUN_ID } from './eval-store';
 import { FailingCases } from './failing-cases/failing-cases';
+import { FeedbackPromotion } from './feedback-promotion/feedback-promotion';
 import { KIND_LABELS, metricLabel, RunKind } from './eval-history';
 import { MetricChart } from './metric-chart/metric-chart';
 import { RunComparisonView } from './run-comparison/run-comparison';
@@ -28,6 +29,7 @@ function isRunKind(value: string | null): value is RunKind {
     MatButtonToggleModule,
     MatIconModule,
     FailingCases,
+    FeedbackPromotion,
     MetricChart,
     RunComparisonView,
     RunDetailView,

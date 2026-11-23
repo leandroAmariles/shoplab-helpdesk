@@ -1,0 +1,267 @@
+<section class="feedback-promotion" aria-labelledby="feedback-promotion-heading">
+  <div class="feedback-header">
+    <div>
+      <h2 id="feedback-promotion-heading">Feedback 👎 de clientes y promoción a casos golden</h2>
+      <p class="feedback-subtitle">
+        Revisa las respuestas valoradas con 👎 en el chat y promuévelas a casos validados para
+        <code>eval/golden.jsonl</code>.
+      </p>
+    </div>
+    <button
+      mat-stroked-button
+      type="button"
+      class="load-feedback-btn"
+      [disabled]="loading()"
+      (click)="load()"
+    >
+      <mat-icon aria-hidden="true">thumb_down</mat-icon>
+      {{ loaded() ? 'Actualizar feedback 👎' : 'Cargar respuestas con 👎' }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <p class="feedback-loading" role="status">Cargando respuestas con 👎…</p>
+  }
+
+  @if (loadError(); as message) {
+    <div class="feedback-error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+      <button mat-stroked-button type="button" (click)="load()">Reintentar carga de feedback</button>
+    </div>
+  }
+
+  @if (loaded()) {
+    <div class="feedback-toolbar">
+      <div class="field">
+        <label for="feedback-status-filter">Estado de promoción</label>
+        <select
+          id="feedback-status-filter"
+          [value]="filterMode()"
+          (change)="onFilterChange($any($event.target).value)"
+        >
+          <option value="pending">Pendientes de promover ({{ pendingCount() }})</option>
+          <option value="all">Todas las respuestas con 👎 ({{ pendingCount() + promotedCount() }})</option>
+          <option value="promoted">Ya promovidas ({{ promotedCount() }})</option>
+        </select>
+      </div>
+      <p class="next-case-hint">
+        Siguiente identificador sugerido: <strong>{{ suggestedNextCaseId() }}</strong>
+      </p>
+    </div>
+
+    @if (lastPromotedItem(); as promoted) {
+      <div class="promoted-banner" role="status">
+        <h3>Caso {{ promoted.promotedCaseId }} generado para eval/golden.jsonl</h3>
+        <p>
+          Pega esta línea al final de <code>eval/golden.jsonl</code>, registra la revisión en
+          <code>eval/REVIEW.md</code> y ejecuta
+          <code>cd eval &amp;&amp; uv run python -m shoplab_eval validate</code>:
+        </p>
+        <pre class="jsonl-preview"><code>{{ promoted.promotedCaseJsonl }}</code></pre>
+        <div class="jsonl-actions">
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="copyJsonl(promoted)"
+          >
+            Copiar JSONL
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="downloadJsonl(promoted)"
+          >
+            Descargar .jsonl
+          </button>
+          @if (copiedTurnId() === promoted.turnId) {
+            <span class="copied-badge">Copiado al portapapeles</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (items().length === 0) {
+      <p class="feedback-empty" role="status">
+        No hay valoraciones con 👎 para el filtro seleccionado.
+      </p>
+    } @else {
+      <ul class="feedback-list" aria-label="Respuestas con valoración negativa">
+        @for (item of items(); track item.turnId) {
+          <li class="feedback-card">
+            <div class="feedback-card-meta">
+              <span class="badge-down">👎 {{ item.createdAt }}</span>
+              @if (item.promotedCaseId) {
+                <span class="badge-promoted">Promovido a {{ item.promotedCaseId }}</span>
+              } @else {
+                <span class="badge-pending">Pendiente</span>
+              }
+              @if (item.traceId) {
+                <span class="trace-id">Traza: <code>{{ item.traceId }}</code></span>
+              }
+            </div>
+
+            <dl class="feedback-details">
+              <div>
+                <dt>Pregunta del cliente</dt>
+                <dd>{{ item.question }}</dd>
+              </div>
+              <div>
+                <dt>Respuesta del asistente</dt>
+                <dd>{{ item.answer }}</dd>
+              </div>
+              <div>
+                <dt>Documentos entregados</dt>
+                <dd>
+                  @if (item.deliveredDocuments.length > 0) {
+                    <code>{{ item.deliveredDocuments.join(', ') }}</code>
+                  } @else {
+                    <span>Ninguno (sin contexto o cortesía)</span>
+                  }
+                </dd>
+              </div>
+              @if (item.comment) {
+                <div>
+                  <dt>Comentario del cliente</dt>
+                  <dd>{{ item.comment }}</dd>
+                </div>
+              }
+            </dl>
+
+            @if (item.promotedCaseId && item.promotedCaseJsonl) {
+              <div class="promoted-jsonl-box">
+                <pre class="jsonl-preview"><code>{{ item.promotedCaseJsonl }}</code></pre>
+                <div class="jsonl-actions">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="copyJsonl(item)"
+                  >
+                    Copiar JSONL de {{ item.promotedCaseId }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="downloadJsonl(item)"
+                  >
+                    Descargar {{ item.promotedCaseId }}.jsonl
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="card-actions">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="open-promote-btn"
+                  (click)="openPromotionForm(item)"
+                >
+                  Promover a caso golden
+                </button>
+              </div>
+            }
+
+            @if (activeTurnId() === item.turnId) {
+              <form
+                class="promote-form"
+                aria-label="Formulario de promoción a caso golden"
+                (submit)="$event.preventDefault(); submitPromotion()"
+              >
+                <h3>Promover turno a caso golden</h3>
+
+                <div class="form-row">
+                  <div class="form-field">
+                    <label [attr.for]="'case-id-' + item.turnId">Identificador (G&lt;NNN&gt;)</label>
+                    <input
+                      type="text"
+                      [id]="'case-id-' + item.turnId"
+                      [value]="formCaseId()"
+                      (input)="formCaseId.set($any($event.target).value)"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label [attr.for]="'category-' + item.turnId">Categoría</label>
+                    <select
+                      [id]="'category-' + item.turnId"
+                      [value]="formCategory()"
+                      (change)="onCategoryChange($any($event.target).value)"
+                    >
+                      @for (cat of categories; track cat.value) {
+                        <option [value]="cat.value" [selected]="cat.value === formCategory()">
+                          {{ cat.label }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <label [attr.for]="'question-' + item.turnId">
+                    Pregunta del caso (10–300 caracteres, sin PII)
+                  </label>
+                  <textarea
+                    rows="2"
+                    [id]="'question-' + item.turnId"
+                    [value]="formQuestion()"
+                    (input)="formQuestion.set($any($event.target).value)"
+                  ></textarea>
+                </div>
+
+                <div class="form-field">
+                  <label [attr.for]="'expected-docs-' + item.turnId">
+                    Documentos esperados (0 a 2 ids separados por coma, sin extensión)
+                  </label>
+                  <input
+                    type="text"
+                    [id]="'expected-docs-' + item.turnId"
+                    [value]="formExpectedDocuments()"
+                    (input)="formExpectedDocuments.set($any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label [attr.for]="'reference-answer-' + item.turnId">
+                    Respuesta de referencia curada (20–800 caracteres, sin cifras si no hay documentos)
+                  </label>
+                  <textarea
+                    rows="3"
+                    [id]="'reference-answer-' + item.turnId"
+                    [value]="formReferenceAnswer()"
+                    (input)="formReferenceAnswer.set($any($event.target).value)"
+                  ></textarea>
+                </div>
+
+                @if (promoteError(); as errMsg) {
+                  <div class="promote-error" role="alert">
+                    <mat-icon aria-hidden="true">error</mat-icon>
+                    <span>{{ errMsg }}</span>
+                  </div>
+                }
+
+                <div class="form-actions">
+                  <button
+                    mat-flat-button
+                    type="submit"
+                    class="confirm-promote-btn"
+                    [disabled]="promoting()"
+                  >
+                    Confirmar promoción
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="promoting()"
+                    (click)="cancelPromotionForm()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

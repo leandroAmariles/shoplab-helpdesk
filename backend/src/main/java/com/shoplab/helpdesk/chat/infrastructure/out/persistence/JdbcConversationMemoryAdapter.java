@@ -6,6 +6,8 @@ import com.shoplab.helpdesk.chat.domain.model.ConversationId;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.infrastructure.out.blocking.BlockingCalls;
+import java.sql.Array;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +33,9 @@ public class JdbcConversationMemoryAdapter implements ConversationMemoryPort {
             LIMIT ?
             """;
     private static final String INSERT = """
-            INSERT INTO chat.conversation_turn (conversation_id, question, answer) VALUES (?, ?, ?)
+            INSERT INTO chat.conversation_turn (conversation_id, question, answer, delivered_documents, trace_id)
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING turn_id
             """;
 
     private final JdbcTemplate jdbc;
@@ -48,11 +52,29 @@ public class JdbcConversationMemoryAdapter implements ConversationMemoryPort {
     }
 
     @Override
-    public Mono<Void> saveTurn(ConversationId id, ConversationTurn turn) {
-        return BlockingCalls.run(() -> jdbc.update(INSERT, UUID.fromString(id.value()), turn.question(),
-                        turn.answer()))
+    public Mono<String> saveTurn(ConversationId id, ConversationTurn turn) {
+        return BlockingCalls.call(() -> insertTurn(id, turn))
                 .onErrorMap(DataAccessException.class, error -> new ConversationMemoryException(
                         MemoryOperation.WRITE, error));
+    }
+
+    private String insertTurn(ConversationId id, ConversationTurn turn) {
+        String[] docs = turn.deliveredDocuments().toArray(String[]::new);
+        return jdbc.execute(connection -> {
+            PreparedStatement statement = connection.prepareStatement(INSERT);
+            statement.setObject(1, UUID.fromString(id.value()));
+            statement.setString(2, turn.question());
+            statement.setString(3, turn.answer());
+            Array sqlArray = connection.createArrayOf("text", docs);
+            statement.setArray(4, sqlArray);
+            statement.setString(5, turn.traceId());
+            return statement;
+        }, (PreparedStatement statement) -> {
+            try (var rows = statement.executeQuery()) {
+                rows.next();
+                return rows.getObject("turn_id", UUID.class).toString();
+            }
+        });
     }
 
     private List<ConversationTurn> read(ConversationId id, int limit) {

@@ -5,6 +5,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties({ChatProperties.class, RagProperties.class, MemoryProperties.class,
-        GatewayProperties.class, SmallTalkProperties.class})
+        GatewayProperties.class, SmallTalkProperties.class, FeedbackProperties.class})
 public class ChatConfig {
 }

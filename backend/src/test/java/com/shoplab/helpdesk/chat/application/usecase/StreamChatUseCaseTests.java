@@ -747,4 +747,32 @@ class StreamChatUseCaseTests {
         assertThat(output.getOut().split("Chat answer failed", -1)).hasSize(2);
         assertThat(output.getOut()).contains("req-55").doesNotContain("Context retrieval failed");
     }
+
+    @Test
+    void emitsThePersistedTurnIdInDoneAndStoresDeliveredDocumentIdsAndTraceIdWhenAConversationIsPresent() {
+        String conversationId = "3f1b6c52-8d0e-4c1a-9a53-7b2a0c9d4e11";
+        String expectedTurnId = "2b6f1a04-9c44-4d30-9f51-8f2a10c4c7a9";
+        when(memory.recent(any(), anyInt())).thenReturn(Mono.just(List.of()));
+        when(memory.saveTurn(any(), any())).thenReturn(Mono.just(expectedTurnId));
+        when(knowledge.retrieve(any(), anyInt())).thenReturn(Mono.just(List.of(
+                new ContextFragment("returns/returns-01-return-policy.md", "Title 1", "Sec 1", 0, "A.", 0.9),
+                new ContextFragment("returns-01-return-policy.md", "Title 1", "Sec 2", 1, "B.", 0.85),
+                new ContextFragment("returns-05-faq-returns.pdf", "Title 2", "Sec 1", 0, "C.", 0.8))));
+        ChatModelPort model = (message, history, context) -> Flux.just("Respuesta");
+
+        StepVerifier.create(newUseCase(model).stream(
+                        new StreamChatCommand("¿Devoluciones?", "req-101", conversationId)))
+                .expectNextCount(1)
+                .expectNext(new TokenEvent("Respuesta"))
+                .expectNext(new DoneEvent(1, expectedTurnId))
+                .verifyComplete();
+
+        verify(memory).saveTurn(
+                new com.shoplab.helpdesk.chat.domain.model.ConversationId(conversationId),
+                new com.shoplab.helpdesk.chat.domain.model.ConversationTurn(
+                        "¿Devoluciones?",
+                        "Respuesta",
+                        List.of("returns-01-return-policy", "returns-05-faq-returns"),
+                        com.shoplab.helpdesk.chat.domain.model.ConversationTurn.traceIdOf("req-101")));
+    }
 }

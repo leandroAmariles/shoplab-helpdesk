@@ -389,4 +389,83 @@ describe('MessageBubble', () => {
       expect(dom.querySelector('.markdown')?.textContent).toContain('[opcional]');
     });
   });
+
+  describe('answer feedback (LAB-33)', () => {
+    const TURN_ID = '2b6f1a04-9c44-4d30-9f51-8f2a10c4c7a9';
+
+    it('renders 👍 and 👎 buttons only for completed assistant messages that have a turnId', async () => {
+      const streaming = await render({ status: 'streaming', content: 'Hola', turnId: TURN_ID });
+      expect(streaming.querySelector('button[aria-label="Respuesta útil"]')).toBeNull();
+
+      const stopped = await render({ status: 'stopped', content: 'Hola', turnId: TURN_ID });
+      expect(stopped.querySelector('button[aria-label="Respuesta útil"]')).toBeNull();
+
+      const failed = await render({ status: 'failed', error: 'stream', content: 'Hola', turnId: TURN_ID });
+      expect(failed.querySelector('button[aria-label="Respuesta útil"]')).toBeNull();
+
+      const userMsg = await render({ author: 'user', status: 'complete', content: 'Hola', turnId: TURN_ID });
+      expect(userMsg.querySelector('button[aria-label="Respuesta útil"]')).toBeNull();
+
+      const completed = await render({ status: 'complete', content: 'Hola', turnId: TURN_ID });
+      expect(completed.querySelector('button[aria-label="Respuesta útil"]')).not.toBeNull();
+      expect(completed.querySelector('button[aria-label="Respuesta no útil"]')).not.toBeNull();
+    });
+
+    it('emits rate when 👍 or 👎 is clicked and reflects aria-pressed', async () => {
+      const dom = await render({
+        status: 'complete',
+        content: 'Respuesta',
+        turnId: TURN_ID,
+        feedback: {
+          rating: 'DOWN',
+          commentDraft: '',
+          commentOpen: false,
+          saving: false,
+          saved: true,
+        },
+      });
+      const rated = vi.fn();
+      fixture.componentInstance.rate.subscribe(rated);
+
+      const upBtn = dom.querySelector<HTMLButtonElement>('button[aria-label="Respuesta útil"]')!;
+      const downBtn = dom.querySelector<HTMLButtonElement>('button[aria-label="Respuesta no útil"]')!;
+      expect(upBtn.getAttribute('aria-pressed')).toBe('false');
+      expect(downBtn.getAttribute('aria-pressed')).toBe('true');
+
+      upBtn.click();
+      expect(rated).toHaveBeenCalledWith('UP');
+      expect(dom.querySelector('.feedback-status[role="status"]')?.textContent).toContain(
+        'Valoración guardada',
+      );
+    });
+
+    it('renders the optional comment box when commentOpen is true and emits saveComment and alert on error', async () => {
+      const dom = await render({
+        status: 'complete',
+        content: 'Respuesta',
+        turnId: TURN_ID,
+        feedback: {
+          rating: 'DOWN',
+          commentDraft: 'Falta detalle',
+          commentOpen: true,
+          saving: false,
+          saved: false,
+          error: 'No se pudo guardar tu valoración. Inténtalo de nuevo.',
+        },
+      });
+      const saved = vi.fn();
+      fixture.componentInstance.saveComment.subscribe(saved);
+
+      const textarea = dom.querySelector<HTMLTextAreaElement>('textarea.feedback-comment-input')!;
+      expect(textarea).not.toBeNull();
+      expect(textarea.getAttribute('maxlength')).toBe('500');
+      expect(textarea.value).toBe('Falta detalle');
+
+      dom.querySelector<HTMLButtonElement>('button[aria-label="Guardar comentario"]')?.click();
+      expect(saved).toHaveBeenCalledWith('Falta detalle');
+      expect(dom.querySelector('.feedback-error[role="alert"]')?.textContent).toContain(
+        'No se pudo guardar tu valoración',
+      );
+    });
+  });
 });
