@@ -5,8 +5,6 @@
 
 import sys
 
-from pathlib import Path
-
 from chunking_lab.config import ExperimentConfig, repo_root
 from chunking_lab.corpus import Document
 from chunking_lab.strategies import Chunk, Strategy
