@@ -4,7 +4,9 @@
 FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build
 WORKDIR /workspace
 COPY . .
-RUN npm ci && npm run build
+RUN --mount=type=secret,id=node_auth_token \
+    NODE_AUTH_TOKEN="$(tr -d '\r\n' < /run/secrets/node_auth_token)" npm ci \
+    && npm run build
 
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 USER root
