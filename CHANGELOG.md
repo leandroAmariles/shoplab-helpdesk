@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.25.0...v0.26.0) (2026-11-23)
+
+
+### Features
+
+* **docs:** [LAB-128] add early extraction service map and update related ADRs ([#169](https://github.com/leandroAmariles/shoplab-helpdesk/issues/169)) ([8fa4716](https://github.com/leandroAmariles/shoplab-helpdesk/commit/8fa471621d509afa3e52343715d591167306ff35))
+
 ## [0.25.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.24.0...v0.25.0) (2026-11-23)
 
 
