@@ -1,23 +1,19 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import type { ApiErrorResponse } from '@leandroamariles/shoplab-contracts';
 import { catchError, throwError } from 'rxjs';
 import { ApiError, HANDLES_OWN_ERRORS } from './api-error';
 
 const API_PREFIX = '/api';
 const SNACK_BAR_DURATION_MS = 5000;
 
-interface ErrorBody {
-  code?: unknown;
-  message?: unknown;
-}
-
-/** The backend error contract is `{ code, message }`; anything else (proxy pages, plain text) is ignored. */
+/** The backend error contract is `ApiErrorResponse` (`{ code, message, detail? }`); anything else is ignored. */
 function readBody(body: unknown): { code?: string; detail?: string } {
   if (body === null || typeof body !== 'object') {
     return {};
   }
-  const { code, message } = body as ErrorBody;
+  const { code, message } = body as Partial<ApiErrorResponse>;
   return {
     ...(typeof code === 'string' ? { code } : {}),
     ...(typeof message === 'string' ? { detail: message } : {}),

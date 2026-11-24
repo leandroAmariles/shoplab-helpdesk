@@ -1,0 +1,14 @@
+name: should_reject_blank_query_with_422
+description: Rejects blank query with typed error SLHD_RETR_00009 (422 Unprocessable Content)
+request:
+  method: GET
+  urlPath: /api/knowledge/search
+  queryParameters:
+    query: "   "
+response:
+  status: 422
+  headers:
+    Content-Type: application/json
+  body:
+    code: SLHD_RETR_00009
+    message: The search query must not be blank

@@ -1,8 +1,12 @@
+import type { ComparisonStatus, RunKind } from '@leandroamariles/shoplab-contracts';
+
+export type { ComparisonStatus, RunKind };
+
 /**
- * Types of the read API of the evaluation history (specs/LAB-32, contracts/eval-history-api.md), in camelCase: the
- * API client translates the `snake_case` of the wire. A value without value is `null`, never 0.
+ * View-model types of the read API of the evaluation history (specs/LAB-32, LAB-106), in camelCase: the
+ * API client translates the `snake_case` OpenAPI wire types from `@leandroamariles/shoplab-contracts`.
+ * A value without value is `null`, never 0.
  */
-export type RunKind = 'QUALITY' | 'RETRIEVAL';
 
 /** The value of a metric in a scope: the mean of the cases that have a value, and how many they are. */
 export interface MetricStat {
@@ -117,9 +121,6 @@ export interface RunDetail {
   summary: ScopeSummary[];
   results: StoredResult[];
 }
-
-export type ComparisonStatus =
-  'WORSE' | 'BETTER' | 'SAME' | 'NO_VALUE' | 'NOT_COMPARABLE' | 'ONLY_BASE' | 'ONLY_TARGET';
 
 export interface ComparedRun {
   runId: string;

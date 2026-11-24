@@ -8,11 +8,13 @@ import com.shoplab.helpdesk.eval.domain.model.enums.PromptSource;
 import com.shoplab.helpdesk.chat.api.AssistantSettings;
 import com.shoplab.helpdesk.chat.api.AssistantSettingsApi;
 import com.shoplab.helpdesk.chat.api.ServedPrompt;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 /** Reads the settings of the assistant through what the chat module publishes, never through its internals. */
 @Component
+@ConditionalOnProperty(name = "shoplab.chat.settings.client.mode", havingValue = "in-process", matchIfMissing = true)
 public class ChatAssistantSettingsAdapter implements AssistantSettingsPort {
 
     private final AssistantSettingsApi chat;

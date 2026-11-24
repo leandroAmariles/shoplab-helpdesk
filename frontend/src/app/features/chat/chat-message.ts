@@ -1,4 +1,7 @@
+import type { ChatSource, FeedbackRating } from '@leandroamariles/shoplab-contracts';
 import { ChatErrorKind } from './chat-error';
+
+export type { ChatSource, FeedbackRating };
 
 /** Maximum message length accepted by the backend (LAB-12). */
 export const MAX_MESSAGE_LENGTH = 4000;
@@ -13,8 +16,6 @@ export type MessageAuthor = 'user' | 'assistant';
 
 export type MessageStatus = 'streaming' | 'complete' | 'stopped' | 'failed';
 
-export type FeedbackRating = 'UP' | 'DOWN';
-
 export interface MessageFeedbackState {
   rating?: FeedbackRating;
   comment?: string;
@@ -23,18 +24,6 @@ export interface MessageFeedbackState {
   saving: boolean;
   saved: boolean;
   error?: string;
-}
-
-/** A fragment of the knowledge base that backs an answer; `number` is what `[n]` cites (LAB-23). */
-export interface ChatSource {
-  /** Starts at 1 and is unique within one answer. */
-  number: number;
-  /** Readable title of the document, never its file name. */
-  title: string;
-  /** Path of headings that contains the fragment; empty when there is none. */
-  section: string;
-  /** Text of the fragment as it was handed to the model (Markdown from the corpus). */
-  text: string;
 }
 
 export interface ChatMessage {
@@ -53,7 +42,7 @@ export interface ChatMessage {
   feedback?: MessageFeedbackState;
 }
 
-/** Events of the `POST /api/chat` stream (contract of LAB-12 and LAB-33). */
+/** Events of the `POST /api/chat` stream (contract of LAB-12, LAB-33, LAB-106). */
 export type ChatStreamEvent =
   | { type: 'sources'; sources: ChatSource[] }
   | { type: 'token'; content: string }

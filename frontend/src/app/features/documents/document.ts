@@ -1,28 +1,10 @@
-/** Indexing state of a document, as `retrieval` stores it (specs/LAB-21). */
-export type DocumentStatus = 'PENDING' | 'INDEXED' | 'ERROR';
+import type {
+  DocumentStatus,
+  DocumentSummaryResponse,
+  DocumentUploadResponse,
+} from '@leandroamariles/shoplab-contracts';
 
-/** One row of `GET /api/documents`. */
-export interface DocumentSummary {
-  id: string;
-  name: string;
-  title: string;
-  status: DocumentStatus;
-  chunkCount: number;
-  /** Default text of the last indexing failure (English); the screen translates it. */
-  error: string | null;
-  updatedAt: string;
-  indexedAt: string | null;
-}
-
-/** Body of a successful `POST /api/documents`. */
-export interface DocumentUploadResponse {
-  id: string;
-  name: string;
-  title: string;
-  status: DocumentStatus;
-  chunkCount: number;
-  replaced: boolean;
-}
+export type { DocumentStatus, DocumentSummaryResponse as DocumentSummary, DocumentUploadResponse };
 
 /**
  * Where an upload is: `queued` waits its turn, `sending` moves bytes, `processing` waits for the server to chunk the

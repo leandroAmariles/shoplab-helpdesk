@@ -9,9 +9,9 @@ COPY mvnw pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp dependency:go-offline
 
 COPY src src
-# Tests, Checkstyle, PMD and JaCoCo run in CI (bound to `verify`), not when packaging the image.
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests package \
-    && cp target/helpdesk-backend-*.jar app.jar \
+# Tests, contract stubs, Checkstyle, PMD and JaCoCo run in CI (bound to `verify`), not when packaging the image.
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests -Dspring.cloud.contract.verifier.skip=true package \
+    && cp "$(find target -maxdepth 1 -type f -name 'helpdesk-backend-*.jar' ! -name '*-stubs.jar' ! -name '*-plain.jar' | head -n 1)" app.jar \
     && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 FROM eclipse-temurin:21-jre@sha256:0b99b3376fbb50dbf9c0af8535fdd5b8eb0d3fdfc8b1e4967f383b6919f6901a

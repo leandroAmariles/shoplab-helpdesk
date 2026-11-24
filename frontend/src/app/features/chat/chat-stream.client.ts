@@ -1,7 +1,16 @@
 import { Injectable } from '@angular/core';
+import type {
+  ApiErrorResponse,
+  ChatRequest,
+  ChatSource,
+  ChatSseDonePayload,
+  ChatSseErrorPayload,
+  ChatSseSourcesPayload,
+  ChatSseTokenPayload,
+} from '@leandroamariles/shoplab-contracts';
 import { Observable, Subscriber } from 'rxjs';
 import { ChatErrorKind, ChatStreamError } from './chat-error';
-import { ChatSource, ChatStreamEvent } from './chat-message';
+import { ChatStreamEvent } from './chat-message';
 import { createSseParser, SseEvent } from './sse-parser';
 
 const CHAT_URL = '/api/chat';
@@ -42,7 +51,7 @@ function toSources(value: unknown): ChatSource[] | null {
   return sources;
 }
 
-/** Turns a raw SSE event into a typed one; `null` for anything outside the LAB-12 contract. */
+/** Turns a raw SSE event into a typed one backed by OpenAPI contracts; `null` for anything outside the contract. */
 function toChatEvent(raw: SseEvent): ChatStreamEvent | null {
   let payload: unknown;
   try {
@@ -54,26 +63,32 @@ function toChatEvent(raw: SseEvent): ChatStreamEvent | null {
   }
   if (isRecord(payload)) {
     if (raw.event === 'sources') {
-      const sources = toSources(payload['sources']);
+      const candidate = payload as Partial<ChatSseSourcesPayload>;
+      const sources = toSources(candidate.sources);
       if (sources !== null) {
         return { type: 'sources', sources };
       }
     }
-    if (raw.event === 'token' && typeof payload['content'] === 'string') {
-      return { type: 'token', content: payload['content'] };
+    if (raw.event === 'token') {
+      const candidate = payload as Partial<ChatSseTokenPayload>;
+      if (typeof candidate.content === 'string') {
+        return { type: 'token', content: candidate.content };
+      }
     }
-    if (raw.event === 'done' && typeof payload['fragments'] === 'number') {
-      const turnId = isNonEmptyString(payload['turnId']) ? payload['turnId'] : undefined;
-      return turnId === undefined
-        ? { type: 'done', fragments: payload['fragments'] }
-        : { type: 'done', fragments: payload['fragments'], turnId };
+    if (raw.event === 'done') {
+      const candidate = payload as Partial<ChatSseDonePayload>;
+      if (typeof candidate.fragments === 'number') {
+        const turnId = isNonEmptyString(candidate.turnId) ? candidate.turnId : undefined;
+        return turnId === undefined
+          ? { type: 'done', fragments: candidate.fragments }
+          : { type: 'done', fragments: candidate.fragments, turnId };
+      }
     }
-    if (
-      raw.event === 'error' &&
-      typeof payload['code'] === 'string' &&
-      typeof payload['message'] === 'string'
-    ) {
-      return { type: 'error', code: payload['code'], message: payload['message'] };
+    if (raw.event === 'error') {
+      const candidate = payload as Partial<ChatSseErrorPayload>;
+      if (typeof candidate.code === 'string' && typeof candidate.message === 'string') {
+        return { type: 'error', code: candidate.code, message: candidate.message };
+      }
     }
   }
   console.warn(`Chat stream: evento ignorado (${raw.event}).`);
@@ -98,9 +113,9 @@ function kindOf(status: number): ChatErrorKind {
 async function toHttpError(response: Response): Promise<ChatStreamError> {
   let code: string | undefined;
   try {
-    const body: unknown = await response.json();
-    if (isRecord(body) && typeof body['code'] === 'string') {
-      code = body['code'];
+    const body = (await response.json()) as Partial<ApiErrorResponse> | null;
+    if (body && typeof body === 'object' && typeof body.code === 'string') {
+      code = body.code;
     }
   } catch {
     // The error body is optional; the status is enough.
@@ -161,11 +176,13 @@ export class ChatStreamClient {
     conversationId: string | undefined,
     signal: AbortSignal,
   ): Promise<Response> {
+    const requestBody: ChatRequest =
+      conversationId === undefined ? { message } : { message, conversationId };
     try {
       return await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(conversationId === undefined ? { message } : { message, conversationId }),
+        body: JSON.stringify(requestBody),
         signal,
       });
     } catch {

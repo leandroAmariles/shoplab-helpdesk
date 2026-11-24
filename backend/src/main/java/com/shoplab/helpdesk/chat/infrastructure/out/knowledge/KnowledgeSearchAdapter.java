@@ -8,11 +8,13 @@ import com.shoplab.helpdesk.retrieval.api.KnowledgeSearchApi;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 /** Gets the context from the search that {@code retrieval} publishes; the rest of {@code chat} never sees it. */
 @Component
+@ConditionalOnProperty(name = "shoplab.retrieval.client.mode", havingValue = "in-process", matchIfMissing = true)
 public class KnowledgeSearchAdapter implements KnowledgeContextPort {
 
     private static final Logger LOG = LoggerFactory.getLogger(KnowledgeSearchAdapter.class);
