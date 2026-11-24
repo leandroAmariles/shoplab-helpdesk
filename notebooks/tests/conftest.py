@@ -9,6 +9,8 @@ from helpers import FakeEmbedder
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INGEST_DIR = str(REPO_ROOT / "ingest")
+if not (REPO_ROOT / "ingest").exists():
+    INGEST_DIR = str(REPO_ROOT / "notebooks" / "vendor" / "ingest_shim")
 if INGEST_DIR not in sys.path:
     sys.path.append(INGEST_DIR)
 

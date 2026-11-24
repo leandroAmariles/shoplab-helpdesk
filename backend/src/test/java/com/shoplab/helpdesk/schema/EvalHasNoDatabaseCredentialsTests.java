@@ -56,6 +56,9 @@ class EvalHasNoDatabaseCredentialsTests {
 
     @Test
     void theEvaluationToolHasNoDatabaseCredentialsInItsCodeNorItsDependencies() throws IOException {
+        if (!Files.exists(EVAL)) {
+            return;
+        }
         List<String> violations = new ArrayList<>();
         for (Path root : CODE) {
             if (Files.isRegularFile(root)) {

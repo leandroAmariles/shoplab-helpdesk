@@ -82,8 +82,11 @@ def test_the_sections_the_spec_asks_for_are_there(notebook):
 
 @pytest.mark.parametrize("folder", ["backend/src", "ingest/app"])
 def test_production_code_does_not_import_anything_from_the_notebook(folder):
+    target = repo_root() / folder
+    if not target.exists():
+        return
     pattern = re.compile(r"chunking_lab|from notebooks|import notebooks")
-    offenders = [str(p) for p in (repo_root() / folder).rglob("*")
+    offenders = [str(p) for p in target.rglob("*")
                  if p.is_file() and p.suffix in {".py", ".java", ".kt", ".yml", ".xml"}
                  and pattern.search(p.read_text(encoding="utf-8", errors="ignore"))]
     assert offenders == []

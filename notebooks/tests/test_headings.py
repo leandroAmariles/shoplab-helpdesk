@@ -42,7 +42,8 @@ def test_a_document_without_headings_falls_back_to_size_with_empty_section():
 
 
 def test_ingest_goes_at_the_end_of_sys_path_so_its_tests_package_cannot_shadow_ours():
-    ingest_index = max(i for i, p in enumerate(sys.path) if p.replace("\\", "/").endswith("/ingest"))
+    matches = (i for i, p in enumerate(sys.path) if p.replace("\\", "/").endswith("/ingest") or "ingest_shim" in p)
+    ingest_index = max(matches)
     ours = [i for i, p in enumerate(sys.path) if p.replace("\\", "/").endswith("notebooks/tests")]
     assert ours
     assert ingest_index > max(ours)

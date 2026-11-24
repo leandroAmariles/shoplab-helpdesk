@@ -26,7 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @PostgresTest
 class EvalHistoryQueriesTests {
 
-    private static final Path QUERIES = Path.of("../eval/queries");
+    private static final Path QUERIES = HistoryQueryFixtures.QUERIES;
 
     @Autowired
     private EvalRunStorePort store;

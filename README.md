@@ -9,14 +9,18 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 - **Python**: ingesta, chunking, embeddings y evaluación (RAGAS / DeepEval).
 - **Datos**: PostgreSQL 16 + pgvector; dataset público de Olist.
 
+## Repositorios Extraídos (ADR-0031, LAB-109)
+
+Siguiendo la estrategia de extracción temprana ([ADR-0031](docs/adr/0031-extraccion-temprana-de-servicios.md)), los siguientes componentes periféricos han sido separados en sus propios repositorios independientes con pipelines y ciclos de vida autónomos:
+- **`shoplab-ingest`**: [github.com/leandroAmariles/shoplab-ingest](https://github.com/leandroAmariles/shoplab-ingest) — Servicio FastAPI de parseo y chunking de documentos.
+- **`shoplab-eval`**: [github.com/leandroAmariles/shoplab-eval](https://github.com/leandroAmariles/shoplab-eval) — Herramientas y dataset golden de evaluación RAG (RAGAS).
+- **`shoplab-frontend`**: [github.com/leandroAmariles/shoplab-frontend](https://github.com/leandroAmariles/shoplab-frontend) — Aplicación web Angular.
+
 ## Estructura
 
 | Carpeta | Contenido |
 | --- | --- |
-| `frontend/` | App Angular |
 | `backend/` | Spring Boot 4 + Spring Modulith + Spring AI 2.0 |
-| `ingest/` | Servicio FastAPI de ingesta |
-| `eval/` | Dataset golden y evaluación |
 | `notebooks/` | Experimentos: [comparativo de estrategias de chunking](notebooks/README.md) |
 | `ml/` | ML y MLOps (F8): [análisis exploratorio de Olist](ml/README.md), [dataset de intenciones](ml/README.md#dataset-de-intenciones-del-cliente-lab-117) y [clasificador de intención con scikit-learn](ml/README.md#clasificador-de-intención-con-scikit-learn-lab-118) |
 | `data/` | Políticas, FAQs y scripts de carga |

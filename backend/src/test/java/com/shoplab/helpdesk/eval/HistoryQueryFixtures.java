@@ -23,7 +23,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 final class HistoryQueryFixtures {
 
-    private static final Path QUERIES = Path.of("../eval/queries");
+    static final Path QUERIES = Files.exists(Path.of("../eval/queries"))
+            ? Path.of("../eval/queries")
+            : Path.of("src/test/resources/eval/queries");
     private static final Pattern VARIABLE = Pattern.compile(":'(\\w+)'");
 
     private HistoryQueryFixtures() {

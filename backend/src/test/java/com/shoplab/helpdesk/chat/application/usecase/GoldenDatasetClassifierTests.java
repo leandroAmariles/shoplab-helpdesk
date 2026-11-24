@@ -23,7 +23,9 @@ import tools.jackson.databind.json.JsonMapper;
 class GoldenDatasetClassifierTests {
 
     /** Maven runs the tests with the module as working directory. */
-    private static final Path GOLDEN = Path.of("..", "eval", "golden.jsonl");
+    private static final Path GOLDEN = Files.exists(Path.of("..", "eval", "golden.jsonl"))
+            ? Path.of("..", "eval", "golden.jsonl")
+            : Path.of("src", "test", "resources", "eval", "golden.jsonl");
     private static final Set<String> COURTESY_OPENERS = Set.of("hola", "buenas", "buenos", "gracias");
 
     private record GoldenCase(String id, String question, String category, boolean hasDocuments) {
