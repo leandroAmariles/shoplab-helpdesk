@@ -1,6 +1,6 @@
 # ADR-0015: Límites de contexto y estrategia de repositorios
 
-- Estado: aceptado
+- Estado: aceptado (parcialmente sustituido por ADR-0031)
 - Fecha: 2026-10-27
 
 ## Contexto
@@ -76,3 +76,7 @@ Alternativas descartadas:
 - Extraer un servicio en F5 consiste en: mover el paquete del módulo y su carpeta de migraciones a un repositorio
   nuevo, sustituir las llamadas en proceso por contratos de `shoplab-contracts`, y apuntar el servicio a su propia
   base de datos con el esquema que ya posee.
+- **Estrategia de repositorios sustituida por ADR-0031**: la política de repositorios independientes se anticipa a la
+  finalización de F2 (S19–S24) para los servicios extraídos (`retrieval`, `chat`, `eval`) y para los que nacen de cero
+  (`catalog`, `order`, `ticket` en F3/F4), en lugar de esperar a F5. Se mantiene intacta la regla de soberanía de datos
+  y esquemas de este ADR.

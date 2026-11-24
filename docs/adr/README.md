@@ -8,7 +8,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 
 | Nº | Título | Estado |
 | --- | --- | --- |
-| 0001 | [Monolito modular primero](0001-monolito-modular-primero.md) | aceptado |
+| 0001 | [Monolito modular primero](0001-monolito-modular-primero.md) | aceptado (parcialmente sustituido por 0031) |
 | 0002 | [PostgreSQL con pgvector como única base de datos inicial](0002-postgres-pgvector.md) | aceptado |
 | 0003 | [Ollama como servidor local de modelos](0003-ollama-modelos-locales.md) | aceptado |
 | 0004 | [Spring Boot 4 con Spring AI 2.0 y Spring Modulith para el backend](0004-spring-boot-4-spring-ai-2.md) | aceptado |
@@ -22,7 +22,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0012 | [Dev despliega solo versiones de release](0012-dev-despliega-solo-versiones-de-release.md) | aceptado |
 | 0013 | [Angular Material como biblioteca de componentes del frontend](0013-biblioteca-ui-angular-material.md) | aceptado |
 | 0014 | [Streaming por fetch y Markdown saneado en el chat](0014-markdown-seguro-en-el-chat.md) | aceptado |
-| 0015 | [Límites de contexto y estrategia de repositorios](0015-limites-de-contexto-y-repositorios.md) | aceptado |
+| 0015 | [Límites de contexto y estrategia de repositorios](0015-limites-de-contexto-y-repositorios.md) | aceptado (parcialmente sustituido por 0031) |
 | 0016 | [Troceado por encabezados en `ingest` y contrato síncrono con `retrieval`](0016-troceado-por-encabezados-e-ingesta-sincrona.md) | aceptado |
 | 0017 | [Embeddings calculados solo en `retrieval`](0017-embeddings-solo-en-retrieval.md) | aceptado |
 | 0018 | [Recuperación del contexto en el caso de uso del chat](0018-recuperacion-de-contexto-en-chat.md) | aceptado |
@@ -37,6 +37,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0028 | [Persistencia de las ejecuciones de evaluación](0028-persistencia-de-ejecuciones-de-evaluacion.md) | aceptado |
 | 0029 | [Lectura del historial de evaluación](0029-lectura-del-historial-de-evaluacion.md) | aceptado |
 | 0030 | [Feedback de respuestas y promoción a casos golden](0030-feedback-de-respuestas-y-promocion-a-golden.md) | aceptado |
+| 0031 | [Extracción temprana de servicios](0031-extraccion-temprana-de-servicios.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
