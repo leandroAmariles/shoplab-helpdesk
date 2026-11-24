@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  pipeline:
+    uses: leandroamariles/shoplab-ci/.github/workflows/java-service.yml@v1
+    with:
+      java-version: '21'
+      coverage-threshold: 80
+      image-name: 'ghcr.io/leandroamariles/template-service'
+      publish-image: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,111 @@
+name: Reusable Java Service CI
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        type: string
+        default: '21'
+        description: 'Versión de Java JDK'
+      coverage-threshold:
+        type: number
+        default: 80
+        description: 'Umbral mínimo de cobertura JaCoCo'
+      qodana-enabled:
+        type: boolean
+        default: true
+        description: 'Activar análisis estático con Qodana'
+      trivy-scan:
+        type: boolean
+        default: true
+        description: 'Activar escaneo de seguridad con Trivy'
+      trivy-severity:
+        type: string
+        default: 'HIGH,CRITICAL'
+        description: 'Severidades que bloquean en Trivy'
+      image-name:
+        type: string
+        required: true
+        description: 'Nombre completo de la imagen GHCR'
+      publish-image:
+        type: boolean
+        default: false
+        description: 'Indica si se publica y firma la imagen'
+    secrets:
+      github-token:
+        required: true
+        description: 'Token de GitHub con permisos packages:write'
+      qodana-token:
+        required: false
+        description: 'Token de Qodana Cloud'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Policy Gate (anti-latest y anti CAMBIA-ESTE-OWNER)
+        run: |
+          if grep -rn --exclude-dir={.git,target} "CAMBIA-ESTE-OWNER" .; then
+            echo "::error::Presencia del marcador prohibido CAMBIA-ESTE-OWNER"
+            exit 1
+          fi
+          if grep -rn --exclude-dir={.git,target} --include="*.yaml" --include="*.yml" -E "image:[[:space:]]*[^:]+:latest([[:space:]]|$)" . 2>/dev/null; then
+            echo "::error::Uso prohibido de tag :latest en manifiestos de servicio"
+            exit 1
+          fi
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Build and Tests with Testcontainers
+        run: mvn clean verify -B
+
+      - name: Evaluate JaCoCo Line Coverage (>= ${{ inputs.coverage-threshold }}%)
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            COVERAGE=$(awk -F',' '{ instructions += $4 + $5; covered += $5 } END { if (instructions > 0) print int(100*covered/instructions); else print 0 }' target/site/jacoco/jacoco.csv)
+            echo "Cobertura JaCoCo calculada: ${COVERAGE}% (umbral: ${{ inputs.coverage-threshold }}%)"
+            if [ "$COVERAGE" -lt "${{ inputs.coverage-threshold }}" ]; then
+              echo "::error::Cobertura de código insuficiente: ${COVERAGE}% < ${{ inputs.coverage-threshold }}%"
+              exit 1
+            fi
+          else
+            echo "::warning::No se encontró target/site/jacoco/jacoco.csv para evaluar cobertura"
+          fi
+
+      - name: Qodana Code Quality Scan
+        if: inputs.qodana-enabled
+        uses: JetBrains/qodana-action@v2024.2
+        with:
+          args: --fail-threshold,0
+        env:
+          QODANA_TOKEN: ${{ secrets.qodana-token }}
+
+      - name: Trivy Filesystem Scan
+        if: inputs.trivy-scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+          exit-code: '1'
+
+  publish:
+    needs: verify
+    if: inputs.publish-image
+    uses: leandroamariles/shoplab-ci/.github/workflows/publish-image.yml@v1
+    with:
+      image-name: ${{ inputs.image-name }}
+    secrets:
+      github-token: ${{ secrets.github-token }}

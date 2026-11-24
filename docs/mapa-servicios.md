@@ -241,13 +241,19 @@ En cumplimiento de Jira LAB-128, la regla de encapsulamiento de `@Tool` en la `a
 
 ---
 
-## 5. Política sobre el módulo `shared` y plantilla de servicio (LAB-103)
+## 5. Política sobre el módulo `shared`, plantilla de servicio y workflows (LAB-103)
 
 - **Prohibición de librerías comunes de dominio**: Se prohíbe taxativamente empaquetar entidades de negocio, repositorios o servicios en librerías Maven compartidas. Compartir código de dominio introduce acoplamiento en tiempo de compilación y bloquea los despliegues independientes.
-- **Plantilla de servicio (LAB-103)**:
-  - Cada microservicio se instancia a partir de la plantilla estándar desarrollada en `LAB-103`.
-  - La plantilla suministra el andamiaje técnico inicial: jerarquía base de excepciones (`BusinessException`, `TechnicalException`), filtro de correlación de peticiones (`X-Request-Id`), envoltorio de respuesta estándar `ResponseDto<T>`, logging estructurado y configuración de métricas con Micrometer.
-  - Cada microservicio gestiona su propio catálogo de códigos de error tipados (`CHAT_...`, `CAT_...`, `ORD_...`), evolucionando de manera totalmente autónoma.
+- **Plantilla de servicio (`shoplab-service-template`)**:
+  - Cada microservicio se instancia a partir del repositorio plantilla oficial [`shoplab-service-template`](https://github.com/leandroamariles/shoplab-service-template) desarrollado en `LAB-103`.
+  - La plantilla suministra el andamiaje técnico inicial: jerarquía base de excepciones (`BusinessException`, `TechnicalException`), filtro reactivo de correlación de peticiones (`X-Request-Id` y `traceparent`), envoltorio de respuesta estándar `ResponseDto<T>` y `ErrorDto`, logging estructurado seguro, migrador Flyway mono-esquema, pruebas de arquitectura ArchUnit y configuración de Resource Server JWT para Keycloak (LAB-61).
+  - Cada microservicio gestiona su propio catálogo de códigos de error tipados (`CHAT_...`, `CATL_...`, `ORDR_...`, `TCKT_...`), evolucionando de manera totalmente autónoma.
+  - Dependencia fijada exclusivamente a `com.shoplab:shoplab-contracts` (LAB-108) sin dependencias de código hacia el monolito ni hacia repositorios hermanos.
+- **Workflows reutilizables (`shoplab-ci`)**:
+  - Todo microservicio delega su pipeline en `shoplab-ci/.github/workflows/java-service.yml@v1` (o `python-service.yml@v1` / `angular-app.yml@v1`), aplicando gates de compilación, Testcontainers, JaCoCo ≥80 %, Qodana, Trivy (HIGH/CRITICAL) y políticas anti `:latest` y `CAMBIA-ESTE-OWNER`.
+  - Generación de atestaciones SBOM, firma criptográfica keyless con Cosign en GHCR y job de despliegue GitOps automático hacia `shoplab-infra`.
+- **Guía de creación paso a paso**:
+  - El procedimiento detallado de instanciación, parametrización y registro de nuevos servicios se encuentra documentado en [docs/fases/F5-creacion-de-servicios-desde-plantilla.md](fases/F5-creacion-de-servicios-desde-plantilla.md).
 - **Gobernanza de contratos**: Toda interfaz entre servicios se rige por especificaciones OpenAPI 3.1 y esquemas Avro versionados centralmente en el repositorio `shoplab-contracts` (LAB-108).
 
 ---

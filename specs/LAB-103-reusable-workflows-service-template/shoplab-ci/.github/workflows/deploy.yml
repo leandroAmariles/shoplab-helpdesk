@@ -1,0 +1,81 @@
+name: Reusable GitOps Deploy to shoplab-infra
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        type: string
+        required: true
+        description: 'Nombre del servicio a desplegar (ej: chat-service)'
+      image-tag:
+        type: string
+        required: true
+        description: 'Tag de versión publicado en GHCR (ej: v1.0.0)'
+      image-namespace:
+        type: string
+        default: 'ghcr.io/leandroamariles'
+        description: 'Prefijo del registro OCI'
+      overlay:
+        type: string
+        default: 'k8s/overlays/dev'
+        description: 'Overlay destino en shoplab-infra'
+    secrets:
+      deploy-app-id:
+        required: true
+        description: 'ID de la GitHub App de despliegue'
+      deploy-app-private-key:
+        required: true
+        description: 'Llave privada PEM de la GitHub App'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    concurrency:
+      group: deploy-dev-${{ inputs.service-name }}
+      cancel-in-progress: false
+    steps:
+      - name: Generate minimal scoped token for shoplab-infra
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.deploy-app-id }}
+          private-key: ${{ secrets.deploy-app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: 'shoplab-infra'
+          permission-contents: write
+
+      - name: Check out shoplab-infra
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/shoplab-infra
+          ref: main
+          path: infra
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Check out shoplab-ci scripts
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/shoplab-ci
+          ref: v1
+          path: ci-tools
+          sparse-checkout: scripts
+
+      - name: Execute GitOps deployment script
+        env:
+          SERVICE_NAME: ${{ inputs.service-name }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+          INFRA_DIR: ${{ github.workspace }}/infra
+          IMAGE_NAMESPACE: ${{ inputs.image-namespace }}
+          OVERLAY: ${{ inputs.overlay }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          APP_SHA: ${{ github.sha }}
+        run: |
+          chmod +x ci-tools/scripts/deploy-infra.sh
+          bash ci-tools/scripts/deploy-infra.sh
