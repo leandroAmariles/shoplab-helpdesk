@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: ShopLab Retrieval API
+  description: >
+    HTTP contract for knowledge base document ingestion/listing and semantic/hybrid
+    chunk search consumed by chat and evaluation tools.
+  version: 1.0.0
+  contact:
+    name: ShopLab Core Team
+    url: https://github.com/leandroAmariles/shoplab-contracts
+
+servers:
+  - url: /
+    description: Gateway or service base URL
+
+tags:
+  - name: Documents
+    description: Knowledge base document upload and inventory
+  - name: KnowledgeSearch
+    description: Semantic chunk search
+
+paths:
+  /api/documents:
+    post:
+      tags: [Documents]
+      summary: Upload and index a PDF or Markdown knowledge document
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Existing document replaced and queued/indexed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '201':
+          description: New document stored and queued/indexed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '400':
+          description: Missing file part or unreadable request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '413':
+          description: Uploaded file exceeds configured size limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '415':
+          description: Unsupported media format (only PDF and Markdown accepted).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Empty, corrupt, or unchunkable document content.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '502':
+          description: Document parsing or embedding service failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Document parsing, embedding, or database service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+    get:
+      tags: [Documents]
+      summary: List all documents in the knowledge base
+      operationId: listDocuments
+      responses:
+        '200':
+          description: Document catalog with indexing statuses.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentSummaryResponse'
+        '503':
+          description: Database unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/knowledge/search:
+    get:
+      tags: [KnowledgeSearch]
+      summary: Search knowledge base chunks by semantic similarity
+      operationId: searchKnowledge
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Search query text. Missing or blank values fail with 422 SLHD_RETR_00009.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of chunks to return.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Ranked knowledge chunks matching the query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSearchResponse'
+        '422':
+          description: Search query is missing or blank (SLHD_RETR_00009).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Embedding usage budget exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '502':
+          description: Embedding model failure or dimension mismatch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Embedding service or database unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: SLHD_RETR_00009
+        message:
+          type: string
+          example: The search query must not be blank
+        detail:
+          type: [string, 'null']
+
+    DocumentStatus:
+      type: string
+      enum: [PENDING, INDEXED, ERROR]
+
+    DocumentUploadResponse:
+      type: object
+      required: [id, name, title, status, chunkCount, replaced]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        chunkCount:
+          type: integer
+          minimum: 0
+        replaced:
+          type: boolean
+
+    DocumentSummaryResponse:
+      type: object
+      required: [id, name, title, status, chunkCount, error, updatedAt, indexedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        chunkCount:
+          type: integer
+          minimum: 0
+        error:
+          type: [string, 'null']
+        updatedAt:
+          type: string
+          format: date-time
+        indexedAt:
+          type: [string, 'null']
+          format: date-time
+
+    KnowledgeSearchHitResponse:
+      type: object
+      required: [source, title, section, position, score, text]
+      properties:
+        source:
+          type: string
+          example: returns-policy.md
+        title:
+          type: string
+          example: Política de devoluciones
+        section:
+          type: string
+          example: Plazos
+        position:
+          type: integer
+          minimum: 0
+        score:
+          type: number
+          format: double
+        text:
+          type: string
+
+    KnowledgeSearchResponse:
+      type: object
+      required: [model, results]
+      properties:
+        model:
+          type: string
+          example: bge-m3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSearchHitResponse'

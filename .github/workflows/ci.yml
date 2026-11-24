@@ -111,6 +111,9 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
     defaults:
       run:
         working-directory: backend
@@ -122,7 +125,12 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: backend/pom.xml
+          server-id: github-shoplab-contracts
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
       - name: Verify (Checkstyle, PMD, Modulith, tests, JaCoCo gate)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw -B -ntp clean verify
       - name: Module documentation is up to date
         # ModularityTests regenerates docs/modulos from the code (LAB-105); a diff means it was not committed.
@@ -232,6 +240,9 @@ jobs:
     if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v7
       - name: Detect Angular project
@@ -246,11 +257,15 @@ jobs:
         if: steps.detect.outputs.exists == 'true'
         with:
           node-version: 22
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@leandroamariles'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install
         if: steps.detect.outputs.exists == 'true'
         working-directory: frontend
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm ci
       - name: Lint
         if: steps.detect.outputs.exists == 'true'

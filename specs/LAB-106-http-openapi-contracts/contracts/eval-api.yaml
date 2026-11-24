@@ -1,0 +1,899 @@
+openapi: 3.1.0
+info:
+  title: ShopLab Eval API
+  description: >
+    HTTP contract for recording RAG evaluation runs from CI, reading active
+    assistant settings for evaluation traceability, and querying historical runs
+    and comparisons for the admin-eval console.
+  version: 1.0.0
+  contact:
+    name: ShopLab Core Team
+    url: https://github.com/leandroAmariles/shoplab-contracts
+
+servers:
+  - url: /
+    description: Gateway or service base URL
+
+tags:
+  - name: EvalRuns
+    description: Protected endpoints for saving and checking CI evaluation runs
+  - name: EvalSettings
+    description: Protected endpoint returning active assistant settings
+  - name: EvalHistory
+    description: Read-only evaluation history and comparison endpoints for admin-eval
+
+paths:
+  /api/eval/runs:
+    post:
+      tags: [EvalRuns]
+      summary: Persist a completed evaluation run
+      operationId: saveEvalRun
+      parameters:
+        - $ref: '#/components/parameters/EvalTokenHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvalRunRequest'
+      responses:
+        '201':
+          description: Evaluation run saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunSavedResponse'
+        '400':
+          description: Unreadable JSON or unknown property rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Evaluation persistence disabled or invalid X-Eval-Token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: An evaluation run with that run_id already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Evaluation run payload violates validation rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Evaluation store unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/eval/runs/{runId}:
+    get:
+      tags: [EvalRuns]
+      summary: Check whether an evaluation run is already stored
+      operationId: findEvalRun
+      parameters:
+        - $ref: '#/components/parameters/EvalTokenHeader'
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stored run summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoredRunResponse'
+        '403':
+          description: Evaluation persistence disabled or invalid X-Eval-Token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Evaluation run not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/eval/settings:
+    get:
+      tags: [EvalSettings]
+      summary: Read active assistant settings via eval endpoint
+      operationId: readEvalSettings
+      parameters:
+        - $ref: '#/components/parameters/EvalTokenHeader'
+      responses:
+        '200':
+          description: Current assistant retrieval and prompt configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalSettingsResponse'
+        '403':
+          description: Evaluation persistence disabled or invalid X-Eval-Token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/eval/history/runs:
+    get:
+      tags: [EvalHistory]
+      summary: List historical evaluation runs
+      operationId: listEvalHistoryRuns
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RunKind'
+        - name: origin
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching historical runs ordered oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunListResponse'
+        '422':
+          description: Invalid query parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Evaluation store unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/eval/history/runs/{runId}:
+    get:
+      tags: [EvalHistory]
+      summary: Get full detail for one historical evaluation run
+      operationId: getEvalHistoryRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run metadata, scope summary, and per-case results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDetailResponse'
+        '404':
+          description: Evaluation run not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Invalid runId format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/eval/history/compare:
+    get:
+      tags: [EvalHistory]
+      summary: Compare two evaluation runs of the same kind for a metric
+      operationId: compareEvalRuns
+      parameters:
+        - name: base
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: metric
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: drop
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metric deltas, parameter diffs, and per-case comparison statuses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunComparisonResponse'
+        '404':
+          description: Base or target evaluation run not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Runs are not comparable or comparison parameters are invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  parameters:
+    EvalTokenHeader:
+      name: X-Eval-Token
+      in: header
+      required: false
+      description: Shared token authorizing write/read-settings operations from evaluation runners.
+      schema:
+        type: string
+
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: SLHD_EVAL_00001
+        message:
+          type: string
+        detail:
+          type: [string, 'null']
+
+    RunKind:
+      type: string
+      enum: [RETRIEVAL, QUALITY]
+
+    CaseKind:
+      type: string
+      enum: [answered, unanswered]
+
+    ComparisonStatus:
+      type: string
+      enum: [WORSE, BETTER, SAME, NO_VALUE, NOT_COMPARABLE, ONLY_BASE, ONLY_TARGET]
+
+    CaseRequest:
+      type: object
+      additionalProperties: false
+      required: [id, category, question, reference_answer, expected_documents]
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+        question:
+          type: string
+        reference_answer:
+          type: string
+        expected_documents:
+          type: array
+          items:
+            type: string
+
+    PromptVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [name, source, pinned]
+      properties:
+        name:
+          type: string
+        version:
+          type: [integer, 'null']
+        source:
+          type: string
+        pinned:
+          type: boolean
+
+    JudgeRequest:
+      type: object
+      additionalProperties: false
+      required: [model]
+      properties:
+        model:
+          type: string
+        underlying_model:
+          type: [string, 'null']
+        temperature:
+          type: [number, 'null']
+          format: double
+        seed:
+          type: [integer, 'null']
+        max_input_chars:
+          type: [integer, 'null']
+
+    EvaluatorRequest:
+      type: object
+      additionalProperties: false
+      required: [library]
+      properties:
+        library:
+          type: string
+        library_version:
+          type: [string, 'null']
+        judgment_instructions_version:
+          type: [string, 'null']
+
+    RetrievalConfigRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        top_k:
+          type: [integer, 'null']
+        similarity_threshold:
+          type: [number, 'null']
+          format: double
+        max_context_characters:
+          type: [integer, 'null']
+        depth:
+          type: [integer, 'null']
+        ks:
+          type: [array, 'null']
+          items:
+            type: integer
+
+    ResultRequest:
+      type: object
+      additionalProperties: false
+      required: [case, case_kind, scores, retrieved_documents]
+      properties:
+        case:
+          $ref: '#/components/schemas/CaseRequest'
+        case_kind:
+          $ref: '#/components/schemas/CaseKind'
+        scores:
+          type: object
+          additionalProperties:
+            type: [number, 'null']
+            format: double
+        retrieved_documents:
+          type: array
+          items:
+            type: string
+        abstained:
+          type: [boolean, 'null']
+        trace_id:
+          type: [string, 'null']
+
+    EvalRunRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - run_id
+        - kind
+        - started_at
+        - finished_at
+        - origin
+        - dataset_hash
+        - cases_measured
+        - cases_excluded
+        - embedding_model
+        - prompts
+        - retrieval_config
+        - results
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        origin:
+          type: string
+        commit_sha:
+          type: [string, 'null']
+        dataset_hash:
+          type: string
+        cases_measured:
+          type: integer
+        cases_excluded:
+          type: integer
+        assistant_model:
+          type: [string, 'null']
+        embedding_model:
+          type: string
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptVersionRequest'
+        judge:
+          anyOf:
+            - $ref: '#/components/schemas/JudgeRequest'
+            - type: 'null'
+        evaluator:
+          anyOf:
+            - $ref: '#/components/schemas/EvaluatorRequest'
+            - type: 'null'
+        retrieval_config:
+          $ref: '#/components/schemas/RetrievalConfigRequest'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultRequest'
+
+    EvalRunSavedResponse:
+      type: object
+      required: [run_id, kind, results, new_case_revisions]
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        results:
+          type: integer
+        new_case_revisions:
+          type: integer
+
+    StoredRunResponse:
+      type: object
+      required: [run_id, kind, started_at, recorded_at]
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        started_at:
+          type: string
+          format: date-time
+        recorded_at:
+          type: string
+          format: date-time
+
+    EvalSettingsRetrievalPart:
+      type: object
+      required: [top_k, similarity_threshold, max_context_characters]
+      properties:
+        top_k:
+          type: integer
+        similarity_threshold:
+          type: number
+          format: double
+        max_context_characters:
+          type: integer
+
+    EvalSettingsPromptPart:
+      type: object
+      required: [name, version, source]
+      properties:
+        name:
+          type: string
+        version:
+          type: [integer, 'null']
+        source:
+          type: string
+
+    EvalSettingsResponse:
+      type: object
+      required: [retrieval, prompts]
+      properties:
+        retrieval:
+          $ref: '#/components/schemas/EvalSettingsRetrievalPart'
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalSettingsPromptPart'
+
+    OriginCountResponse:
+      type: object
+      required: [origin, count]
+      properties:
+        origin:
+          type: string
+        count:
+          type: integer
+          format: int64
+
+    RunPromptResponse:
+      type: object
+      required: [name, version, source, pinned]
+      properties:
+        name:
+          type: string
+        version:
+          type: [integer, 'null']
+        source:
+          type: string
+        pinned:
+          type: boolean
+
+    MetricStatResponse:
+      type: object
+      required: [mean, n]
+      properties:
+        mean:
+          type: [number, 'null']
+          format: double
+        n:
+          type: integer
+
+    RunListItemResponse:
+      type: object
+      required:
+        - run_id
+        - kind
+        - started_at
+        - finished_at
+        - origin
+        - commit_sha
+        - assistant_model
+        - prompts
+        - cases_measured
+        - metrics
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        origin:
+          type: string
+        commit_sha:
+          type: [string, 'null']
+        assistant_model:
+          type: [string, 'null']
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunPromptResponse'
+        cases_measured:
+          type: integer
+        metrics:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MetricStatResponse'
+
+    RunListResponse:
+      type: object
+      required: [kind, shown, total, total_all_origins, origins, runs]
+      properties:
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        shown:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        total_all_origins:
+          type: integer
+          format: int64
+        origins:
+          type: array
+          items:
+            $ref: '#/components/schemas/OriginCountResponse'
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunListItemResponse'
+
+    RunDetailJudgePart:
+      type: object
+      required: [model, underlying_model, temperature, seed, max_input_chars]
+      properties:
+        model:
+          type: string
+        underlying_model:
+          type: [string, 'null']
+        temperature:
+          type: [number, 'null']
+          format: double
+        seed:
+          type: [integer, 'null']
+        max_input_chars:
+          type: [integer, 'null']
+
+    RunDetailEvaluatorPart:
+      type: object
+      required: [library, library_version, judgment_instructions_version]
+      properties:
+        library:
+          type: string
+        library_version:
+          type: [string, 'null']
+        judgment_instructions_version:
+          type: [string, 'null']
+
+    RunDetailRetrievalPart:
+      type: object
+      required: [top_k, similarity_threshold, max_context_characters, depth, ks]
+      properties:
+        top_k:
+          type: [integer, 'null']
+        similarity_threshold:
+          type: [number, 'null']
+          format: double
+        max_context_characters:
+          type: [integer, 'null']
+        depth:
+          type: [integer, 'null']
+        ks:
+          type: [array, 'null']
+          items:
+            type: integer
+
+    RunDetailHeaderResponse:
+      type: object
+      required:
+        - run_id
+        - kind
+        - started_at
+        - finished_at
+        - recorded_at
+        - origin
+        - commit_sha
+        - dataset_hash
+        - cases_measured
+        - cases_excluded
+        - assistant_model
+        - embedding_model
+        - prompts
+        - judge
+        - evaluator
+        - retrieval_config
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        recorded_at:
+          type: string
+          format: date-time
+        origin:
+          type: string
+        commit_sha:
+          type: [string, 'null']
+        dataset_hash:
+          type: string
+        cases_measured:
+          type: integer
+        cases_excluded:
+          type: integer
+        assistant_model:
+          type: [string, 'null']
+        embedding_model:
+          type: string
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunPromptResponse'
+        judge:
+          anyOf:
+            - $ref: '#/components/schemas/RunDetailJudgePart'
+            - type: 'null'
+        evaluator:
+          anyOf:
+            - $ref: '#/components/schemas/RunDetailEvaluatorPart'
+            - type: 'null'
+        retrieval_config:
+          $ref: '#/components/schemas/RunDetailRetrievalPart'
+
+    RunDetailScopePart:
+      type: object
+      required: [scope, cases, metrics]
+      properties:
+        scope:
+          type: string
+        cases:
+          type: integer
+        metrics:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MetricStatResponse'
+
+    RunDetailResultPart:
+      type: object
+      required:
+        - case_id
+        - revision
+        - category
+        - question
+        - reference_answer
+        - expected_documents
+        - case_kind
+        - scores
+        - retrieved_documents
+        - abstained
+        - trace_id
+        - trace_url
+      properties:
+        case_id:
+          type: string
+        revision:
+          type: string
+        category:
+          type: string
+        question:
+          type: string
+        reference_answer:
+          type: string
+        expected_documents:
+          type: array
+          items:
+            type: string
+        case_kind:
+          $ref: '#/components/schemas/CaseKind'
+        scores:
+          type: object
+          additionalProperties:
+            type: [number, 'null']
+            format: double
+        retrieved_documents:
+          type: array
+          items:
+            type: string
+        abstained:
+          type: [boolean, 'null']
+        trace_id:
+          type: [string, 'null']
+        trace_url:
+          type: [string, 'null']
+
+    RunDetailResponse:
+      type: object
+      required: [run, summary, results]
+      properties:
+        run:
+          $ref: '#/components/schemas/RunDetailHeaderResponse'
+        summary:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunDetailScopePart'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunDetailResultPart'
+
+    ComparedRunPart:
+      type: object
+      required: [run_id, kind, started_at, origin]
+      properties:
+        run_id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RunKind'
+        started_at:
+          type: string
+          format: date-time
+        origin:
+          type: string
+
+    ComparisonMetricPart:
+      type: object
+      required: [metric, base, target, delta]
+      properties:
+        metric:
+          type: string
+        base:
+          $ref: '#/components/schemas/MetricStatResponse'
+        target:
+          $ref: '#/components/schemas/MetricStatResponse'
+        delta:
+          type: [number, 'null']
+          format: double
+
+    ComparisonParameterPart:
+      type: object
+      required: [field, base, target, affects_comparability]
+      properties:
+        field:
+          type: string
+        base:
+          type: [string, 'null']
+        target:
+          type: [string, 'null']
+        affects_comparability:
+          type: boolean
+
+    ComparisonCountsPart:
+      type: object
+      required: [worse, better, same, no_value, not_comparable, only_base, only_target]
+      properties:
+        worse:
+          type: integer
+        better:
+          type: integer
+        same:
+          type: integer
+        no_value:
+          type: integer
+        not_comparable:
+          type: integer
+        only_base:
+          type: integer
+        only_target:
+          type: integer
+
+    ComparisonCasePart:
+      type: object
+      required: [case_id, category, question, status]
+      properties:
+        case_id:
+          type: string
+        category:
+          type: string
+        question:
+          type: string
+        status:
+          $ref: '#/components/schemas/ComparisonStatus'
+        base_value:
+          type: [number, 'null']
+          format: double
+        target_value:
+          type: [number, 'null']
+          format: double
+        delta:
+          type: [number, 'null']
+          format: double
+
+    RunComparisonResponse:
+      type: object
+      required: [base, target, metric, drop, metrics, parameters, warnings, counts, cases]
+      properties:
+        base:
+          $ref: '#/components/schemas/ComparedRunPart'
+        target:
+          $ref: '#/components/schemas/ComparedRunPart'
+        metric:
+          type: string
+        drop:
+          type: number
+          format: double
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComparisonMetricPart'
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComparisonParameterPart'
+        warnings:
+          type: array
+          items:
+            type: string
+        counts:
+          $ref: '#/components/schemas/ComparisonCountsPart'
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComparisonCasePart'

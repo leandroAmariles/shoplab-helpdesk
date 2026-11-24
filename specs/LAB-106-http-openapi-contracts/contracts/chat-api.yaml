@@ -1,0 +1,485 @@
+openapi: 3.1.0
+info:
+  title: ShopLab Chat API
+  description: >
+    HTTP and Server-Sent Events contract for conversational assistant streaming,
+    turn feedback, golden case promotion, and active assistant settings.
+  version: 1.0.0
+  contact:
+    name: ShopLab Core Team
+    url: https://github.com/leandroAmariles/shoplab-contracts
+
+servers:
+  - url: /
+    description: Gateway or service base URL
+
+tags:
+  - name: Chat
+    description: Conversational streaming endpoint
+  - name: Feedback
+    description: Answer feedback and golden dataset promotion
+  - name: AssistantSettings
+    description: Read-only active assistant settings for evaluation traceability
+
+paths:
+  /api/chat:
+    post:
+      tags: [Chat]
+      summary: Stream assistant response as Server-Sent Events
+      operationId: streamChat
+      parameters:
+        - name: X-Prompt-Versions
+          in: header
+          required: false
+          description: Comma-separated list of promptName=version overrides for evaluation runs.
+          schema:
+            type: string
+            example: chat-system=3,chat-context=2
+        - name: X-Prompt-Token
+          in: header
+          required: false
+          description: Authorization token required when X-Prompt-Versions is supplied.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Server-Sent Events stream (`sources`, `token`, `done`, `error`).
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ChatSseStreamEvent'
+        '400':
+          description: Invalid chat message, conversationId, or prompt override header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Prompt version override not permitted for the provided token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Requested prompt override version is not available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Model usage budget exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Chat model, knowledge base, or conversation memory unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/chat/feedback/{turnId}:
+    put:
+      tags: [Feedback]
+      summary: Submit or update feedback for a completed assistant turn
+      operationId: submitFeedback
+      parameters:
+        - name: turnId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitFeedbackRequest'
+      responses:
+        '200':
+          description: Feedback recorded or updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResponse'
+        '400':
+          description: Invalid feedback rating or comment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Completed chat turn not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Persistence store unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/chat/feedback:
+    get:
+      tags: [Feedback]
+      summary: List recorded answer feedback entries
+      operationId: listFeedback
+      parameters:
+        - name: rating
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/FeedbackRating'
+        - name: promoted
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Matching feedback entries with promotion summary counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackListResponse'
+        '400':
+          description: Invalid filter parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Persistence store unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/chat/feedback/{turnId}/promote:
+    post:
+      tags: [Feedback]
+      summary: Promote a negative feedback turn to a golden dataset candidate
+      operationId: promoteFeedback
+      parameters:
+        - name: turnId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoteFeedbackRequest'
+      responses:
+        '200':
+          description: Feedback promoted and formatted as golden JSONL entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackItemResponse'
+        '400':
+          description: Invalid promotion payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Feedback or turn not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Feedback has already been promoted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '422':
+          description: Feedback is not negative or violates golden dataset rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /api/assistant/settings:
+    get:
+      tags: [AssistantSettings]
+      summary: Get active assistant retrieval settings and served prompt versions
+      operationId: getAssistantSettings
+      description: >
+        Read-only snapshot of what the assistant currently uses in memory
+        (retrieval parameters and active prompt versions).
+      responses:
+        '200':
+          description: Active assistant settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantSettingsResponse'
+        '500':
+          description: Unexpected internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: SLHD_CHAT_00001
+        message:
+          type: string
+          example: The message must not be blank or too long
+        detail:
+          type: [string, 'null']
+          description: Optional safe diagnostic detail when provided by the exception.
+
+    ChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        conversationId:
+          type: [string, 'null']
+          format: uuid
+
+    ChatSource:
+      type: object
+      required: [number, title, section, text]
+      properties:
+        number:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        section:
+          type: string
+        text:
+          type: string
+
+    ChatSseSourcesPayload:
+      type: object
+      required: [sources]
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatSource'
+
+    ChatSseTokenPayload:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    ChatSseDonePayload:
+      type: object
+      required: [fragments]
+      properties:
+        fragments:
+          type: integer
+          minimum: 0
+        turnId:
+          type: [string, 'null']
+
+    ChatSseErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    ChatSseStreamEvent:
+      description: Union of JSON payloads carried in the `data` field of SSE events.
+      oneOf:
+        - $ref: '#/components/schemas/ChatSseSourcesPayload'
+        - $ref: '#/components/schemas/ChatSseTokenPayload'
+        - $ref: '#/components/schemas/ChatSseDonePayload'
+        - $ref: '#/components/schemas/ChatSseErrorPayload'
+
+    FeedbackRating:
+      type: string
+      enum: [UP, DOWN]
+
+    SubmitFeedbackRequest:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          $ref: '#/components/schemas/FeedbackRating'
+        comment:
+          type: [string, 'null']
+          maxLength: 500
+
+    FeedbackResponse:
+      type: object
+      required: [turnId, rating, comment, createdAt, updatedAt, promotedCaseId, promotedAt]
+      properties:
+        turnId:
+          type: string
+        rating:
+          $ref: '#/components/schemas/FeedbackRating'
+        comment:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        promotedCaseId:
+          type: [string, 'null']
+        promotedAt:
+          type: [string, 'null']
+          format: date-time
+
+    FeedbackItemResponse:
+      type: object
+      required:
+        - turnId
+        - conversationId
+        - question
+        - answer
+        - deliveredDocuments
+        - traceId
+        - rating
+        - comment
+        - createdAt
+        - updatedAt
+        - promotedCaseId
+        - promotedCaseJsonl
+        - promotedAt
+      properties:
+        turnId:
+          type: string
+        conversationId:
+          type: string
+        question:
+          type: string
+        answer:
+          type: string
+        deliveredDocuments:
+          type: array
+          items:
+            type: string
+        traceId:
+          type: [string, 'null']
+        rating:
+          $ref: '#/components/schemas/FeedbackRating'
+        comment:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        promotedCaseId:
+          type: [string, 'null']
+        promotedCaseJsonl:
+          type: [string, 'null']
+        promotedAt:
+          type: [string, 'null']
+          format: date-time
+
+    FeedbackListResponse:
+      type: object
+      required: [total, pendingCount, promotedCount, suggestedNextCaseId, items]
+      properties:
+        total:
+          type: integer
+        pendingCount:
+          type: integer
+        promotedCount:
+          type: integer
+        suggestedNextCaseId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackItemResponse'
+
+    PromoteFeedbackRequest:
+      type: object
+      required: [caseId, question, referenceAnswer, expectedDocuments, category]
+      properties:
+        caseId:
+          type: string
+        question:
+          type: string
+        referenceAnswer:
+          type: string
+        expectedDocuments:
+          type: array
+          items:
+            type: string
+        category:
+          type: string
+
+    PromptSourceType:
+      type: string
+      enum: [LANGFUSE, DEFAULT]
+
+    ServedPromptResponse:
+      type: object
+      required: [name, version, source]
+      properties:
+        name:
+          type: string
+          example: chat-system
+        version:
+          type: [integer, 'null']
+          description: Numbered prompt version in Langfuse, or null when using the packaged default text.
+          example: 3
+        source:
+          $ref: '#/components/schemas/PromptSourceType'
+
+    AssistantSettingsResponse:
+      type: object
+      required: [topK, similarityThreshold, maxContextCharacters, prompts]
+      properties:
+        topK:
+          type: integer
+          minimum: 1
+          example: 5
+        similarityThreshold:
+          type: number
+          format: double
+          example: 0.45
+        maxContextCharacters:
+          type: integer
+          minimum: 1
+          example: 6000
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServedPromptResponse'

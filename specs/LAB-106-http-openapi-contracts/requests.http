@@ -1,0 +1,56 @@
+### Variables de entorno local (puerto por defecto 8080 en backend/src/main/resources/application.yml)
+@baseUrl = http://localhost:8080
+
+### Requisitos de specs/LAB-106-http-openapi-contracts/spec.md no cubiertos por HTTP en este archivo:
+### - FR-001..FR-006, FR-010, FR-011: especificaciones OpenAPI 3.1, pureza y gate oasdiff en shoplab-contracts
+### - FR-008..FR-009: paquete npm @leandroamariles/shoplab-contracts y migración de tipos en frontend/
+### - FR-012..FR-015: contratos Spring Cloud Contract, publicación de stubs en GitHub Packages y StubRunner
+### - FR-016: documentación de versionado y retiro en docs/fases/F5-contratos-http-versionado-y-retiro.md
+
+### FR-007 / US2 Scenario 1 & 2 — GET /api/assistant/settings devuelve configuración activa y prompts (LANGFUSE / DEFAULT con version null) — expects 200
+GET {{baseUrl}}/api/assistant/settings
+Accept: application/json
+
+> {%
+  client.test("GET /api/assistant/settings devuelve 200 y campos requeridos", function() {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(typeof response.body.topK === "number", "topK debe ser numérico");
+    client.assert(typeof response.body.similarityThreshold === "number", "similarityThreshold debe ser numérico");
+    client.assert(typeof response.body.maxContextCharacters === "number", "maxContextCharacters debe ser numérico");
+    client.assert(Array.isArray(response.body.prompts), "prompts debe ser un arreglo");
+  });
+%}
+
+### FR-012 / US5 Scenario 1 — GET /api/knowledge/search con consulta válida (contrato chat -> retrieval) — expects 200
+GET {{baseUrl}}/api/knowledge/search?query=politicas%20de%20devolucion&limit=5
+Accept: application/json
+
+> {%
+  client.test("GET /api/knowledge/search devuelve 200 con modelo y results", function() {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(typeof response.body.model === "string", "model debe ser string");
+    client.assert(Array.isArray(response.body.results), "results debe ser un arreglo");
+  });
+%}
+
+### FR-012 / US5 Scenario 1 — GET /api/knowledge/search sin coincidencias (contrato chat -> retrieval) — expects 200 con results vacío
+GET {{baseUrl}}/api/knowledge/search?query=consulta_sin_coincidencias_lab106&limit=5
+Accept: application/json
+
+> {%
+  client.test("GET /api/knowledge/search sin resultados devuelve 200 y arreglo vacío", function() {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(Array.isArray(response.body.results) && response.body.results.length === 0, "results debe estar vacío");
+  });
+%}
+
+### FR-012 / US5 Edge Case & Scenario 3 — GET /api/knowledge/search con query en blanco (contrato chat -> retrieval) — expects 422 SLHD_RETR_00009
+GET {{baseUrl}}/api/knowledge/search?query=%20%20%20
+Accept: application/json
+
+> {%
+  client.test("GET /api/knowledge/search con query en blanco devuelve 422 SLHD_RETR_00009", function() {
+    client.assert(response.status === 422, "Se esperaba HTTP 422");
+    client.assert(response.body.code === "SLHD_RETR_00009", "Se esperaba código SLHD_RETR_00009");
+  });
+%}

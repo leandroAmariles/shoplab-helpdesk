@@ -174,3 +174,5 @@ los servicios consumidores determina si hay caídas en producción.
 5. Publicar v2.0.0 en shoplab-contracts retirando el formato antiguo con 'feat!: [LAB-xxx] ...'.
 6. Desplegar el Productor v2.0.0 eliminando el código de compatibilidad legacy.
 ```
+
+Para la matriz completa de criterios de cambio de versión (`patch`, `minor`, `major`), convivencia de versiones y el procedimiento de retiro (*sunset*) paso a paso en APIs HTTP, consulta también [F5 · Versionado de APIs HTTP y retiro de versiones anteriores](fases/F5-contratos-http-versionado-y-retiro.md).

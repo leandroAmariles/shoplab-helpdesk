@@ -1,0 +1,32 @@
+name: should_return_knowledge_search_results
+description: Returns ranked knowledge base chunks for a valid search query
+request:
+  method: GET
+  urlPath: /api/knowledge/search
+  queryParameters:
+    query: politicas de devolucion
+    limit: 5
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+  body:
+    model: bge-m3
+    results:
+      - source: returns-policy.md
+        title: Política de devoluciones
+        section: Plazos
+        position: 0
+        score: 0.91
+        text: El plazo estándar de devolución es de 30 días naturales desde la entrega.
+  matchers:
+    body:
+      - path: $.model
+        type: by_regex
+        value: ".+"
+      - path: $.results
+        type: by_type
+        minOccurrence: 1
+      - path: $.results[0].score
+        type: by_regex
+        value: "[0-9]+(\\.[0-9]+)?"

@@ -1,14 +1,30 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import type {
+  ComparisonCasePart,
+  ComparisonMetricPart,
+  ComparisonParameterPart,
+  MetricStatResponse,
+  RunComparisonResponse,
+  RunDetailEvaluatorPart,
+  RunDetailHeaderResponse,
+  RunDetailJudgePart,
+  RunDetailResponse,
+  RunDetailResultPart,
+  RunDetailRetrievalPart,
+  RunDetailScopePart,
+  RunListItemResponse,
+  RunListResponse,
+  RunPromptResponse,
+  ComparedRunPart,
+} from '@leandroamariles/shoplab-contracts';
 import { map, Observable } from 'rxjs';
 import { HANDLES_OWN_ERRORS } from '../../core/api/api-error';
 import {
   ComparedRun,
-  ComparisonStatus,
   EvaluatorInfo,
   JudgeInfo,
   MetricStat,
-  OriginCount,
   RetrievalConfig,
   RunComparison,
   RunDetail,
@@ -28,111 +44,15 @@ function ownErrors(): HttpContext {
   return new HttpContext().set(HANDLES_OWN_ERRORS, true);
 }
 
-interface WireMetric {
-  mean: number | null;
-  n: number;
-}
-
-interface WirePrompt {
-  name: string;
-  version: number | null;
-  source: string;
-  pinned: boolean;
-}
-
-interface WireRunItem {
-  run_id: string;
-  kind: RunKind;
-  started_at: string;
-  finished_at: string;
-  origin: string;
-  commit_sha: string | null;
-  assistant_model: string | null;
-  prompts: WirePrompt[];
-  cases_measured: number;
-  metrics: Record<string, WireMetric>;
-}
-
-interface WireListing {
-  kind: RunKind;
-  shown: number;
-  total: number;
-  total_all_origins: number;
-  origins: OriginCount[];
-  runs: WireRunItem[];
-}
-
-interface WireJudge {
-  model: string;
-  underlying_model: string | null;
-  temperature: number | null;
-  seed: number | null;
-  max_input_chars: number | null;
-}
-
-interface WireEvaluator {
-  library: string;
-  library_version: string | null;
-  judgment_instructions_version: string | null;
-}
-
-interface WireRetrieval {
-  top_k: number;
-  similarity_threshold: number;
-  max_context_characters: number;
-  depth: number | null;
-  ks: number[] | null;
-}
-
-interface WireRunHeader {
-  run_id: string;
-  kind: RunKind;
-  started_at: string;
-  finished_at: string;
-  recorded_at: string;
-  origin: string;
-  commit_sha: string | null;
-  dataset_hash: string;
-  cases_measured: number;
-  cases_excluded: number;
-  assistant_model: string | null;
-  embedding_model: string;
-  prompts: WirePrompt[];
-  judge: WireJudge | null;
-  evaluator: WireEvaluator | null;
-  retrieval_config: WireRetrieval;
-}
-
-interface WireResult {
-  case_id: string;
-  revision: string;
-  category: string;
-  question: string;
-  reference_answer: string;
-  expected_documents: string[];
-  case_kind: 'answered' | 'unanswered';
-  scores: Record<string, number | null>;
-  retrieved_documents: string[];
-  abstained: boolean | null;
-  trace_id: string | null;
-  trace_url: string | null;
-}
-
-interface WireDetail {
-  run: WireRunHeader;
-  summary: { scope: string; cases: number; metrics: Record<string, WireMetric> }[];
-  results: WireResult[];
-}
-
-export function toMetric(wire: WireMetric): MetricStat {
+export function toMetric(wire: MetricStatResponse): MetricStat {
   return { mean: wire.mean ?? null, n: wire.n };
 }
 
-export function toMetrics(wire: Record<string, WireMetric>): Record<string, MetricStat> {
+export function toMetrics(wire: Record<string, MetricStatResponse>): Record<string, MetricStat> {
   return Object.fromEntries(Object.entries(wire).map(([name, stat]) => [name, toMetric(stat)]));
 }
 
-export function toPrompts(wire: WirePrompt[]): RunPrompt[] {
+export function toPrompts(wire: RunPromptResponse[]): RunPrompt[] {
   return wire.map((prompt) => ({
     name: prompt.name,
     version: prompt.version ?? null,
@@ -141,7 +61,7 @@ export function toPrompts(wire: WirePrompt[]): RunPrompt[] {
   }));
 }
 
-function toRunItem(wire: WireRunItem): RunListItem {
+function toRunItem(wire: RunListItemResponse): RunListItem {
   return {
     runId: wire.run_id,
     kind: wire.kind,
@@ -156,7 +76,7 @@ function toRunItem(wire: WireRunItem): RunListItem {
   };
 }
 
-function toListing(wire: WireListing): RunListing {
+function toListing(wire: RunListResponse): RunListing {
   return {
     kind: wire.kind,
     shown: wire.shown,
@@ -167,7 +87,7 @@ function toListing(wire: WireListing): RunListing {
   };
 }
 
-function toJudge(wire: WireJudge | null): JudgeInfo | null {
+function toJudge(wire: RunDetailJudgePart | null): JudgeInfo | null {
   return wire === null
     ? null
     : {
@@ -179,7 +99,7 @@ function toJudge(wire: WireJudge | null): JudgeInfo | null {
       };
 }
 
-function toEvaluator(wire: WireEvaluator | null): EvaluatorInfo | null {
+function toEvaluator(wire: RunDetailEvaluatorPart | null): EvaluatorInfo | null {
   return wire === null
     ? null
     : {
@@ -189,17 +109,17 @@ function toEvaluator(wire: WireEvaluator | null): EvaluatorInfo | null {
       };
 }
 
-function toRetrieval(wire: WireRetrieval): RetrievalConfig {
+function toRetrieval(wire: RunDetailRetrievalPart): RetrievalConfig {
   return {
-    topK: wire.top_k,
-    similarityThreshold: wire.similarity_threshold,
-    maxContextCharacters: wire.max_context_characters,
+    topK: wire.top_k ?? 0,
+    similarityThreshold: wire.similarity_threshold ?? 0,
+    maxContextCharacters: wire.max_context_characters ?? 0,
     depth: wire.depth ?? null,
     ks: wire.ks ?? null,
   };
 }
 
-function toRunHeader(wire: WireRunHeader): RunHeader {
+function toRunHeader(wire: RunDetailHeaderResponse): RunHeader {
   return {
     runId: wire.run_id,
     kind: wire.kind,
@@ -220,7 +140,7 @@ function toRunHeader(wire: WireRunHeader): RunHeader {
   };
 }
 
-function toResult(wire: WireResult): StoredResult {
+function toResult(wire: RunDetailResultPart): StoredResult {
   return {
     caseId: wire.case_id,
     revision: wire.revision,
@@ -239,11 +159,11 @@ function toResult(wire: WireResult): StoredResult {
   };
 }
 
-function toSummary(wire: WireDetail['summary'][number]): ScopeSummary {
+function toSummary(wire: RunDetailScopePart): ScopeSummary {
   return { scope: wire.scope, cases: wire.cases, metrics: toMetrics(wire.metrics) };
 }
 
-function toDetail(wire: WireDetail): RunDetail {
+function toDetail(wire: RunDetailResponse): RunDetail {
   return {
     run: toRunHeader(wire.run),
     summary: wire.summary.map(toSummary),
@@ -251,69 +171,48 @@ function toDetail(wire: WireDetail): RunDetail {
   };
 }
 
-interface WireComparedRun {
-  run_id: string;
-  kind: RunKind;
-  started_at: string;
-  origin: string;
-}
-
-interface WireComparison {
-  base: WireComparedRun;
-  target: WireComparedRun;
-  metric: string;
-  drop: number;
-  metrics: { metric: string; base: WireMetric; target: WireMetric; delta: number | null }[];
-  parameters: {
-    field: string;
-    base: string | null;
-    target: string | null;
-    affects_comparability: boolean;
-  }[];
-  warnings: string[];
-  counts: {
-    worse: number;
-    better: number;
-    same: number;
-    no_value: number;
-    not_comparable: number;
-    only_base: number;
-    only_target: number;
-  };
-  /** A case that cannot be compared has no values: they are not in the body. */
-  cases: {
-    case_id: string;
-    category: string;
-    question: string;
-    status: ComparisonStatus;
-    base_value?: number | null;
-    target_value?: number | null;
-    delta?: number | null;
-  }[];
-}
-
-function toComparedRun(wire: WireComparedRun): ComparedRun {
+function toComparedRun(wire: ComparedRunPart): ComparedRun {
   return { runId: wire.run_id, kind: wire.kind, startedAt: wire.started_at, origin: wire.origin };
 }
 
-function toComparison(wire: WireComparison): RunComparison {
+function toComparisonMetric(metric: ComparisonMetricPart) {
+  return {
+    metric: metric.metric,
+    base: toMetric(metric.base),
+    target: toMetric(metric.target),
+    delta: metric.delta ?? null,
+  };
+}
+
+function toComparisonParameter(parameter: ComparisonParameterPart) {
+  return {
+    field: parameter.field,
+    base: parameter.base ?? null,
+    target: parameter.target ?? null,
+    affectsComparability: parameter.affects_comparability,
+  };
+}
+
+function toComparisonCase(item: ComparisonCasePart) {
+  return {
+    caseId: item.case_id,
+    category: item.category,
+    question: item.question,
+    status: item.status,
+    baseValue: item.base_value ?? null,
+    targetValue: item.target_value ?? null,
+    delta: item.delta ?? null,
+  };
+}
+
+function toComparison(wire: RunComparisonResponse): RunComparison {
   return {
     base: toComparedRun(wire.base),
     target: toComparedRun(wire.target),
     metric: wire.metric,
     drop: wire.drop,
-    metrics: wire.metrics.map((metric) => ({
-      metric: metric.metric,
-      base: toMetric(metric.base),
-      target: toMetric(metric.target),
-      delta: metric.delta ?? null,
-    })),
-    parameters: wire.parameters.map((parameter) => ({
-      field: parameter.field,
-      base: parameter.base ?? null,
-      target: parameter.target ?? null,
-      affectsComparability: parameter.affects_comparability,
-    })),
+    metrics: wire.metrics.map(toComparisonMetric),
+    parameters: wire.parameters.map(toComparisonParameter),
     warnings: wire.warnings,
     counts: {
       worse: wire.counts.worse,
@@ -324,15 +223,7 @@ function toComparison(wire: WireComparison): RunComparison {
       onlyBase: wire.counts.only_base,
       onlyTarget: wire.counts.only_target,
     },
-    cases: wire.cases.map((item) => ({
-      caseId: item.case_id,
-      category: item.category,
-      question: item.question,
-      status: item.status,
-      baseValue: item.base_value ?? null,
-      targetValue: item.target_value ?? null,
-      delta: item.delta ?? null,
-    })),
+    cases: wire.cases.map(toComparisonCase),
   };
 }
 
@@ -348,14 +239,14 @@ export class EvalApiClient {
       params = params.set('origin', origin);
     }
     return this.http
-      .get<WireListing>(`${EVAL_HISTORY_URL}/runs`, { params, context: ownErrors() })
+      .get<RunListResponse>(`${EVAL_HISTORY_URL}/runs`, { params, context: ownErrors() })
       .pipe(map(toListing));
   }
 
   /** One run whole: how it was measured, its summary and the result of every case. */
   getRun(runId: string): Observable<RunDetail> {
     return this.http
-      .get<WireDetail>(`${EVAL_HISTORY_URL}/runs/${encodeURIComponent(runId)}`, {
+      .get<RunDetailResponse>(`${EVAL_HISTORY_URL}/runs/${encodeURIComponent(runId)}`, {
         context: ownErrors(),
       })
       .pipe(map(toDetail));
@@ -369,7 +260,7 @@ export class EvalApiClient {
       .set('metric', metric)
       .set('drop', drop);
     return this.http
-      .get<WireComparison>(`${EVAL_HISTORY_URL}/compare`, { params, context: ownErrors() })
+      .get<RunComparisonResponse>(`${EVAL_HISTORY_URL}/compare`, { params, context: ownErrors() })
       .pipe(map(toComparison));
   }
 }
