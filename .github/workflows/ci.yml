@@ -18,9 +18,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      ingest: ${{ steps.filter.outputs.ingest }}
-      eval: ${{ steps.filter.outputs.eval }}
       notebooks: ${{ steps.filter.outputs.notebooks }}
       ml: ${{ steps.filter.outputs.ml }}
       olist: ${{ steps.filter.outputs.olist }}
@@ -38,35 +35,17 @@ jobs:
             backend:
               - 'backend/**'
               - 'docs/modulos/**'
-              # The retrieval client is checked against the contract of the ingest service (specs/LAB-20).
-              - 'ingest/openapi.json'
-            frontend:
-              - 'frontend/**'
-            ingest:
-              - 'ingest/**'
-              # The corpus tests of ingest chunk every document of the knowledge base.
-              - 'data/kb/**'
-            eval:
-              - 'eval/**'
-              # The dataset validation checks every expected document against the corpus.
-              - 'data/kb/**'
             notebooks:
               - 'notebooks/**'
-              # The chunking notebook reuses the chunker of ingest and validates its questions against the corpus.
-              - 'ingest/app/**'
               - 'data/kb/**'
             ml:
               - 'ml/**'
-              # The analysis contrasts the data with the policy corpus.
               - 'data/kb/**'
-              # The notebook job loads the fixtures of the Olist loader and applies the real migrations of the
-              # orders and catalog schemas, so it follows them.
               - 'data/olist/**'
               - 'backend/src/main/resources/db/migration/orders/**'
               - 'backend/src/main/resources/db/migration/catalog/**'
             olist:
               - 'data/olist/**'
-              # The loader tests apply the migrations of orders and catalog, so they follow those scripts.
               - 'backend/src/main/resources/db/migration/orders/**'
               - 'backend/src/main/resources/db/migration/catalog/**'
             kb:
@@ -87,8 +66,6 @@ jobs:
       - name: Select Python components
         id: python
         env:
-          INGEST: ${{ steps.filter.outputs.ingest }}
-          EVAL: ${{ steps.filter.outputs.eval }}
           NOTEBOOKS: ${{ steps.filter.outputs.notebooks }}
           ML: ${{ steps.filter.outputs.ml }}
           OLIST: ${{ steps.filter.outputs.olist }}
@@ -97,8 +74,6 @@ jobs:
           CI_CHANGED: ${{ steps.filter.outputs.ci }}
         run: |
           items=()
-          if [ "$INGEST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ingest"'); fi
-          if [ "$EVAL" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"eval"'); fi
           if [ "$NOTEBOOKS" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"notebooks"'); fi
           if [ "$ML" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"ml"'); fi
           if [ "$OLIST" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/olist"'); fi
@@ -235,51 +210,6 @@ jobs:
           format: table
           exit-code: '1'
 
-  frontend:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@v7
-      - name: Detect Angular project
-        id: detect
-        run: |
-          if [ -f frontend/package.json ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::frontend/package.json not found; skipping Angular checks"
-          fi
-      - uses: actions/setup-node@v7
-        if: steps.detect.outputs.exists == 'true'
-        with:
-          node-version: 22
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@leandroamariles'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: frontend
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm ci
-      - name: Lint
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: frontend
-        run: npm run lint
-      - name: Test
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: frontend
-        run: npm test -- --watch=false
-      - name: Build
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: frontend
-        run: npm run build
-
   python:
     needs: changes
     if: needs.changes.outputs.python_matrix != '[]'
@@ -404,7 +334,7 @@ jobs:
           fi
 
   ci-gate:
-    needs: [changes, backend, qodana, trivy, frontend, python, ml-notebook, observability]
+    needs: [changes, backend, qodana, trivy, python, ml-notebook, observability]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

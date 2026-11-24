@@ -5,11 +5,15 @@
 
 import sys
 
+from pathlib import Path
+
 from chunking_lab.config import ExperimentConfig, repo_root
 from chunking_lab.corpus import Document
 from chunking_lab.strategies import Chunk, Strategy
 
 _INGEST_DIR = str(repo_root() / "ingest")
+if not (repo_root() / "ingest").exists():
+    _INGEST_DIR = str(repo_root() / "notebooks" / "vendor" / "ingest_shim")
 if _INGEST_DIR not in sys.path:
     sys.path.append(_INGEST_DIR)
 

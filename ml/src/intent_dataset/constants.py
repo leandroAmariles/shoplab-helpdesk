@@ -77,7 +77,9 @@ SAMPLE_PATH = ANNOTATIONS_DIR / "agreement-sample.jsonl"
 AGREEMENT_PATH = ANNOTATIONS_DIR / "agreement.json"
 GUIDE_PATH = INTENTS_DIR / "LABELING-GUIDE.md"
 DATASHEET_PATH = INTENTS_DIR / "DATASHEET.md"
-GOLDEN_PATH = REPO_ROOT / "eval" / "golden.jsonl"
+_EVAL_GOLDEN = REPO_ROOT / "eval" / "golden.jsonl"
+_INTENTS_GOLDEN = INTENTS_DIR / "golden.jsonl"
+GOLDEN_PATH = _EVAL_GOLDEN if _EVAL_GOLDEN.is_file() else _INTENTS_GOLDEN
 
 STATS_BEGIN = "<!-- stats:begin -->"
 STATS_END = "<!-- stats:end -->"

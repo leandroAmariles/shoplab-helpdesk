@@ -24,7 +24,9 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class IngestContractTests {
 
-    private static final Path CONTRACT = Path.of("../ingest/openapi.json");
+    private static final Path CONTRACT = Files.exists(Path.of("../ingest/openapi.json"))
+            ? Path.of("../ingest/openapi.json")
+            : Path.of("src/test/resources/contracts/ingest-openapi.json");
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private static JsonNode contract;
