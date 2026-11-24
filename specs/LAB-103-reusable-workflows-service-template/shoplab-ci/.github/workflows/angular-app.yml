@@ -1,0 +1,87 @@
+name: Reusable Angular App CI
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22'
+        description: 'Versión de Node.js'
+      trivy-scan:
+        type: boolean
+        default: true
+        description: 'Activar escaneo de seguridad con Trivy'
+      trivy-severity:
+        type: string
+        default: 'HIGH,CRITICAL'
+        description: 'Severidades que bloquean en Trivy'
+      image-name:
+        type: string
+        required: true
+        description: 'Nombre completo de la imagen GHCR'
+      publish-image:
+        type: boolean
+        default: false
+        description: 'Indica si se publica y firma la imagen'
+    secrets:
+      github-token:
+        required: true
+        description: 'Token de GitHub con permisos packages:write'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Policy Gate (anti-latest y anti CAMBIA-ESTE-OWNER)
+        run: |
+          if grep -rn --exclude-dir={.git,node_modules} "CAMBIA-ESTE-OWNER" .; then
+            echo "::error::Presencia del marcador prohibido CAMBIA-ESTE-OWNER"
+            exit 1
+          fi
+          if grep -rn --exclude-dir={.git,node_modules} --include="*.yaml" --include="*.yml" -E "image:[[:space:]]*[^:]+:latest([[:space:]]|$)" . 2>/dev/null; then
+            echo "::error::Uso prohibido de tag :latest en manifiestos de servicio"
+            exit 1
+          fi
+
+      - name: Set up Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit Tests (Headless)
+        run: npm run test -- --no-watch --no-progress --browsers=ChromeHeadless
+
+      - name: Production Build
+        run: npm run build -- --configuration=production
+
+      - name: Trivy npm Dependencies Scan
+        if: inputs.trivy-scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+          exit-code: '1'
+
+  publish:
+    needs: verify
+    if: inputs.publish-image
+    uses: leandroamariles/shoplab-ci/.github/workflows/publish-image.yml@v1
+    with:
+      image-name: ${{ inputs.image-name }}
+    secrets:
+      github-token: ${{ secrets.github-token }}

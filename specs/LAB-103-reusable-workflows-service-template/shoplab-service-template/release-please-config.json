@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "maven",
+      "package-name": "template-service",
+      "bump-minor-pre-major": false
+    }
+  }
+}

@@ -1,0 +1,48 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: ${SERVICE_NAME:template-service}
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shoplab}
+    username: ${DB_USER:shoplab}
+    password: ${DB_PASSWORD:shoplab}
+  flyway:
+    enabled: true
+    schemas: ${SERVICE_SCHEMA:template}
+    default-schema: ${SERVICE_SCHEMA:template}
+    locations: classpath:db/migration/${SERVICE_SCHEMA:template}
+    table: flyway_schema_history
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shoplab}
+    user: ${DB_USER:shoplab}
+    password: ${DB_PASSWORD:shoplab}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/shoplab}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8080/realms/shoplab/protocol/openid-connect/certs}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+app:
+  reactive-context:
+    enabled: true
+    headers:
+      - X-Request-Id
+      - traceparent
+      - channel

@@ -1,0 +1,93 @@
+name: Reusable Python Service CI
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: '3.11'
+        description: 'Versión de Python'
+      coverage-threshold:
+        type: number
+        default: 80
+        description: 'Umbral mínimo de cobertura pytest'
+      trivy-scan:
+        type: boolean
+        default: true
+        description: 'Activar escaneo de seguridad con Trivy'
+      trivy-severity:
+        type: string
+        default: 'HIGH,CRITICAL'
+        description: 'Severidades que bloquean en Trivy'
+      image-name:
+        type: string
+        required: true
+        description: 'Nombre completo de la imagen GHCR'
+      publish-image:
+        type: boolean
+        default: false
+        description: 'Indica si se publica y firma la imagen'
+    secrets:
+      github-token:
+        required: true
+        description: 'Token de GitHub con permisos packages:write'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Policy Gate (anti-latest y anti CAMBIA-ESTE-OWNER)
+        run: |
+          if grep -rn --exclude-dir={.git,.venv,__pycache__} "CAMBIA-ESTE-OWNER" .; then
+            echo "::error::Presencia del marcador prohibido CAMBIA-ESTE-OWNER"
+            exit 1
+          fi
+          if grep -rn --exclude-dir={.git,.venv} --include="*.yaml" --include="*.yml" -E "image:[[:space:]]*[^:]+:latest([[:space:]]|$)" . 2>/dev/null; then
+            echo "::error::Uso prohibido de tag :latest en manifiestos de servicio"
+            exit 1
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: 'latest'
+
+      - name: Set up Python ${{ inputs.python-version }}
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint and Format with Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Run Tests with Pytest & Coverage Gate
+        run: |
+          uv run pytest --cov --cov-fail-under=${{ inputs.coverage-threshold }}
+
+      - name: Trivy Filesystem & Dependencies Scan
+        if: inputs.trivy-scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+          exit-code: '1'
+
+  publish:
+    needs: verify
+    if: inputs.publish-image
+    uses: leandroamariles/shoplab-ci/.github/workflows/publish-image.yml@v1
+    with:
+      image-name: ${{ inputs.image-name }}
+    secrets:
+      github-token: ${{ secrets.github-token }}
