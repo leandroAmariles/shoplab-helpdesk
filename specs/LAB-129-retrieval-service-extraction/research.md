@@ -145,6 +145,11 @@ en el run 45684032699. En local no se reprodujo.
 se crea en 13 s). Quedó el `destroy`: `argocd_initial_app` agota la desinstalación. Intento 2: soltar los *finalizers*
 de Argo CD antes de destruir (hipótesis: el borrado en cascada espera recursos que en CI no terminan).
 
+**Cierre (2026-11-25)**: la confirmación anterior **no se sostiene**. En el run 45686618767, con el mismo arreglo y el
+espejo de ECR inyectado, el clúster tampoco llegó a activo en ninguno de los dos `apply`. El fallo es intermitente y
+su causa se desconoce. Agotados los dos intentos, se quitó el job `smoke` (`shoplab-infra#40`, `ci-gate` en verde) y
+se retiró el cambio del intento 2, que nunca llegó a ejecutarse. Queda `make smoke` en local.
+
 ## D-11 PostgreSQL del compose
 
 - **Decision**: `litellm-postgres` y `langfuse-postgres` pasan por defecto a `docker.io/postgres:17.7`, el valor de

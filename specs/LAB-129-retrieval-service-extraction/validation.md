@@ -20,6 +20,12 @@ Evidencia de cada paso de [quickstart.md](quickstart.md). Un paso sin resultado 
 - Rama temporal de `shoplab-retrieval-service` apuntando a la rama de `shoplab-ci` (run 45680327003): compilación,
   pruebas, cobertura, Qodana y Trivy en verde. Publicación y firma de la imagen: sin probar todavía.
 
+### `smoke` (T019–T022, 2026-11-25)
+
+- Intento 1 (run 45680227212): `apply` correcto, `destroy` agotado.
+- Run 45686618767: `apply` agotado dos veces pese al espejo inyectado. Intento 2 sin ejecutar y retirado.
+- Job quitado en `shoplab-infra#40`; `ci-gate`, `static`, `kustomize`, `trivy` y `plan` en verde. Sin fusionar.
+
 ### PostgreSQL del compose (T024, T025, 2026-11-25)
 
 Proyecto aislado `lab129pg` con un archivo de entorno vacío; la configuración resuelta usa `postgres:17.7` en
