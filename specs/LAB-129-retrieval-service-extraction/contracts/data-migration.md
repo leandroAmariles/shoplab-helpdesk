@@ -14,6 +14,8 @@ y Bash como los demás scripts del repositorio.
 - El origen solo se lee.
 - La restauración es de una sola transacción: queda completa o no queda.
 - Repetir con `--replace` borra el esquema destino y vuelve a copiar; nunca duplica.
+- Las migraciones que el servicio añade después (V5) no se comparan. Si el servicio ya estaba en marcha, **se reinicia
+  después de migrar**, porque `--replace` borra el esquema y con él lo que esas migraciones crearon.
 - `--replace` se usa solo antes del corte. Después, el destino es la fuente de verdad.
 
 ## Verificación

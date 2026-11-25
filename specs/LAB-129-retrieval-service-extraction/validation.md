@@ -30,9 +30,19 @@ Proyecto aislado `lab129pg` con un archivo de entorno vacío; la configuración 
   volúmenes de prueba se borraron.
 - `postgres` (pgvector 16) no cambia: su valor por defecto ya era el de `.env`.
 
+### Servicio (T026–T033, 2026-11-25)
+
+- `./mvnw clean verify`: 272 pruebas, 0 fallos, cobertura de líneas 97 %; stubs generados; `docker build` correcto.
+- Antes del arreglo, la consulta de 4000 caracteres respondía **414** y `x-shoplab-request-id` no llegaba al gateway.
+
 ## 2. Línea base (FR-023)
 
 ## 3. Migración (SC-002)
+
+Scripts probados contra un PostgreSQL desechable (`bash infra/postgres/tests/test-retrieval-migration.sh`,
+2026-11-25): provisión repetible; el rol `retrieval` no entra en `shoplab`; copia idéntica con las tablas a su
+nombre; sin `--replace` se niega; una fila alterada hace fallar la verificación; el origen no cambia. Envoltorios
+probados en Bash y PowerShell. **La migración de los datos reales está pendiente (T046).**
 
 ## 4. Paridad en paralelo (US2)
 
