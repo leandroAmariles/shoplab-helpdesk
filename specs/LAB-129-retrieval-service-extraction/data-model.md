@@ -39,7 +39,7 @@ Base `retrieval`, esquema `retrieval`, dueño: rol `retrieval`. La extensión `v
 | Campo | Tipo | Regla |
 |---|---|---|
 | `name` | text | PK; hoy solo `embeddings` |
-| `owner` | text | identificador aleatorio de la instancia, no vacío |
+| `owner` | text | identificador aleatorio de la ejecución que lo tiene, no vacío |
 | `locked_until` | timestamptz | calculado con `now()` de la base |
 
 ### Operaciones

@@ -54,6 +54,10 @@ probados en Bash y PowerShell. **La migración de los datos reales está pendien
 
 ## 8. Dos instancias (US5, SC-006)
 
+`IndexingAcrossInstancesIntegrationTest` y `JdbcIndexingLockAdapterTest` (2026-11-25): con dos instancias cada
+documento se indexa una vez; otra continúa cuando caduca el arriendo de una muerta; quien pierde el cerrojo se
+detiene sin guardar. `./mvnw clean verify`: 281 pruebas, 0 fallos, cobertura 97 %.
+
 ## 9. Latencia (SC-005)
 
 ## 10. Despliegue independiente y retirada (SC-004, FR-021)

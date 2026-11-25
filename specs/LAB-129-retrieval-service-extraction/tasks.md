@@ -137,11 +137,11 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 **Independent Test**: dos instancias sobre la misma base indexan cada documento una sola vez.
 
-- [ ] T047 [US5] Escribir `SVCT/infrastructure/out/persistence/JdbcIndexingLockAdapterTest.java`: tomar «no hay fila, o `locked_until < now()`»; renovar y liberar solo si «`owner` es el propio»; TTL 90 s con el reloj de la base
-- [ ] T048 [US5] Escribir `SVCT/IndexingAcrossInstancesIntegrationTest.java`: dos instancias indexan cada documento una vez; muerta la dueña, otra continúa pasado el TTL; búsqueda y subida no se bloquean; renovación perdida detiene la ejecución sin guardar
-- [ ] T049 [US5] Crear `shoplab-retrieval-service/src/main/resources/db/migration/retrieval/V5__indexing_lock.sql`: `name text` PK (hoy solo `embeddings`), `owner text` no vacío, `locked_until timestamptz` no nulo
-- [ ] T050 [US5] Crear `SVC/application/port/out/IndexingLockPort.java` y `SVC/infrastructure/out/persistence/JdbcIndexingLockAdapter.java`; usarlo en `SVC/application/usecase/DocumentEmbedder.java` (renovar antes de cada lote, liberar al terminar y en el apagado) y borrar `IndexingGuard.java`
-- [ ] T051 [US5] Subir los reintentos a 12 cada 10 s en `SVC/infrastructure/in/event/IndexAfterIngestListener.java` y aplicarlos también en `IndexOnStartupRunner.java` cuando la ejecución se omita, con sus pruebas, hasta que T047 y T048 pasen
+- [X] T047 [US5] Escribir `SVCT/infrastructure/out/persistence/JdbcIndexingLockAdapterTest.java`: tomar «no hay fila, o `locked_until < now()`»; renovar y liberar solo si «`owner` es el propio»; TTL 90 s con el reloj de la base
+- [X] T048 [US5] Escribir `SVCT/IndexingAcrossInstancesIntegrationTest.java`: dos instancias indexan cada documento una vez; muerta la dueña, otra continúa pasado el TTL; búsqueda y subida no se bloquean; renovación perdida detiene la ejecución sin guardar
+- [X] T049 [US5] Crear `shoplab-retrieval-service/src/main/resources/db/migration/retrieval/V5__indexing_lock.sql`: `name text` PK (hoy solo `embeddings`), `owner text` no vacío, `locked_until timestamptz` no nulo
+- [X] T050 [US5] Crear `SVC/application/port/out/IndexingLockPort.java` y `SVC/infrastructure/out/persistence/JdbcIndexingLockAdapter.java`; usarlo en `SVC/application/usecase/DocumentEmbedder.java` (renovar antes de cada lote, liberar al terminar y en el apagado) y borrar `IndexingGuard.java`
+- [X] T051 [US5] Subir los reintentos a 12 cada 10 s en `SVC/infrastructure/in/event/IndexAfterIngestListener.java` y aplicarlos también en `IndexOnStartupRunner.java` cuando la ejecución se omita, con sus pruebas, hasta que T047 y T048 pasen
 - [ ] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
 
 **Checkpoint**: el servicio está listo para recibir tráfico.
