@@ -1,8 +1,8 @@
 version: "1.0"
 
-# Full image name: the Qodana action pinned by shoplab-ci@v1 does not resolve the short name. An image recent enough
-# for Java 21: the 2024.2 one reads records as methods and reports problems that do not exist.
-linter: jetbrains/qodana-jvm-community:2025.2
+# No version: the linter must match the Qodana action of shoplab-ci. A pinned 2025.2 image with the 2026.2 action is
+# reported as not compatible and could not resolve imported symbols (LAB-129).
+linter: qodana-jvm-community
 
 projectJDK: "21"
 

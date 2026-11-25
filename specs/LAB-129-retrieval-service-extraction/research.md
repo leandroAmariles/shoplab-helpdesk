@@ -109,6 +109,12 @@ Hallado en la CI del código ya trasladado: con el `mvn` del runner, un proyecto
 Contract falla al descargar (`ClassCastException: BasicAuthCache`). `java-service.yml` usa `./mvnw` si existe; en verde
 en el run 45684032699. En local no se reprodujo.
 
+Al subir la acción de Qodana a `v2026.2.2`, el linter fijado `2025.2` de la plantilla y del servicio quedó
+incompatible: marcaba como no resueltos símbolos importados. Se usa `linter: qodana-jvm-community`, como el monolito.
+El modo PR solo analiza lo nuevo respecto a la rama base: el análisis completo se comprobó con ramas temporales
+(runs 45695604750, 45696954929 y 45696947398 del servicio; 45695617852 de `shoplab-gateway`, que conserva `2025.2`
+y pasa).
+
 ## D-10 `smoke` de shoplab-infra
 
 - **Observado**: en el run 45667096942, `aws_eks_cluster` sigue «Still creating» más de 8 min en los dos intentos,
@@ -144,6 +150,11 @@ en el run 45684032699. En local no se reprodujo.
 **Resultado (2026-11-25)**: hipótesis del `apply` **confirmada** (run 45680227212: con `registry:2` presente el clúster
 se crea en 13 s). Quedó el `destroy`: `argocd_initial_app` agota la desinstalación. Intento 2: soltar los *finalizers*
 de Argo CD antes de destruir (hipótesis: el borrado en cascada espera recursos que en CI no terminan).
+
+**Cierre (2026-11-25)**: la confirmación anterior **no se sostiene**. En el run 45686618767, con el mismo arreglo y el
+espejo de ECR inyectado, el clúster tampoco llegó a activo en ninguno de los dos `apply`. El fallo es intermitente y
+su causa se desconoce. Agotados los dos intentos, se quitó el job `smoke` (`shoplab-infra#40`, `ci-gate` en verde) y
+se retiró el cambio del intento 2, que nunca llegó a ejecutarse. Queda `make smoke` en local.
 
 ## D-11 PostgreSQL del compose
 

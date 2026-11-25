@@ -50,6 +50,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
           secrets: |
             node_auth_token=${{ secrets.GITHUB_TOKEN }}
+            github_token=${{ secrets.GITHUB_TOKEN }}
       # Report pass: never fails, so a tool/DB error here is distinguishable from the gate below.
       - name: Trivy report
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -143,6 +144,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           secrets: |
             node_auth_token=${{ secrets.GITHUB_TOKEN }}
+            github_token=${{ secrets.GITHUB_TOKEN }}
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       # Sign the digest, not the tags, so the signature covers every tag that points to it.
       - name: Sign image (keyless)

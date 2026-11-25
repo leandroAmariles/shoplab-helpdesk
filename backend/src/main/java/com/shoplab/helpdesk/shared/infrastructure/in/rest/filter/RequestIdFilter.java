@@ -26,6 +26,10 @@ public class RequestIdFilter implements WebFilter {
     public static final String HEADER = "X-Request-Id";
     public static final String MDC_KEY = "requestId";
     public static final String REQUEST_ATTRIBUTE = "requestId";
+    /** Reactor context key of the incoming {@code traceparent}, for the calls to other services (LAB-129). */
+    public static final String TRACEPARENT_KEY = "traceparent";
+
+    private static final Pattern TRACEPARENT = Pattern.compile("^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$");
 
     private static final long UUID_VERSION_MASK = 0xF000L;
     private static final long UUID_VERSION_4 = 0x4000L;
@@ -39,9 +43,14 @@ public class RequestIdFilter implements WebFilter {
         String requestId = resolve(exchange.getRequest().getHeaders().getFirst(HEADER));
         exchange.getAttributes().put(REQUEST_ATTRIBUTE, requestId);
         exchange.getResponse().getHeaders().set(HEADER, requestId);
-        return chain.filter(exchange).contextWrite(context -> context
-                .put(MDC_KEY, requestId)
-                .put(Slf4jThreadLocalAccessor.KEY, Map.of(MDC_KEY, requestId)));
+        String trace = exchange.getRequest().getHeaders().getFirst("traceparent");
+        return chain.filter(exchange).contextWrite(context -> {
+            var enriched = context
+                    .put(MDC_KEY, requestId)
+                    .put(Slf4jThreadLocalAccessor.KEY, Map.of(MDC_KEY, requestId));
+            return trace != null && TRACEPARENT.matcher(trace).matches()
+                    ? enriched.put(TRACEPARENT_KEY, trace) : enriched;
+        });
     }
 
     private String resolve(String candidate) {

@@ -65,22 +65,22 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T008 [P] [US1] Sustituir `TPL/.github/workflows/` por `ci.yml`, `release.yml` y `release-please.yml` tomados de `shoplab-gateway`, con `release.yml` publicando la imagen `:vX.Y.Z` antes de desplegar y `overlay: apps/<servicio>/overlays/dev`; ajustar `TPL/release-please-config.json` y `TPL/.release-please-manifest.json` para que la primera release sea `v0.1.0`
 - [X] T009 [P] [US1] En `shoplab-ci/.github/workflows/publish-image.yml` verificar la firma sin distinguir mayúsculas (`(?i)` en `--certificate-identity-regexp`)
 - [X] T010 [P] [US1] En `shoplab-ci/.github/workflows/java-service.yml` añadir `server-id: github-shoplab-contracts` con credenciales según T003 y subir Qodana a `JetBrains/qodana-action@v2026.2.2`
-- [ ] T011 [US1] APROBACIÓN: fusionar el PR de `shoplab-ci` y mover el tag `v1` (afecta a todos los consumidores; anotar el commit anterior de `v1` para poder volver)
+- [X] T011 [US1] APROBACIÓN: fusionar el PR de `shoplab-ci` y mover el tag `v1` (afecta a todos los consumidores; anotar el commit anterior de `v1` para poder volver)
 - [X] T012 [US1] APROBACIÓN: crear `leandroAmariles/shoplab-service-template` público con `gh repo create`, subir el contenido de `TPL/` y marcarlo como plantilla (`is_template`); actualizar la guía `docs/fases/F5-creacion-de-servicios-desde-plantilla.md`
 - [X] T013 [US1] APROBACIÓN: generar `leandroAmariles/shoplab-retrieval-service` desde la plantilla (`gh repo create --template`, público), clonarlo junto a los demás, fijar fusión por squash y cambiar solo el nombre en `shoplab-retrieval-service/pom.xml` y `shoplab-retrieval-service/.github/workflows/`
 - [X] T014 [US1] Cargar `DEPLOY_APP_ID` como variable de `shoplab-retrieval-service` (mismo valor que en `shoplab-gateway`)
-- [ ] T015 [US1] MANUAL: crear un token limitado a `shoplab-retrieval-service` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-retrieval-service`
+- [X] T015 [US1] MANUAL: crear un token limitado a `shoplab-retrieval-service` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-retrieval-service`
 - [ ] T016 [US1] MANUAL: cargar la llave de la GitHub App con `gh secret set DEPLOY_APP_PRIVATE_KEY -R leandroAmariles/shoplab-retrieval-service < <ruta-al-pem>` (o autorizar al agente indicando el archivo)
-- [ ] T017 [US1] APROBACIÓN: publicar `v0.1.0` de `shoplab-retrieval-service` y comprobar imagen `:v0.1.0` en GHCR con firma verificada (SC-008). El job de despliegue falla en esta release (se corrige en T040); anotar el resultado en `validation.md`
-- [ ] T018 [US1] MANUAL / APROBACIÓN: hacer **público** el paquete `retrieval-service` en GitHub → Packages → Package settings. **No es reversible**
+- [X] T017 [US1] APROBACIÓN: publicar `v0.1.0` de `shoplab-retrieval-service` y comprobar imagen `:v0.1.0` en GHCR con firma verificada (SC-008). El job de despliegue falla en esta release (se corrige en T040); anotar el resultado en `validation.md`
+- [X] T018 [US1] MANUAL / APROBACIÓN: hacer **público** el paquete `retrieval-service` en GitHub → Packages → Package settings. **No es reversible**
 
 ### `smoke` de shoplab-infra (research D-10)
 
 - [X] T019 [US1] Reproducir el fallo en un PR de `shoplab-infra` y confirmar o descartar la hipótesis del `429` al bajar `registry:2`; anotar la evidencia en research D-10
 - [X] T020 [US1] Intento 1: bajar `registry:2` desde `mirror.gcr.io`, fijarlo en `shoplab-infra/versions.env` y etiquetarlo antes de `up.sh` en `shoplab-infra/scripts/smoke.sh`; no subir `APPLY_TIMEOUT`
 - [X] T021 [US1] Solo si T020 no da verde: intento 2 según el log, en `shoplab-infra/scripts/` o `shoplab-infra/.github/workflows/ci.yml`
-- [ ] T022 [US1] Dar el `smoke` por solucionado únicamente con dos ejecuciones seguidas en verde. Si no, quitar de `shoplab-infra/.github/workflows/ci.yml` el job `smoke`, su entrada en `needs` de `ci-gate`, la salida `smoke`, el paso «Decide whether smoke is needed» y `fetch-depth: 0`; borrar `shoplab-infra/scripts/is-dev-deploy-only.sh` y `shoplab-infra/scripts/tests/dev-deploy-only.test.sh` y su llamada en `shoplab-infra/Makefile` (`test-ci-scripts`); conservar `scripts/smoke.sh` y `make smoke`
-- [ ] T023 [US1] Actualizar `shoplab-infra/README.md` y `shoplab-infra/docs/gitops.md` con el resultado de T022 y, APROBACIÓN, fusionar el PR con `ci-gate` en verde
+- [X] T022 [US1] Dar el `smoke` por solucionado únicamente con dos ejecuciones seguidas en verde. Si no, quitar de `shoplab-infra/.github/workflows/ci.yml` el job `smoke`, su entrada en `needs` de `ci-gate`, la salida `smoke`, el paso «Decide whether smoke is needed» y `fetch-depth: 0`; borrar `shoplab-infra/scripts/is-dev-deploy-only.sh` y `shoplab-infra/scripts/tests/dev-deploy-only.test.sh` y su llamada en `shoplab-infra/Makefile` (`test-ci-scripts`); conservar `scripts/smoke.sh` y `make smoke`
+- [X] T023 [US1] Actualizar `shoplab-infra/README.md` y `shoplab-infra/docs/gitops.md` con el resultado de T022 y, APROBACIÓN, fusionar el PR con `ci-gate` en verde
 
 ### PostgreSQL del compose
 
@@ -154,11 +154,11 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 **Independent Test**: con `mode=http` en local, el chat responde con las mismas citas; sin la variable, nada cambia.
 
-- [ ] T053 [US4] Publicar el cliente generado: aplicar T004 en `shoplab-contracts/generators/java/pom.xml`, actualizar `shoplab-contracts/README.md` y, APROBACIÓN, publicar `shoplab-contracts` 1.3.0
-- [ ] T054 [P] [US4] Escribir `MONOT/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClientTests.java` (WireMock) con la tabla de [chat-client.md](contracts/chat-client.md): orden, sin texto, título vacío, vacío, `4xx`/`5xx`/conexión/tiempo/cuerpo ilegible → `SLHD_CHAT_00004`, sin reintentos, `X-Request-Id`, `traceparent`, codificación de la consulta
-- [ ] T055 [P] [US4] Cambiar `MONOT/chat/infrastructure/out/knowledge/ChatRetrievalContractConsumerTest.java` a los stubs `com.shoplab:shoplab-retrieval-service` con versión fijada, y dar a `.github/workflows/ci.yml` el acceso decidido en T003
-- [ ] T056 [US4] Añadir `shoplab-contracts` 1.3.0 como dependencia en `backend/pom.xml`; crear `MONO/chat/config/RetrievalClientConfig.java` y `RetrievalClientProperties.java` (`base-url`, `timeout` 15 s); reescribir `MONO/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClient.java` sobre la interfaz generada
-- [ ] T057 [US4] Propagar `traceparent` entrante junto a `X-Request-Id` (`MONO/shared/infrastructure/in/rest/filter/RequestIdFilter.java`) y declarar las propiedades en `backend/src/main/resources/application.yml` hasta que T054 y T055 pasen
+- [X] T053 [US4] Publicar el cliente generado: aplicar T004 en `shoplab-contracts/generators/java/pom.xml`, actualizar `shoplab-contracts/README.md` y, APROBACIÓN, publicar `shoplab-contracts` 1.3.0
+- [X] T054 [P] [US4] Escribir `MONOT/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClientTests.java` (WireMock) con la tabla de [chat-client.md](contracts/chat-client.md): orden, sin texto, título vacío, vacío, `4xx`/`5xx`/conexión/tiempo/cuerpo ilegible → `SLHD_CHAT_00004`, sin reintentos, `X-Request-Id`, `traceparent`, codificación de la consulta
+- [X] T055 [P] [US4] Cambiar `MONOT/chat/infrastructure/out/knowledge/ChatRetrievalContractConsumerTest.java` a los stubs `com.shoplab:shoplab-retrieval-service` con versión fijada, y dar a `.github/workflows/ci.yml` el acceso decidido en T003
+- [X] T056 [US4] Añadir `shoplab-contracts` 1.3.0 como dependencia en `backend/pom.xml`; crear `MONO/chat/config/RetrievalClientConfig.java` y `RetrievalClientProperties.java` (`base-url`, `timeout` 15 s); reescribir `MONO/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClient.java` sobre la interfaz generada
+- [X] T057 [US4] Propagar `traceparent` entrante junto a `X-Request-Id` (`MONO/shared/infrastructure/in/rest/filter/RequestIdFilter.java`) y declarar las propiedades en `backend/src/main/resources/application.yml` hasta que T054 y T055 pasen
 - [ ] T058 [US4] APROBACIÓN: fusionar y publicar la release A del monolito; comprobar en dev que el chat sigue igual y subir `BACKEND_IMAGE` en `infra/docker-compose.yml`
 - [ ] T059 [US4] En local, con `mode=http` hacia `retrieval-service`, comprobar citas, servicio caído (`SLHD_CHAT_00004`), cortesías y la consulta larga (quickstart paso 6)
 

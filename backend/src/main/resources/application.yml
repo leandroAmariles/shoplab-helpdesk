@@ -121,6 +121,11 @@ shoplab:
       trace-url-template: ${SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE:http://localhost:3001/trace/{traceId}}
 
   retrieval:
+    # How chat gets its context (LAB-129): `in-process` asks the module; `http` asks retrieval-service.
+    client:
+      mode: ${SHOPLAB_RETRIEVAL_CLIENT_MODE:in-process}
+      base-url: ${SHOPLAB_RETRIEVAL_CLIENT_BASE_URL:http://localhost:8082}
+      timeout: ${SHOPLAB_RETRIEVAL_CLIENT_TIMEOUT:15s}
     ingest:
       base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}
       timeout: ${SHOPLAB_RETRIEVAL_INGEST_TIMEOUT:30s}
