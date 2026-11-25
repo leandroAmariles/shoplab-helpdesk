@@ -2,11 +2,11 @@ package com.shoplab.helpdesk.chat.infrastructure.out.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.shoplab.helpdesk.chat.config.RetrievalClientConfig;
+import com.shoplab.helpdesk.chat.config.RetrievalClientProperties;
 import com.shoplab.helpdesk.chat.domain.exception.KnowledgeRetrievalException;
 import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.cloud.contract.stubrunner.junit.StubRunnerExtension;
@@ -14,43 +14,23 @@ import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.test.StepVerifier;
 
-/** Consumer contract tests for {@code chat -> retrieval} using Spring Cloud Contract Stub Runner. */
+/** Consumer contract tests for {@code chat -> retrieval-service} with the stubs the service publishes. */
 class ChatRetrievalContractConsumerTest {
 
     private static final String GROUP_ID = "com.shoplab";
-    private static final String ARTIFACT_ID = "helpdesk-backend";
+    private static final String ARTIFACT_ID = "shoplab-retrieval-service";
 
     @RegisterExtension
-    static final StubRunnerExtension STUB_RUNNER = createStubRunner();
-
-    private static StubRunnerExtension createStubRunner() {
-        String mode = System.getProperty("shoplab.contracts.stubs-mode", "AUTO");
-        if ("REMOTE".equalsIgnoreCase(mode)) {
-            return new StubRunnerExtension()
-                    .downloadStub(GROUP_ID, ARTIFACT_ID, "+", "stubs")
-                    .stubsMode(StubRunnerProperties.StubsMode.REMOTE)
-                    .repoRoot("https://maven.pkg.github.com/leandroAmariles/shoplab-helpdesk");
-        }
-        if ("LOCAL".equalsIgnoreCase(mode)) {
-            return new StubRunnerExtension()
-                    .downloadStub(GROUP_ID, ARTIFACT_ID, "+", "stubs")
-                    .stubsMode(StubRunnerProperties.StubsMode.LOCAL);
-        }
-        Path generatedStubs = Path.of("target", "stubs").toAbsolutePath();
-        if (Files.isDirectory(generatedStubs)) {
-            return new StubRunnerExtension()
-                    .downloadStub(GROUP_ID, ARTIFACT_ID)
-                    .stubsMode(StubRunnerProperties.StubsMode.REMOTE)
-                    .repoRoot("stubs://" + generatedStubs.toUri());
-        }
-        return new StubRunnerExtension()
-                .downloadStub(GROUP_ID, ARTIFACT_ID, "+", "stubs")
-                .stubsMode(StubRunnerProperties.StubsMode.LOCAL);
-    }
+    static final StubRunnerExtension STUB_RUNNER = new StubRunnerExtension()
+            // The stubs jar is a test dependency of the POM, which is where its version is pinned.
+            .downloadStub(GROUP_ID, ARTIFACT_ID)
+            .stubsMode(StubRunnerProperties.StubsMode.CLASSPATH);
 
     private HttpKnowledgeSearchClient client() {
         int port = STUB_RUNNER.findStubUrl(GROUP_ID, ARTIFACT_ID).getPort();
-        return new HttpKnowledgeSearchClient(WebClient.builder().baseUrl("http://localhost:" + port).build());
+        var properties = new RetrievalClientProperties("http://localhost:" + port, null);
+        return new HttpKnowledgeSearchClient(
+                new RetrievalClientConfig().retrievalSearchApi(WebClient.builder(), properties), properties.timeout());
     }
 
     @Test

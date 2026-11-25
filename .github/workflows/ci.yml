@@ -106,7 +106,7 @@ jobs:
       - name: Verify (Checkstyle, PMD, Modulith, tests, JaCoCo gate)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B -ntp clean verify
+        run: ./mvnw -B -ntp -s .mvn/ci-settings.xml clean verify
       - name: Module documentation is up to date
         # ModularityTests regenerates docs/modulos from the code (LAB-105); a diff means it was not committed.
         run: |

@@ -80,6 +80,10 @@ Cada release publicada (`vX.Y.Z`) genera y distribuye artefactos inmutables sin 
   </dependencies>
   ```
 - **Autenticación local**: Servidor en `~/.m2/settings.xml` con credencial de GitHub Packages y token con permiso `read:packages`.
+- **En este repositorio** (LAB-129): `backend/` descarga `shoplab-contracts` y los stubs de `retrieval-service`, así que
+  necesita los servidores `github-shoplab-contracts` y `github-shoplab-retrieval`. Sin tocar tu `settings.xml`:
+  `GITHUB_TOKEN=$(gh auth token) ./mvnw -s .mvn/ci-settings.xml verify`. La imagen recibe el token como secreto:
+  `docker build --secret id=github_token,env=GITHUB_TOKEN backend`.
 
 ### 3.2. Frontend Angular (npm)
 - **Paquete**: `@leandroamariles/shoplab-contracts` en GitHub Packages npm.

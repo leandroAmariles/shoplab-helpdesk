@@ -6,11 +6,15 @@ WORKDIR /workspace
 
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp dependency:go-offline
+# shoplab-contracts and the stubs of retrieval-service come from GitHub Packages (LAB-129). The token is a build
+# secret and never reaches a layer: docker build --secret id=github_token,env=GITHUB_TOKEN
+RUN --mount=type=cache,target=/root/.m2 --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    ./mvnw -B -ntp -s .mvn/ci-settings.xml dependency:go-offline
 
 COPY src src
 # Tests, contract stubs, Checkstyle, PMD and JaCoCo run in CI (bound to `verify`), not when packaging the image.
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests -Dspring.cloud.contract.verifier.skip=true package \
+RUN --mount=type=cache,target=/root/.m2 --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    ./mvnw -B -ntp -s .mvn/ci-settings.xml -DskipTests -Dspring.cloud.contract.verifier.skip=true package \
     && cp "$(find target -maxdepth 1 -type f -name 'helpdesk-backend-*.jar' ! -name '*-stubs.jar' ! -name '*-plain.jar' | head -n 1)" app.jar \
     && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 

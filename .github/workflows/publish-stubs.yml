@@ -36,8 +36,8 @@ jobs:
       - name: Verify contracts and package stubs JAR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B -ntp clean verify
+        run: ./mvnw -B -ntp -s .mvn/ci-settings.xml clean verify
       - name: Deploy stubs artifact to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B -ntp deploy -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Djacoco.skip=true
+        run: ./mvnw -B -ntp -s .mvn/ci-settings.xml deploy -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Djacoco.skip=true
