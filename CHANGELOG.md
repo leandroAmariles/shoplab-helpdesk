@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.28.0...v0.29.0) (2026-11-25)
+
+
+### Features
+
+* **chat:** [LAB-129] el chat puede consultar a retrieval-service ([#182](https://github.com/leandroAmariles/shoplab-helpdesk/issues/182)) ([674a678](https://github.com/leandroAmariles/shoplab-helpdesk/commit/674a678e038ddda424f59e4bd7a72ae43b99f370))
+
+
+### Bug Fixes
+
+* **infra:** [LAB-129] correcciones previas a la extracción de retrieval-service ([#180](https://github.com/leandroAmariles/shoplab-helpdesk/issues/180)) ([0db167b](https://github.com/leandroAmariles/shoplab-helpdesk/commit/0db167b576d385a98f5b07a218af6f61707a8b48))
+
 ## [0.28.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.27.0...v0.28.0) (2026-11-25)
 
 
