@@ -31,7 +31,7 @@ description: "Task list for LAB-107 strangler gateway"
 **Purpose**: dejar `shoplab-gateway` creado, con sus credenciales y compilando.
 
 - [X] T001 MANUAL / APROBACIÓN: crear el repositorio `leandroAmariles/shoplab-gateway` con `gh repo create leandroAmariles/shoplab-gateway --add-readme --description "ShopLab API gateway (LAB-107)"` y la misma visibilidad que los demás repos ShopLab (comprobarla con `gh repo view leandroAmariles/shoplab-ci --json visibility`)
-- [ ] T002 MANUAL: crear un token de acceso limitado a `shoplab-gateway` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-gateway` (el valor se pega en el prompt)
+- [X] T002 MANUAL: crear un token de acceso limitado a `shoplab-gateway` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-gateway` (el valor se pega en el prompt)
 - [ ] T003 MANUAL: cargar las credenciales de la GitHub App de despliegue como secreto y variable de **repositorio**: `gh variable set DEPLOY_APP_ID -R leandroAmariles/shoplab-gateway` y `gh secret set DEPLOY_APP_PRIVATE_KEY -R leandroAmariles/shoplab-gateway < <ruta-al-pem>`. Si no se conserva el PEM, generar una clave nueva en los ajustes de la App (GitHub no permite leer la ya guardada)
 - [ ] T004 MANUAL: crear el entorno `dev` en `shoplab-gateway` (Settings → Environments) y confirmar que la GitHub App está instalada en `leandroAmariles/shoplab-infra` con permiso de escritura de contenidos
 - [ ] T005 Verificar con `gh secret list` y `gh variable list` (`-R leandroAmariles/shoplab-gateway`) que existen `RELEASE_PLEASE_TOKEN`, `DEPLOY_APP_PRIVATE_KEY` y `DEPLOY_APP_ID`; clonar el repo junto a `shoplab-helpdesk` y crear la rama `feature/LAB-107-strangler-gateway`
@@ -146,9 +146,9 @@ description: "Task list for LAB-107 strangler gateway"
 - [X] T042 [P] [US4] Crear `shoplab-gateway/.github/workflows/release.yml` en tags `v*.*.*`: job `publish` con `shoplab-ci/.github/workflows/publish-image.yml@v1` (`image-name: ghcr.io/leandroamariles/gateway`; permisos `packages: write`, `id-token: write`) y job `deploy` (`needs: publish`) con `deploy.yml@v1`, `service-name: gateway`, `overlay: apps/gateway/overlays/dev`, `vars.DEPLOY_APP_ID` y `secrets.DEPLOY_APP_PRIVATE_KEY`
 - [X] T043 [P] [US4] Escribir `shoplab-gateway/README.md`: propósito, variables, rutas, cómo probar y publicar
 - [X] T044 [US4] APROBACIÓN: abrir el PR en `shoplab-gateway` (`feat(gateway): [LAB-107] strangler gateway`), dejar `ci.yml` verde y fusionarlo. Es el primer servicio Java que usa `shoplab-ci@v1`: si falla por el workflow reutilizable, detenerse e informar
-- [ ] T045 [US4] APROBACIÓN: fusionar el PR de release-please y comprobar con `gh run watch` que el tag `v0.1.0` publica `ghcr.io/leandroamariles/gateway:v0.1.0`. El job `deploy` fallará esta primera vez porque el overlay aún no existe (se relanza en T060)
+- [X] T045 [US4] APROBACIÓN: fusionar el PR de release-please y comprobar con `gh run watch` que el tag `v0.1.0` publica `ghcr.io/leandroamariles/gateway:v0.1.0`. El job `deploy` fallará esta primera vez porque el overlay aún no existe (se relanza en T060)
 - [X] T046 [US4] MANUAL / APROBACIÓN: hacer **público** el paquete en GitHub → perfil → Packages → `gateway` → Package settings → Change visibility → Public. **No es reversible**: un paquete público no puede volver a ser privado
-- [ ] T047 [US4] Verificar el acceso anónimo en una sesión sin credenciales: `docker logout ghcr.io` y `docker buildx imagetools inspect ghcr.io/leandroamariles/gateway:v0.1.0`
+- [X] T047 [US4] Verificar el acceso anónimo en una sesión sin credenciales: `docker logout ghcr.io` y `docker buildx imagetools inspect ghcr.io/leandroamariles/gateway:v0.1.0`
 
 ### Entorno local
 
@@ -166,11 +166,11 @@ description: "Task list for LAB-107 strangler gateway"
 
 - [X] T057 [US4] Con el clúster arriba (`make up` en `shoplab-infra`), comprobar si `shoplab-dev` y `backend-dev` compiten por el Deployment `backend` (`kubectl -n argocd get applications` y las anotaciones del Deployment). Si compiten, informar y acordar la solución antes de T059
 - [X] T058 [P] [US4] En una rama desde `origin/main` de `shoplab-infra`, crear `shoplab-infra/apps/gateway/base/{deployment,service,servicemonitor,kustomization}.yaml` (Service `gateway`, puerto `http` 8080; `runAsUser` 10001, raíz de solo lectura, `/tmp` en `emptyDir`, sondas, recursos; sin ExternalSecret) y `shoplab-infra/apps/gateway/overlays/dev/kustomization.yaml` (namespace `shoplab-dev`, `configMapGenerator` `gateway-config` con `GATEWAY_MONOLITH_URI=http://backend:8080`, `images:` con `- name: ghcr.io/leandroamariles/gateway` y `newTag: v0.1.0`)
-- [ ] T059 [US4] APROBACIÓN: validar con `kustomize build apps/gateway/overlays/dev` y `scripts/policy-check.sh`, abrir y fusionar el PR de alta (sin tráfico) y comprobar `gateway-dev` Synced y Healthy
+- [X] T059 [US4] APROBACIÓN: validar con `kustomize build apps/gateway/overlays/dev` y `scripts/policy-check.sh`, abrir y fusionar el PR de alta (sin tráfico) y comprobar `gateway-dev` Synced y Healthy
 - [ ] T060 [US4] APROBACIÓN: relanzar el job fallido de T045 con `gh run rerun <run-id> --failed -R leandroAmariles/shoplab-gateway` y comprobar que el despliegue termina sin tocar otras imágenes
 - [X] T061 [US4] Preparar el cambio de `shoplab-infra/k8s/base/ingress/ingress.yaml` (`/api` → Service `gateway`; `/` y `proxy-body-size` sin cambios), el texto de `shoplab-infra/scripts/forward.sh` y `shoplab-infra/docs/gitops.md`
-- [ ] T062 [US4] APROBACIÓN: fusionar el corte del ingress y validar el paso 8 de quickstart.md (chat progresivo en el navegador, documentos, evaluaciones, logs del gateway). Si algo falla, revertir ese commit
-- [ ] T063 [US4] Medir SC-004 en dev: cambiar y revertir un valor de `gateway-config` y comprobar que cada cambio está activo en menos de 10 minutos
+- [X] T062 [US4] APROBACIÓN: fusionar el corte del ingress y validar el paso 8 de quickstart.md (chat progresivo en el navegador, documentos, evaluaciones, logs del gateway). Si algo falla, revertir ese commit — validado por HTTP; falta el recorrido en el navegador
+- [X] T063 [US4] Medir SC-004 en dev: cambiar y revertir un valor de `gateway-config` y comprobar que cada cambio está activo en menos de 10 minutos
 
 **Checkpoint**: dev y local sirven la API por el gateway.
 
@@ -183,7 +183,7 @@ description: "Task list for LAB-107 strangler gateway"
 - [X] T066 [P] Crear `specs/LAB-107-strangler-gateway/requests.http` (`baseUrl=http://localhost:8080`) con un caso por requisito y escenario alcanzable por HTTP y la lista de los no cubiertos
 - [X] T067 [P] Anotar en `specs/LAB-107-strangler-gateway/validation.md` los fallos de la plantilla de LAB-103 (no publica `:vX.Y.Z`, exige JWT, faltan `mvnw` y `.mvn`) para abrir una historia de corrección
 - [X] T068 Validar la paridad (quickstart.md pasos 3, 4, 6 y 7: SC-001, SC-003, SC-006) y anotar resultados en `specs/LAB-107-strangler-gateway/validation.md`
-- [ ] T069 APROBACIÓN: abrir el PR de `shoplab-helpdesk` (`feat(gateway): [LAB-107] gateway estrangulador en entorno local y documentación`) con CI verde
+- [X] T069 APROBACIÓN: abrir el PR de `shoplab-helpdesk` (`feat(gateway): [LAB-107] gateway estrangulador en entorno local y documentación`) con CI verde
 
 ---
 

@@ -26,14 +26,26 @@ Nota de paridad: la primera pasada, justo después de cargar los documentos, dio
 cero, tanto entre dos llamadas directas como entre directa y gateway. La causa probable es que aún se indexaba; no se
 comprobó.
 
+## En dev (clúster local con `make up`)
+
+| Qué | Cómo | Resultado |
+|---|---|---|
+| Publicación | tag `v0.1.0` en `shoplab-gateway` | imagen publicada, firmada y verificada |
+| Alta del gateway | `shoplab-infra#35` | `gateway-dev` Synced y Healthy |
+| Paridad antes del corte | túnel al Service `gateway` frente al ingress | respuestas idénticas; `/api/catalog` 404 propio |
+| Corte del ingress | `shoplab-infra#36` | `/api` en el gateway 76 s después del merge |
+| API por ingress y gateway | `curl` con `Host: shoplab.localtest.me` | documentos, búsqueda y evaluaciones 200; archivo > 10 MiB 413 del backend |
+| Chat en streaming | `POST /api/chat` por ingress y gateway (Ollama expuesto durante la prueba) | 102 líneas `data`, de 18,9 s a 23,8 s |
+| Cambio de configuración (SC-004) | `shoplab-infra#38` y su reversión `#39` | activo en 231 s; revertido en 183 s |
+
 ## Sin hacer
 
 - `docker compose up` completo (T056): la base `shoplab` local rechaza la contraseña que toma el compose, así que el
   backend no arranca contra ella. No se modificó; se probó con contenedores sueltos y una base desechable.
 - Métricas de retrieval con la herramienta de `shoplab-eval` (se compararon las respuestas crudas) y recorrido por la web
   en el navegador.
-- `v0.1.0` y despliegue en dev (T045, T047, T059, T060, T062, T063): falta `RELEASE_PLEASE_TOKEN` en
-  `shoplab-gateway`.
+- Despliegue automático desde `shoplab-gateway` (T003, T004, T060): faltan `DEPLOY_APP_ID` y `DEPLOY_APP_PRIVATE_KEY`.
+  La `v0.1.0` se desplegó porque el overlay la declara; **la próxima versión no se desplegará sola**.
 
 ## Cambios respecto al plan
 
