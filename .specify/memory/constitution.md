@@ -98,8 +98,18 @@ in `docs/adr/` using the template. PostgreSQL 16 + pgvector is the single data s
   HTTP endpoint, generate `requests.http` in the spec folder covering the spec's scenarios.
 - Before committing: run affected-module tests, Checkstyle and coverage; review `git status` and
   `git diff --staged` for stray files.
-- Pull requests MUST use the PR template: CI green, tests added or updated, RAG evaluation not
-  worse (from F2), and docs/ADR updated when applicable.
+- Pull requests MUST use the full AI starter kit PR template (`Description`, `Related issue / task`,
+  `Type of change`, `How was this tested?`, `Token usage`, `Checklist`, `Compatibility`, `Rollback plan`):
+  CI green, tests added or updated, RAG evaluation not worse (from F2), and docs/ADR updated when applicable.
+- **Multi-Repository Infrastructure Boundary**: When a story involves Kubernetes manifests (`k8s/`),
+  Argo CD (`Application`, `ApplicationSet`), Kustomize overlays, Helm or Terraform, changes MUST be
+  branched, implemented, committed and opened as a PR in the dedicated `shoplab-infra` repository
+  (`../shoplab-infra`). `shoplab-helpdesk` maintains the feature specification (`specs/LAB-<n>/`) and
+  architecture documentation, but executable cluster manifests belong exclusively in `shoplab-infra`.
+- **AI Harness & Token Usage Telemetry**: All assistant sessions MUST comply with the canary check
+  (`session-identity-canary.md`) and skill transparency (`skill-transparency.md`). Every feature spec
+  folder MUST contain and maintain `.token-usage.json` recording session turns, input/output tokens
+  and estimated cost, ensuring full auditability of AI usage across tools.
 
 ## Governance
 
@@ -117,4 +127,4 @@ Runtime guidance lives in `.ai/rules/development-guidelines.md`, `.ai/context/sk
   pull request review MUST verify compliance. Deviations MUST be justified in writing and, if
   lasting, recorded as an ADR.
 
-**Version**: 1.0.2 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-20
+**Version**: 1.0.3 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-25

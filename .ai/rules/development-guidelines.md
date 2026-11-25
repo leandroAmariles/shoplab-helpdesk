@@ -217,3 +217,28 @@ Verify that **only** intentional feature changes are present (no massive formatt
 
 ### 8.6 Atomic Commits
 One commit = one logical change. Use `git add -p` to stage by hunks if multiple changes were made.
+
+---
+
+## 9. Multi-Repository Architecture & AI Harness Discipline
+
+### 9.1 Multi-Repository Scope: `shoplab-infra` vs `shoplab-helpdesk`
+The ecosystem consists of multiple repositories. Never place infrastructure manifests inside `shoplab-helpdesk`:
+* **`shoplab-helpdesk`**: Holds the modular monolith (or transitional services), specifications (`specs/LAB-<n>/`), ADRs (`docs/adr/`), and architectural documentation (`docs/`).
+* **`shoplab-infra`**: Dedicated repository (`../shoplab-infra`) for Kubernetes manifests (`apps/<service>/base`, `apps/<service>/overlays/dev`), Argo CD configurations (`k8s/argocd/`), Helm, Terraform, and GitOps deployment scripts.
+* **MANDATORY**: Whenever a story requires changes to cluster infrastructure, Argo CD applications, Kustomize overlays, or deployment scripts, the agent MUST:
+  1. Position in `../shoplab-infra`.
+  2. Create a dedicated branch matching the story (e.g. `feature/LAB-<n>-<slug>`).
+  3. Implement and validate the manifests in `shoplab-infra`.
+  4. Commit, push, and open the Pull Request in `shoplab-infra`.
+
+### 9.2 Token Usage Telemetry (`.token-usage.json`)
+Every feature spec folder MUST contain `.token-usage.json`. If the assistant runtime lacks automatic stdin statusline hooks (such as Antigravity/Gemini), the agent MUST explicitly create and update `specs/<branch>/.token-usage.json` recording session turns, input/output tokens, and model details before closing the feature.
+
+### 9.3 Pull Request Template Enforcement
+All pull requests in all repositories MUST use the full AI starter kit PR template (`Description`, `Related issue / task`, `Type of change`, `How was this tested?`, `Token usage`, `Checklist`, `Compatibility / breaking changes`, `Rollback plan`). Never fall back to minimal legacy templates.
+
+### 9.4 Turn-by-Turn Harness Protocols
+* **Canary Check (`session-identity-canary.md`)**: Mandatory in the first assistant turn of every new session.
+* **Skill Transparency (`skill-transparency.md`)**: Mandatory in EVERY turn, explicitly declaring callable skills and context-skills applied before delivering work.
+
