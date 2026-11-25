@@ -44,8 +44,12 @@ comprobó.
   backend no arranca contra ella. No se modificó; se probó con contenedores sueltos y una base desechable.
 - Métricas de retrieval con la herramienta de `shoplab-eval` (se compararon las respuestas crudas) y recorrido por la web
   en el navegador.
-- Despliegue automático desde `shoplab-gateway` (T003, T004, T060): faltan `DEPLOY_APP_ID` y `DEPLOY_APP_PRIVATE_KEY`.
-  La `v0.1.0` se desplegó porque el overlay la declara; **la próxima versión no se desplegará sola**.
+
+## Despliegue automático
+
+Con `DEPLOY_APP_ID` y `DEPLOY_APP_PRIVATE_KEY` cargados en `shoplab-gateway` (secretos de repositorio), el job
+`deploy` de la `v0.1.0` se relanzó y terminó bien: `shoplab-deploy[bot]` escribió en `shoplab-infra` (`01e8e0e`, solo
+reordena el formato del overlay) y `gateway-dev` quedó Synced y Healthy.
 
 ## Cambios respecto al plan
 
