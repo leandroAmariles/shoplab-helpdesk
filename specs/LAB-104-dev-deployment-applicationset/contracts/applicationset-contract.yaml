@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: shoplab-services-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: shoplab
+    app.kubernetes.io/managed-by: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/leandroAmariles/shoplab-infra.git
+        revision: main
+        directories:
+          - path: apps/*/overlays/dev
+  template:
+    metadata:
+      name: "{{index .path.segments 1}}-dev"
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: "{{index .path.segments 1}}"
+        app.kubernetes.io/instance: "{{index .path.segments 1}}-dev"
+        app.kubernetes.io/part-of: shoplab
+        environment: dev
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/leandroAmariles/shoplab-infra.git
+        targetRevision: main
+        path: "{{.path.path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: shoplab-dev
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - PruneLast=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

@@ -117,3 +117,23 @@ Los PR (incluidos los de forks) no reciben el secreto: el job no corre en ellos.
 | 13 | no se pudo empujar tras los reintentos | revisa la credencial y el ruleset; reejecuta el job |
 
 Reejecutar el job es seguro: si la versión ya está fijada, no crea commits.
+
+---
+
+## Despliegue desacoplado por servicio con ApplicationSet (LAB-104)
+
+Con la extracción temprana de microservicios ([ADR-0031](adr/0031-extraccion-temprana-de-servicios.md), LAB-128) y los repositorios independientes generados desde `shoplab-service-template` (LAB-103), el despliegue en `dev` evoluciona desde el overlay monolítico central hacia una arquitectura descentralizada en `shoplab-infra`:
+
+1. **Estructura modular Kustomize (`apps/<servicio>/`)**:
+   - Cada microservicio posee su base agnóstica (`apps/<servicio>/base/` con `deployment.yaml`, `service.yaml`, `externalsecret.yaml`, `kustomization.yaml`) y su overlay de desarrollo (`apps/<servicio>/overlays/dev/kustomization.yaml`).
+2. **Argo CD ApplicationSet (Generador de Directorios)**:
+   - El recurso `k8s/bootstrap/applicationset-services-dev.yaml` sondea `apps/*/overlays/dev` en la rama `main` de `shoplab-infra`.
+   - Crea automáticamente una `Application` por servicio (`{{path[1]}}-dev`) con `automated: { prune: true, selfHeal: true }` en el namespace `shoplab-dev`.
+   - Dar de alta un servicio nuevo consiste únicamente en commitear su carpeta en Git: el ApplicationSet lo descubre y despliega sin requerir cambios en Argo CD.
+3. **Concurrencia segura y rebase en CI**:
+   - Cada repositorio de microservicio ejecuta el job reutilizable de despliegue de `shoplab-ci` invocando `scripts/deploy-service.sh`.
+   - Actualiza exclusivamente su propia imagen en `apps/<servicio>/overlays/dev/kustomization.yaml`.
+   - Ante colisiones de push concurrentes entre microservicios, el script ejecuta `git pull --rebase origin main` con retroceso exponencial (jitter de 2 a 5s) reintentando hasta 3 veces de forma no destructiva.
+4. **Soberanía de datos con ExternalSecret**:
+   - Cada servicio resuelve las credenciales exclusivas de su esquema PostgreSQL mediante un `ExternalSecret` que sincroniza desde `shoplab/dev/<servicio>/database` hacia `<servicio>-db-secret`, sin exponer contraseñas en Git.
+

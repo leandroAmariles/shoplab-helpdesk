@@ -252,6 +252,11 @@ En cumplimiento de Jira LAB-128, la regla de encapsulamiento de `@Tool` en la `a
 - **Workflows reutilizables (`shoplab-ci`)**:
   - Todo microservicio delega su pipeline en `shoplab-ci/.github/workflows/java-service.yml@v1` (o `python-service.yml@v1` / `angular-app.yml@v1`), aplicando gates de compilación, Testcontainers, JaCoCo ≥80 %, Qodana, Trivy (HIGH/CRITICAL) y políticas anti `:latest` y `CAMBIA-ESTE-OWNER`.
   - Generación de atestaciones SBOM, firma criptográfica keyless con Cosign en GHCR y job de despliegue GitOps automático hacia `shoplab-infra`.
+- **Despliegue descentralizado en dev con ApplicationSet (LAB-104)**:
+  - Cada microservicio se despliega de manera independiente en `shoplab-infra` mediante su propia carpeta modular `apps/<servicio>/base` y `apps/<servicio>/overlays/dev`.
+  - Un `ApplicationSet` de Argo CD (`k8s/bootstrap/applicationset-services-dev.yaml`) descubre dinámicamente las carpetas de servicios y genera las `Applications` con `automated: { prune: true, selfHeal: true }` en `shoplab-dev`.
+  - El job de despliegue de CI resuelve colisiones concurrentes mediante `git pull --rebase` con reintento y backoff exponencial, garantizando despliegues autónomos sin pisar versiones de otros servicios.
+  - La soberanía de datos se preserva mediante recursos `ExternalSecret` independientes por servicio que inyectan las credenciales de base de datos directamente al pod sin exponer contraseñas en Git.
 - **Guía de creación paso a paso**:
   - El procedimiento detallado de instanciación, parametrización y registro de nuevos servicios se encuentra documentado en [docs/fases/F5-creacion-de-servicios-desde-plantilla.md](fases/F5-creacion-de-servicios-desde-plantilla.md).
 - **Gobernanza de contratos**: Toda interfaz entre servicios se rige por especificaciones OpenAPI 3.1 y esquemas Avro versionados centralmente en el repositorio `shoplab-contracts` (LAB-108).

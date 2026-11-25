@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoplab-dev
+  labels:
+    app.kubernetes.io/part-of: shoplab
+    environment: dev

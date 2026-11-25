@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: shoplab-dev
+
+replicas:
+  - name: chat-service
+    count: 1
+
+images:
+  - name: chat-service
+    newName: ghcr.io/leandroamariles/chat-service
+    newTag: v1.0.0
