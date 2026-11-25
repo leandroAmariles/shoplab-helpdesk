@@ -13,9 +13,11 @@ public class SecureLogger {
 
     private final Logger delegate;
 
-    private static final Pattern JWT_PATTERN = Pattern.compile("Bearer\\s+[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*");
+    private static final Pattern JWT_PATTERN =
+            Pattern.compile("Bearer\\s+[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*");
     private static final Pattern CARD_PATTERN = Pattern.compile("\\b(?:\\d[ -]*?){13,16}\\b");
-    private static final Pattern SECRET_PATTERN = Pattern.compile("(?i)(password|secret|token|apiKey)\\s*[:=]\\s*['\"]?([^'\"\\s]+)['\"]?");
+    private static final Pattern SECRET_PATTERN =
+            Pattern.compile("(?i)(password|secret|token|apiKey)\\s*[:=]\\s*['\"]?([^'\"\\s]+)['\"]?");
 
     public SecureLogger(Class<?> clazz) {
         this.delegate = LoggerFactory.getLogger(clazz);
@@ -52,7 +54,9 @@ public class SecureLogger {
     }
 
     private String mask(String message) {
-        if (message == null) return null;
+        if (message == null) {
+            return null;
+        }
         String result = JWT_PATTERN.matcher(message).replaceAll("Bearer [MASKED_TOKEN]");
         result = CARD_PATTERN.matcher(result).replaceAll("[MASKED_CARD]");
         result = SECRET_PATTERN.matcher(result).replaceAll("$1=[MASKED_SECRET]");
@@ -60,7 +64,9 @@ public class SecureLogger {
     }
 
     private Object[] maskArgs(Object... arguments) {
-        if (arguments == null) return new Object[0];
+        if (arguments == null) {
+            return new Object[0];
+        }
         Object[] masked = new Object[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] instanceof String s) {

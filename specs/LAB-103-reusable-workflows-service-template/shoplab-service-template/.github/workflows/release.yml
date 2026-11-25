@@ -1,0 +1,32 @@
+name: Release
+
+# The version tag publishes the image first and deploys it afterwards.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: leandroAmariles/shoplab-ci/.github/workflows/publish-image.yml@v1
+    with:
+      image-name: 'ghcr.io/leandroamariles/template-service'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: publish
+    uses: leandroamariles/shoplab-ci/.github/workflows/deploy.yml@v1
+    with:
+      service-name: 'template-service'
+      image-tag: ${{ github.ref_name }}
+      overlay: 'apps/template-service/overlays/dev'
+    secrets:
+      deploy-app-id: ${{ vars.DEPLOY_APP_ID }}
+      deploy-app-private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
