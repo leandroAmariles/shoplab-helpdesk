@@ -37,7 +37,8 @@ Reemplazar los placeholders estándar `template` por el nombre asignado al micro
 
 1. **`pom.xml`**:
    * `<artifactId>catalog-service</artifactId>`
-   * `<name>shoplab-catalog-service</name>`
+   * `<name>catalog-service</name>`
+   * También `release-please-config.json`, `README.md` y los dos workflows de `.github/workflows/`.
 2. **Paquetes Java**:
    * Renombrar `src/main/java/com/shoplab/template` a `src/main/java/com/shoplab/catalog`.
    * Renombrar `TemplateServiceApplication.java` a `CatalogServiceApplication.java`.
@@ -48,17 +49,15 @@ Reemplazar los placeholders estándar `template` por el nombre asignado al micro
      RESOURCE_NOT_FOUND("CATL_GE_00002", "Requested resource not found", HttpStatus.NOT_FOUND),
      DATABASE_ERROR("CATL_DB_00001", "Persistence layer failure", HttpStatus.INTERNAL_SERVER_ERROR);
      ```
-4. **Esquema de Base de Datos y Flyway (`application.yml`)**:
+4. **Esquema de Base de Datos y Flyway (`application.yml`)**: persistencia JDBC (ADR-0011), un esquema propio.
    ```yaml
    spring:
      application:
        name: catalog-service
      flyway:
-       enabled: true
        schemas: catalog
        default-schema: catalog
        locations: classpath:db/migration/catalog
-       table: flyway_schema_history
    ```
 5. **Carpeta de Migraciones**:
    ```bash
@@ -72,7 +71,14 @@ Reemplazar los placeholders estándar `template` por el nombre asignado al micro
 Antes de enviar el primer commit, ejecutar la validación completa en local:
 
 ```bash
-mvn clean verify
+./mvnw clean verify
+```
+
+Necesita Docker y credenciales para GitHub Packages: un servidor `github-shoplab-contracts` en `~/.m2/settings.xml`
+con un token `read:packages`. Para la imagen, la credencial va como secreto de construcción:
+
+```bash
+GITHUB_TOKEN=... docker build --secret id=github_token,env=GITHUB_TOKEN .
 ```
 
 Este comando verifica automáticamente:
@@ -88,38 +94,23 @@ Este comando verifica automáticamente:
 
 ## 4. Configuración de CI/CD con `shoplab-ci`
 
-El repositorio generado incluye `.github/workflows/ci.yml` apuntando al workflow reutilizable oficial:
+El repositorio generado trae tres workflows; solo hay que cambiar el nombre del servicio:
 
-```yaml
-name: CI
+| Archivo | Qué hace |
+|---|---|
+| `ci.yml` | `java-service.yml@v1` en cada PR; en `main` publica y firma la imagen |
+| `release-please.yml` | abre el PR de release y crea el tag `vX.Y.Z` |
+| `release.yml` | con el tag, publica la imagen `:vX.Y.Z` y después la despliega |
 
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-permissions:
-  contents: read
-  packages: read
-
-jobs:
-  pipeline:
-    uses: leandroamariles/shoplab-ci/.github/workflows/java-service.yml@v1
-    with:
-      java-version: '21'
-      coverage-threshold: 80
-      image-name: 'ghcr.io/leandroamariles/catalog-service'
-      publish-image: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-```
+La publicación llama a `leandroAmariles/shoplab-ci/.github/workflows/publish-image.yml@v1`. El repositorio plantilla
+no publica ni crea releases (`is_template`). No hay autenticación hasta que exista el login (LAB-61).
 
 ### Puertas de Calidad Ejecutadas en CI:
 * **Compilación y Tests**: Java 21 + Testcontainers.
-* **Gate de Cobertura JaCoCo**: Falla si `< 80%`.
-* **Análisis Estático Qodana**: Análisis de vulnerabilidades y buenas prácticas.
-* **Escaneo de Seguridad Trivy**: Bloquea el build si detecta vulnerabilidades `HIGH` o `CRITICAL` sin remediar en el sistema de archivos o dependencias.
-* **Gate de Políticas**: Falla si detecta tags `:latest` en manifiestos o la presencia de la cadena `CAMBIA-ESTE-OWNER`.
+* **Gate de Cobertura JaCoCo**: Falla si `< 80%`; Checkstyle y PMD en `verify`.
+* **Análisis Estático Qodana**.
+* **Escaneo de Seguridad Trivy**: Bloquea con vulnerabilidades `HIGH` o `CRITICAL` con corrección disponible.
+* **Gate de Políticas**: Falla si detecta tags `:latest` o la cadena `CAMBIA-ESTE-OWNER`.
 
 ---
 
@@ -135,9 +126,13 @@ Cuando se publica una release mediante `release-please` (tag `vX.Y.Z`) o un merg
    ```
 
 ### Despliegue Automático hacia `shoplab-infra`
-1. **Secretos requeridos en la organización o repositorio**:
-   * `DEPLOY_APP_ID`: ID de la GitHub App autorizada para despliegues.
-   * `DEPLOY_APP_PRIVATE_KEY`: Llave privada PEM de la GitHub App.
+1. **Variable y secretos del repositorio**:
+   * `DEPLOY_APP_ID` (variable): ID de la GitHub App de despliegue. La App solo tiene que estar instalada en
+     `shoplab-infra`.
+   * `DEPLOY_APP_PRIVATE_KEY` (secreto): llave privada PEM de la App.
+   * `RELEASE_PLEASE_TOKEN` (secreto): token personal limitado al repositorio (Contents y Pull requests). Sin él los
+     tags no disparan `release.yml`.
+   * Tras la primera publicación, hacer **público** el paquete de la imagen (no es reversible).
 2. **Job de despliegue (`deploy.yml`)**:
    Al crearse el tag `vX.Y.Z`, el workflow solicita un token efímero de alcance mínimo (exclusivo para `shoplab-infra:contents:write`), clona `shoplab-infra`, ejecuta:
    ```bash
@@ -151,17 +146,16 @@ Cuando se publica una release mediante `release-please` (tag `vX.Y.Z`) o un merg
 
 ## 6. Registro Inicial en `shoplab-infra`
 
-Para que el job de despliegue pueda actualizar el servicio, debe existir previamente su declaración en el repositorio de infraestructura:
+Antes del primer despliegue el servicio debe estar declarado en `shoplab-infra` (LAB-104):
 
-1. Abrir un PR en `shoplab-infra`.
-2. Crear la carpeta base `k8s/base/catalog-service/` con `deployment.yaml`, `service.yaml` y `kustomization.yaml`.
-3. Dar de alta el servicio en `k8s/overlays/dev/kustomization.yaml`:
+1. Copiar `apps/_template/` a `apps/catalog-service/base/` y crear `apps/catalog-service/overlays/dev/`.
+2. En el `kustomization.yaml` del overlay, declarar la imagen **con su nombre completo** (el job de despliegue lo
+   exige):
    ```yaml
-   bases:
-     - ../../base/catalog-service
-
    images:
      - name: ghcr.io/leandroamariles/catalog-service
+       newName: ghcr.io/leandroamariles/catalog-service
        newTag: v0.1.0
    ```
-4. Fusionar el PR en `shoplab-infra`. A partir de este momento, cada release del microservicio promoverá su versión de forma autónoma.
+3. Los secretos salen de `aws-secrets-manager` (`external-secrets.io/v1`), en `/shoplab/dev/...`.
+4. Fusionar el PR. El ApplicationSet crea la Application `catalog-service-dev` y cada release actualiza su versión.

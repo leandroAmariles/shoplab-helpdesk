@@ -17,6 +17,17 @@ jobs:
       java-version: '21'
       coverage-threshold: 80
       image-name: 'ghcr.io/leandroamariles/template-service'
-      publish-image: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      publish-image: false
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: pipeline
+    # The template repository publishes no image of its own.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !github.event.repository.is_template
+    # leandroAmariles, as the owner is written: the signature of the image carries this path.
+    uses: leandroAmariles/shoplab-ci/.github/workflows/publish-image.yml@v1
+    with:
+      image-name: 'ghcr.io/leandroamariles/template-service'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}

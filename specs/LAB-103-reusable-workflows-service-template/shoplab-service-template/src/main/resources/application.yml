@@ -5,44 +5,36 @@ server:
 spring:
   application:
     name: ${SERVICE_NAME:template-service}
-  r2dbc:
-    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shoplab}
-    username: ${DB_USER:shoplab}
-    password: ${DB_PASSWORD:shoplab}
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/shoplab}
+    username: ${POSTGRES_USER:shoplab}
+    password: ${POSTGRES_PASSWORD:change-me-local-only}
+  # One schema per service (ADR-0015), with its own history table.
   flyway:
-    enabled: true
     schemas: ${SERVICE_SCHEMA:template}
     default-schema: ${SERVICE_SCHEMA:template}
     locations: classpath:db/migration/${SERVICE_SCHEMA:template}
-    table: flyway_schema_history
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shoplab}
-    user: ${DB_USER:shoplab}
-    password: ${DB_PASSWORD:shoplab}
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/shoplab}
-          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8080/realms/shoplab/protocol/openid-connect/certs}
+  reactor:
+    context-propagation: auto
 
+# No authentication until there is a login (LAB-61).
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
+        include: health,info,prometheus
   endpoint:
     health:
-      show-details: when-authorized
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,db
   metrics:
     tags:
       application: ${spring.application.name}
 
-app:
-  reactive-context:
-    enabled: true
-    headers:
-      - X-Request-Id
-      - traceparent
-      - channel
+logging:
+  structured:
+    format:
+      console: logstash

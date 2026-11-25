@@ -1,0 +1,20 @@
+version: "1.0"
+
+# Full image name: the Qodana action pinned by shoplab-ci@v1 does not resolve the short name. An image recent enough
+# for Java 21: the 2024.2 one reads records as methods and reports problems that do not exist.
+linter: jetbrains/qodana-jvm-community:2025.2
+
+projectJDK: "21"
+
+profile:
+  name: qodana.recommended
+
+exclude:
+  - name: All
+    paths:
+      - target
+
+failureConditions:
+  severityThresholds:
+    critical: 0
+    high: 0

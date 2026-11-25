@@ -1,0 +1,9 @@
+target/
+.idea/
+*.iml
+.vscode/
+.env
+*.local
+*.log
+qodana.sarif.json
+.DS_Store

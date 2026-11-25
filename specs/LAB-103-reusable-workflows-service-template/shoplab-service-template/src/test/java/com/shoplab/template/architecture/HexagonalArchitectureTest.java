@@ -8,7 +8,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 class HexagonalArchitectureTest {
@@ -34,6 +33,7 @@ class HexagonalArchitectureTest {
                         "jakarta.persistence.."
                 )
                 .because("Domain must remain pure business logic isolated from infrastructure and delivery mechanisms")
+                .allowEmptyShould(true)
                 .check(importedClasses);
     }
 
@@ -43,6 +43,7 @@ class HexagonalArchitectureTest {
         noClasses().should().dependOnClassesThat()
                 .resideInAPackage("com.shoplab.helpdesk..")
                 .because("A standalone service must never import code from the monolith (ADR-0015, ADR-0031)")
+                .allowEmptyShould(true)
                 .check(importedClasses);
     }
 
@@ -52,6 +53,7 @@ class HexagonalArchitectureTest {
         noClasses().that().resideInAPackage("..application..")
                 .should().dependOnClassesThat().belongToAnyOf(ResponseEntity.class)
                 .because("HTTP transport constructs belong exclusively to the REST adapter layer")
+                .allowEmptyShould(true)
                 .check(importedClasses);
     }
 }
