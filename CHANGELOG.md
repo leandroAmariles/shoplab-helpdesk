@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.27.0...v0.28.0) (2026-11-25)
+
+
+### Features
+
+* **gateway:** [LAB-107] gateway estrangulador en entorno local y documentación ([#178](https://github.com/leandroAmariles/shoplab-helpdesk/issues/178)) ([75f9310](https://github.com/leandroAmariles/shoplab-helpdesk/commit/75f9310e58743c5edaaa09594343bb8a3b606e7a))
+* **infra:** [LAB-110] local multi-repo development environment with compose and clone-all ([#176](https://github.com/leandroAmariles/shoplab-helpdesk/issues/176)) ([f0a41fd](https://github.com/leandroAmariles/shoplab-helpdesk/commit/f0a41fd0291b69fb96b6299da48e322995bc5b89))
+
 ## [0.27.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.26.0...v0.27.0) (2026-11-24)
 
 
