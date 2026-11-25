@@ -142,7 +142,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T049 [US5] Crear `shoplab-retrieval-service/src/main/resources/db/migration/retrieval/V5__indexing_lock.sql`: `name text` PK (hoy solo `embeddings`), `owner text` no vacío, `locked_until timestamptz` no nulo
 - [X] T050 [US5] Crear `SVC/application/port/out/IndexingLockPort.java` y `SVC/infrastructure/out/persistence/JdbcIndexingLockAdapter.java`; usarlo en `SVC/application/usecase/DocumentEmbedder.java` (renovar antes de cada lote, liberar al terminar y en el apagado) y borrar `IndexingGuard.java`
 - [X] T051 [US5] Subir los reintentos a 12 cada 10 s en `SVC/infrastructure/in/event/IndexAfterIngestListener.java` y aplicarlos también en `IndexOnStartupRunner.java` cuando la ejecución se omita, con sus pruebas, hasta que T047 y T048 pasen
-- [X] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
+- [ ] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
 
 **Checkpoint**: el servicio está listo para recibir tráfico.
 
