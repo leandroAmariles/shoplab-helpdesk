@@ -160,7 +160,7 @@ description: "Task list for LAB-107 strangler gateway"
 - [X] T053 [P] [US4] Actualizar `scripts/test-e2e.sh` y `scripts/test-e2e.ps1`: backend en `:8081`, comprobar salud del gateway y `GET http://localhost:8080/api/documents`
 - [X] T054 [P] [US4] Actualizar `infra/observability/prometheus/prometheus.yml`: backend en el 8081 (sin cambiar el nombre del job) y job nuevo `gateway`
 - [X] T055 [US4] Buscar otras referencias a `localhost:8080` que signifiquen «monolito» (`README.md`, `docs/`, `infra/`, `scripts/`) y actualizarlas; documentar en `README.md` `SERVER_PORT=8081` para el IDE y el cambio de `BACKEND_PORT` en un `infra/.env` ya existente
-- [ ] T056 [US4] Validar los pasos 2 y 5 de quickstart.md con `docker compose -f infra/docker-compose.yml up -d --wait`
+- [X] T056 [US4] Validar los pasos 2 y 5 de quickstart.md con `docker compose -f infra/docker-compose.yml up -d --wait`
 
 ### Dev
 

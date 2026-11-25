@@ -38,10 +38,26 @@ comprobó.
 | Chat en streaming | `POST /api/chat` por ingress y gateway (Ollama expuesto durante la prueba) | 102 líneas `data`, de 18,9 s a 23,8 s |
 | Cambio de configuración (SC-004) | `shoplab-infra#38` y su reversión `#39` | activo en 231 s; revertido en 183 s |
 
+## Compose completo en local (T056)
+
+`docker compose -f infra/docker-compose.yml up -d --wait` sobre el entorno del desarrollador, con su `infra/.env`
+actualizado (contraseña de postgres, puertos e imágenes).
+
+| Qué | Resultado |
+|---|---|
+| `scripts/test-e2e.ps1` | las seis comprobaciones bien |
+| Paso 2 | `/api/documents` 200 con una sola `X-Request-Id`; `/api/catalog` 404 `SLHD_GATE_00001`; búsqueda 200 |
+| Chat por frontend y gateway | 389 líneas `data` y los eventos `sources`, `token`, `done` |
+| Paso 5 | backend parado: 503 `SLHD_GATE_00002` y gateway `UP` |
+
+- `/api/assistant/settings` responde 404, no 200 como dice el quickstart: el backend `v0.26.0` es anterior a LAB-106.
+- `up -d --wait` termina con código 1 porque `litellm-bootstrap` es de un solo uso y sale con 0 (anterior a LAB-107).
+- Un `infra/.env` sin `LITELLM_POSTGRES_IMAGE` falla: el valor por defecto del compose es `postgres:18.6`, que no
+  arranca con el montaje en `/var/lib/postgresql/data`, ni siquiera con un volumen vacío. `.env.example` fija `17.7` y
+  lo evita. Conviene corregir el valor por defecto en otra historia.
+
 ## Sin hacer
 
-- `docker compose up` completo (T056): la base `shoplab` local rechaza la contraseña que toma el compose, así que el
-  backend no arranca contra ella. No se modificó; se probó con contenedores sueltos y una base desechable.
 - Métricas de retrieval con la herramienta de `shoplab-eval` (se compararon las respuestas crudas) y recorrido por la web
   en el navegador.
 
