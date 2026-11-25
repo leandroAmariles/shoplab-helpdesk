@@ -12,6 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repos = @(
+    "shoplab-gateway",
     "shoplab-frontend",
     "shoplab-ingest",
     "shoplab-eval",

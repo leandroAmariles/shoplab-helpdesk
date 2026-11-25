@@ -2,7 +2,7 @@
 .DEFAULT_GOAL := help
 
 GIT_BASE_URL ?= https://github.com/leandroAmariles
-REPOS = shoplab-frontend shoplab-ingest shoplab-eval shoplab-contracts shoplab-ci shoplab-infra
+REPOS = shoplab-gateway shoplab-frontend shoplab-ingest shoplab-eval shoplab-contracts shoplab-ci shoplab-infra
 
 .PHONY: help
 help: ## Muestra la ayuda de comandos disponibles

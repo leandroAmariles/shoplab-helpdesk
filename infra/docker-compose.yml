@@ -10,8 +10,8 @@
 #                  anadir `-f infra/docker-compose.ollama-host.yml`.
 #   llmops         langfuse (LAB-64): web, worker y sus almacenes (postgres, clickhouse, redis, minio) con prefijo
 #                  `langfuse-`. Interfaz en http://localhost:3001. Activar: --profile llmops.
-#   observability  prometheus + grafana (LAB-102): Prometheus recoge el backend que corre en el host (puerto 8080)
-#                  y Grafana arranca con el origen de datos y los dashboards de infra/observability/.
+#   observability  prometheus + grafana (LAB-102): Prometheus recoge del host el backend (puerto 8081) y el gateway
+#                  (8080); Grafana arranca con el origen de datos y los dashboards de infra/observability/.
 #                  Activar: --profile observability.
 #   kafka          reservado, sin servicios todavia (F4).
 # Activar un perfil reservado no produce error: `--profile <nombre>`.
@@ -164,7 +164,7 @@ services:
   # Parseo y troceado de documentos (LAB-20). Sin estado y sin acceso a la base de datos: entrega los chunks al modulo
   # retrieval del backend, que es quien los guarda.
   ingest:
-    image: ${INGEST_IMAGE:-ghcr.io/leandroamariles/shoplab-ingest:v0.1.0}
+    image: ${INGEST_IMAGE:-ghcr.io/leandroamariles/ingest:v0.26.0}
     environment:
       INGEST_CHUNK_SIZE: ${INGEST_CHUNK_SIZE:-1000}
       INGEST_CHUNK_OVERLAP: ${INGEST_CHUNK_OVERLAP:-100}
@@ -183,9 +183,10 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Backend Spring Boot 4 / Spring Modulith (LAB-110). Expone el API REST y SSE en el puerto 8080.
+  # Backend Spring Boot 4 / Spring Modulith (LAB-110). La API entra por `gateway`; el 8081 del host es solo para
+  # depurar (LAB-107).
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/shoplab-backend:v0.1.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.26.0}
     environment:
       POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
       POSTGRES_USER: ${POSTGRES_USER:-shoplab}
@@ -194,7 +195,7 @@ services:
       SPRING_AI_OPENAI_API_KEY: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
       SHOPLAB_RETRIEVAL_INGEST_BASE_URL: http://ingest:8000
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8081}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -210,16 +211,47 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # Frontend Angular SPA (LAB-110). Interfaz de usuario servida en el puerto 4200.
-  frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/leandroamariles/shoplab-frontend:v0.1.0}
+  # Puerta unica de la API (LAB-107, repo shoplab-gateway): reparte /api por prefijo; hoy todo va al monolito. Una
+  # ruta se mueve definiendo su variable SHOPLAB_GATEWAY_ROUTES_<NOMBRE>_URI y recreando solo este servicio. Las
+  # variables sin valor no llegan al contenedor. Un prefijo nuevo se declara en el override.
+  gateway:
+    image: ${GATEWAY_IMAGE:-ghcr.io/leandroamariles/gateway:v0.1.0}
+    environment:
+      # Backend en el IDE: GATEWAY_MONOLITH_URI=http://host.docker.internal:8081
+      GATEWAY_MONOLITH_URI: ${GATEWAY_MONOLITH_URI:-http://backend:8080}
+      SHOPLAB_GATEWAY_ROUTES_CHAT_URI:
+      SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI:
+      SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI:
+      SHOPLAB_GATEWAY_ROUTES_EVAL_URI:
+      SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "${FRONTEND_PORT:-4200}:80"
+      - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend Angular SPA (LAB-110). Interfaz de usuario servida en el puerto 4200. Su nginx reenvia /api al gateway
+  # (infra/frontend/nginx.conf), como en el cluster hace el ingress.
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/leandroamariles/frontend:v0.26.0}
+    ports:
+      - "${FRONTEND_PORT:-4200}:8080"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
