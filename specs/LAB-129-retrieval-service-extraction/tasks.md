@@ -65,7 +65,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T008 [P] [US1] Sustituir `TPL/.github/workflows/` por `ci.yml`, `release.yml` y `release-please.yml` tomados de `shoplab-gateway`, con `release.yml` publicando la imagen `:vX.Y.Z` antes de desplegar y `overlay: apps/<servicio>/overlays/dev`; ajustar `TPL/release-please-config.json` y `TPL/.release-please-manifest.json` para que la primera release sea `v0.1.0`
 - [X] T009 [P] [US1] En `shoplab-ci/.github/workflows/publish-image.yml` verificar la firma sin distinguir mayúsculas (`(?i)` en `--certificate-identity-regexp`)
 - [X] T010 [P] [US1] En `shoplab-ci/.github/workflows/java-service.yml` añadir `server-id: github-shoplab-contracts` con credenciales según T003 y subir Qodana a `JetBrains/qodana-action@v2026.2.2`
-- [ ] T011 [US1] APROBACIÓN: fusionar el PR de `shoplab-ci` y mover el tag `v1` (afecta a todos los consumidores; anotar el commit anterior de `v1` para poder volver)
+- [X] T011 [US1] APROBACIÓN: fusionar el PR de `shoplab-ci` y mover el tag `v1` (afecta a todos los consumidores; anotar el commit anterior de `v1` para poder volver)
 - [X] T012 [US1] APROBACIÓN: crear `leandroAmariles/shoplab-service-template` público con `gh repo create`, subir el contenido de `TPL/` y marcarlo como plantilla (`is_template`); actualizar la guía `docs/fases/F5-creacion-de-servicios-desde-plantilla.md`
 - [X] T013 [US1] APROBACIÓN: generar `leandroAmariles/shoplab-retrieval-service` desde la plantilla (`gh repo create --template`, público), clonarlo junto a los demás, fijar fusión por squash y cambiar solo el nombre en `shoplab-retrieval-service/pom.xml` y `shoplab-retrieval-service/.github/workflows/`
 - [X] T014 [US1] Cargar `DEPLOY_APP_ID` como variable de `shoplab-retrieval-service` (mismo valor que en `shoplab-gateway`)
@@ -80,7 +80,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T020 [US1] Intento 1: bajar `registry:2` desde `mirror.gcr.io`, fijarlo en `shoplab-infra/versions.env` y etiquetarlo antes de `up.sh` en `shoplab-infra/scripts/smoke.sh`; no subir `APPLY_TIMEOUT`
 - [X] T021 [US1] Solo si T020 no da verde: intento 2 según el log, en `shoplab-infra/scripts/` o `shoplab-infra/.github/workflows/ci.yml`
 - [X] T022 [US1] Dar el `smoke` por solucionado únicamente con dos ejecuciones seguidas en verde. Si no, quitar de `shoplab-infra/.github/workflows/ci.yml` el job `smoke`, su entrada en `needs` de `ci-gate`, la salida `smoke`, el paso «Decide whether smoke is needed» y `fetch-depth: 0`; borrar `shoplab-infra/scripts/is-dev-deploy-only.sh` y `shoplab-infra/scripts/tests/dev-deploy-only.test.sh` y su llamada en `shoplab-infra/Makefile` (`test-ci-scripts`); conservar `scripts/smoke.sh` y `make smoke`
-- [ ] T023 [US1] Actualizar `shoplab-infra/README.md` y `shoplab-infra/docs/gitops.md` con el resultado de T022 y, APROBACIÓN, fusionar el PR con `ci-gate` en verde
+- [X] T023 [US1] Actualizar `shoplab-infra/README.md` y `shoplab-infra/docs/gitops.md` con el resultado de T022 y, APROBACIÓN, fusionar el PR con `ci-gate` en verde
 
 ### PostgreSQL del compose
 

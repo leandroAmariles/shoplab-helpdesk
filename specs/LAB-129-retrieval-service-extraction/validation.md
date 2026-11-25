@@ -20,6 +20,11 @@ Evidencia de cada paso de [quickstart.md](quickstart.md). Un paso sin resultado 
 - Rama temporal de `shoplab-retrieval-service` apuntando a la rama de `shoplab-ci` (run 45680327003): compilación,
   pruebas, cobertura, Qodana y Trivy en verde. Publicación y firma de la imagen: sin probar todavía.
 
+### CI del servicio con `v1` movido (2026-11-25)
+
+`v1` en `27a2a84`. `shoplab-retrieval-service` #1, #6 y #8 en verde; análisis completo de las tres ramas sin
+hallazgos.
+
 ### `smoke` (T019–T022, 2026-11-25)
 
 - Intento 1 (run 45680227212): `apply` correcto, `destroy` agotado.

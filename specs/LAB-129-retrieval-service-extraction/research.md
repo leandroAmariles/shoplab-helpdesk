@@ -109,6 +109,12 @@ Hallado en la CI del código ya trasladado: con el `mvn` del runner, un proyecto
 Contract falla al descargar (`ClassCastException: BasicAuthCache`). `java-service.yml` usa `./mvnw` si existe; en verde
 en el run 45684032699. En local no se reprodujo.
 
+Al subir la acción de Qodana a `v2026.2.2`, el linter fijado `2025.2` de la plantilla y del servicio quedó
+incompatible: marcaba como no resueltos símbolos importados. Se usa `linter: qodana-jvm-community`, como el monolito.
+El modo PR solo analiza lo nuevo respecto a la rama base: el análisis completo se comprobó con ramas temporales
+(runs 45695604750, 45696954929 y 45696947398 del servicio; 45695617852 de `shoplab-gateway`, que conserva `2025.2`
+y pasa).
+
 ## D-10 `smoke` de shoplab-infra
 
 - **Observado**: en el run 45667096942, `aws_eks_cluster` sigue «Still creating» más de 8 min en los dos intentos,
