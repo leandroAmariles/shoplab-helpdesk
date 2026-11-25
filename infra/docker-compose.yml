@@ -153,6 +153,7 @@ services:
       LITELLM_KEY_BACKEND: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
       LITELLM_KEY_INGEST: ${LITELLM_KEY_INGEST:-sk-shoplab-ingest-local}
       LITELLM_KEY_EVAL: ${LITELLM_KEY_EVAL:-sk-shoplab-eval-local}
+      LITELLM_KEY_RETRIEVAL: ${LITELLM_KEY_RETRIEVAL:-sk-shoplab-retrieval-local}
       CLOUD_PROVIDER_API_KEY: ${CLOUD_PROVIDER_API_KEY:-}
     volumes:
       - ./litellm:/app/shoplab:ro
@@ -183,10 +184,58 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Rol, base y extension de retrieval-service en el mismo PostgreSQL (LAB-129). Idempotente y de un solo disparo:
+  # los scripts de postgres/init no corren sobre un volumen que ya existe.
+  retrieval-db-init:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.7-pg16}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-shoplab}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      APP_DB: ${POSTGRES_DB:-shoplab}
+      RETRIEVAL_DB_PASSWORD: ${RETRIEVAL_DB_PASSWORD:-change-me-local-only}
+    entrypoint: ["bash", "/retrieval-db-init.sh"]
+    volumes:
+      - ./postgres/retrieval-db-init.sh:/retrieval-db-init.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Base de conocimiento en su propio servicio (LAB-129). Todavia no recibe trafico: el gateway y el backend siguen
+  # usando el modulo del monolito hasta el corte. El 8082 del host es para comparar y depurar.
+  retrieval-service:
+    image: ${RETRIEVAL_IMAGE:-ghcr.io/leandroamariles/retrieval-service:v0.2.0}
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/retrieval
+      POSTGRES_USER: retrieval
+      POSTGRES_PASSWORD: ${RETRIEVAL_DB_PASSWORD:-change-me-local-only}
+      SPRING_AI_OPENAI_BASE_URL: http://litellm:4000/v1
+      SPRING_AI_OPENAI_API_KEY: ${LITELLM_KEY_RETRIEVAL:-sk-shoplab-retrieval-local}
+      SHOPLAB_RETRIEVAL_INGEST_BASE_URL: http://ingest:8000
+      # Debe ser el modelo de los vectores guardados, o la busqueda responde vacio.
+      SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME: ${OLLAMA_EMBED_MODEL:-bge-m3}
+    ports:
+      - "${RETRIEVAL_PORT:-8082}:8080"
+    depends_on:
+      retrieval-db-init:
+        condition: service_completed_successfully
+      litellm:
+        condition: service_healthy
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
   # Backend Spring Boot 4 / Spring Modulith (LAB-110). La API entra por `gateway`; el 8081 del host es solo para
   # depurar (LAB-107).
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.26.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.29.0}
     environment:
       POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
       POSTGRES_USER: ${POSTGRES_USER:-shoplab}

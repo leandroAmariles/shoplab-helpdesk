@@ -85,6 +85,7 @@ def env(gateway):
         "LITELLM_KEY_BACKEND": "sk-shoplab-backend-local",
         "LITELLM_KEY_INGEST": "sk-shoplab-ingest-local",
         "LITELLM_KEY_EVAL": "sk-shoplab-eval-local",
+        "LITELLM_KEY_RETRIEVAL": "sk-shoplab-retrieval-local",
         "BOOTSTRAP_TIMEOUT": "2",
     }
 
@@ -96,7 +97,12 @@ def _run(env, path=KEYS_YAML):
 def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsys):
     assert _run(env) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out == ["created alias=backend-local", "created alias=ingest-local", "created alias=eval-local"]
+    assert out == [
+        "created alias=backend-local",
+        "created alias=retrieval-local",
+        "created alias=ingest-local",
+        "created alias=eval-local",
+    ]
     assert "sk-shoplab" not in " ".join(out)
     backend = gateway.keys["sk-shoplab-backend-local"]
     assert backend["models"] == ["chat", "chat-fallback", "embeddings"]
@@ -124,10 +130,11 @@ def test_second_run_is_idempotent(gateway, env, capsys):
     assert _run(env) == 0
     assert capsys.readouterr().out.splitlines() == [
         "unchanged alias=backend-local",
+        "unchanged alias=retrieval-local",
         "unchanged alias=ingest-local",
         "unchanged alias=eval-local",
     ]
-    assert sum(call == "POST /key/generate" for call in gateway.calls) == 3
+    assert sum(call == "POST /key/generate" for call in gateway.calls) == 4
     assert "POST /key/update" not in gateway.calls
 
 
@@ -220,6 +227,7 @@ def test_real_looking_values_are_accepted_in_dev(gateway, env, capsys):
         "LITELLM_KEY_BACKEND": "sk-9f8e7d6c5b4a39281706f5e4d3c2b1a0",
         "LITELLM_KEY_INGEST": "sk-0a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "LITELLM_KEY_EVAL": "sk-5c4b3a2918070615e4d3c2b1a0f9e8d7",
+        "LITELLM_KEY_RETRIEVAL": "sk-3e2d1c0b9a8f7e6d5c4b3a2918070615",
     }
     assert _run(dev) == 0
     assert "created alias=backend-dev" in capsys.readouterr().out
