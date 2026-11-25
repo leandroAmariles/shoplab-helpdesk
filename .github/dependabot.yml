@@ -119,3 +119,8 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # A major PostgreSQL upgrade needs its data volume migrated, and 18 also moves the data directory: with 18.6 the
+    # services did not start (LAB-129).
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
