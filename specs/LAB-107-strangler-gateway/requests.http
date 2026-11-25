@@ -1,0 +1,63 @@
+### LAB-107: casos contra el gateway local (docker compose -f infra/docker-compose.yml up -d --wait)
+#
+# No cubiertos aquí (no se alcanzan con una petición HTTP; los cubren las pruebas de shoplab-gateway):
+#   FR-001, FR-002, FR-003 repositorio y pipeline     FR-010 configuración inválida
+#   FR-012 cancelación                                FR-015 propagación al destino (ver sus logs)
+#   FR-016 registro de acceso                         FR-018, FR-019, FR-021 despliegue, entorno y documentos
+#   FR-005, FR-006, FR-020 mover o añadir rutas (cambian configuración; quickstart.md paso 4)
+
+@baseUrl = http://localhost:8080
+@turnId = REEMPLAZAR-CON-UN-TURNO
+
+### FR-004 / US1-1: documents llega al monolito - espera 200
+GET {{baseUrl}}/api/documents
+
+### FR-004 / US1-1: knowledge - espera 200
+GET {{baseUrl}}/api/knowledge/search?query=devoluciones
+
+### FR-004 / US1-1: eval - espera 200
+GET {{baseUrl}}/api/eval/history/runs
+
+### FR-004 / US1-1: assistant - espera 200 (requiere un backend con LAB-106, v0.27.0 o posterior)
+GET {{baseUrl}}/api/assistant/settings
+
+### FR-007 / US1-3: un error del destino pasa tal cual - espera el 4xx y código SLHD_ del backend
+GET {{baseUrl}}/api/knowledge/search?query=
+
+### US1-1: feedback bajo /api/chat - espera la respuesta del backend, no del gateway
+PUT {{baseUrl}}/api/chat/feedback/{{turnId}}
+Content-Type: application/json
+
+{ "rating": "up" }
+
+### FR-008 / Edge "ruta sin configuración" - espera 404 SLHD_GATE_00001
+GET {{baseUrl}}/api/catalog
+
+### Edge "prefijo parecido" - espera 404 SLHD_GATE_00001
+GET {{baseUrl}}/api/chatbot
+
+### FR-009 / Edge "rutas internas" - espera 404, nunca el actuator del backend
+GET {{baseUrl}}/api/chat/%2e%2e/%2e%2e/actuator/env
+
+### FR-011 / US2-1: streaming del chat - espera 200 text/event-stream, fragmento a fragmento
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{ "message": "¿Cómo devuelvo un producto?" }
+
+### FR-014 / Edge "destino caído" - antes: docker compose stop backend - espera 503 SLHD_GATE_00002
+GET {{baseUrl}}/api/documents
+
+### FR-015 / SC-006: correlación - espera 200 y X-Request-Id: lab107-check en la respuesta
+GET {{baseUrl}}/api/documents
+X-Request-Id: lab107-check
+
+### FR-017: salud del gateway - espera 200 UP
+GET {{baseUrl}}/actuator/health
+
+### FR-017: métricas por ruta - espera spring_cloud_gateway_requests_seconds
+GET {{baseUrl}}/actuator/prometheus
+
+### FR-022: sin autenticación en esta historia - espera 200 sin Authorization
+GET {{baseUrl}}/api/documents

@@ -38,6 +38,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0029 | [Lectura del historial de evaluación](0029-lectura-del-historial-de-evaluacion.md) | aceptado |
 | 0030 | [Feedback de respuestas y promoción a casos golden](0030-feedback-de-respuestas-y-promocion-a-golden.md) | aceptado |
 | 0031 | [Extracción temprana de servicios](0031-extraccion-temprana-de-servicios.md) | aceptado |
+| 0032 | [Gateway estrangulador delante del monolito](0032-gateway-estrangulador.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

@@ -86,9 +86,10 @@ Copia las variables de entorno y arranca todos los servicios con imágenes preco
 cp infra/.env.example infra/.env
 docker compose -f infra/docker-compose.yml up -d --wait
 ```
-Esto levanta PostgreSQL, LiteLLM, Ollama, Backend, Frontend e Ingest en sus puertos canónicos:
+Esto levanta PostgreSQL, LiteLLM, Ollama, Backend, Gateway, Frontend e Ingest en sus puertos canónicos:
 - **Frontend (Angular)**: [http://localhost:4200](http://localhost:4200)
-- **Backend API**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- **API (por el gateway, LAB-107)**: `http://localhost:8080/api/...`; salud en [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- **Backend (solo para depurar)**: [http://localhost:8081/actuator/health](http://localhost:8081/actuator/health)
 - **Ingest API**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **LiteLLM Gateway**: [http://localhost:4000/health/liveliness](http://localhost:4000/health/liveliness)
 
@@ -102,7 +103,11 @@ Para desarrollar en un servicio sin tener que compilar los demás:
   ```
 - **Modo Host en IDE (Backend Java)**:
   Detén el contenedor en Docker: `docker compose -f infra/docker-compose.yml stop backend`
-  Ejecuta en tu IDE o terminal con `./mvnw spring-boot:run` desde `backend/` (se conecta automáticamente a PostgreSQL `localhost:5432` y LiteLLM `localhost:4000` de Docker).
+  Ejecuta en tu IDE o terminal con `SERVER_PORT=8081 ./mvnw spring-boot:run` desde `backend/` (se conecta automáticamente a PostgreSQL `localhost:5432` y LiteLLM `localhost:4000` de Docker) y apunta el gateway a él: `GATEWAY_MONOLITH_URI=http://host.docker.internal:8081 docker compose -f infra/docker-compose.yml up -d --no-deps gateway`.
+
+> Si tu `infra/.env` es anterior a LAB-107, cambia `BACKEND_PORT=8080` por `8081` y copia las líneas de imágenes de `infra/.env.example`: el `8080` es ahora del gateway.
+
+Para llevar una ruta a un servicio extraído, ver [docs/fases/F5-mover-rutas-al-gateway.md](docs/fases/F5-mover-rutas-al-gateway.md).
 
 #### 4. Probar y verificar
 Ejecuta la suite de verificación de integración E2E:
@@ -121,7 +126,7 @@ El backend **necesita PostgreSQL para arrancar**: al iniciar aplica las migracio
 ```bash
 cd backend
 ./mvnw verify            # compila, ejecuta tests, Checkstyle, PMD y cobertura (en Windows: mvnw.cmd verify)
-./mvnw spring-boot:run   # arranca en http://localhost:8080
+./mvnw spring-boot:run   # arranca en http://localhost:8080 (SERVER_PORT=8081 si el gateway está levantado)
 curl http://localhost:8080/actuator/health
 ```
 
@@ -215,7 +220,7 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 
 ### Observabilidad local (perfil `observability`)
 
-`docker compose -f infra/docker-compose.yml --profile observability up -d --wait` levanta Prometheus (`http://localhost:9090`) y Grafana (`http://localhost:3000`, usuario `admin`, contraseña `GRAFANA_ADMIN_PASSWORD`, por defecto `change-me-local-only` y solo válida en local). Prometheus recoge `/actuator/prometheus` del backend que corre en el host en el puerto 8080; Grafana arranca con el origen de datos y los dashboards de `infra/observability/`. Sin el perfil no arranca nada de esto. Detalle, dashboards, alerta y cómo borrar solo sus datos: [docs/observabilidad.md](docs/observabilidad.md).
+`docker compose -f infra/docker-compose.yml --profile observability up -d --wait` levanta Prometheus (`http://localhost:9090`) y Grafana (`http://localhost:3000`, usuario `admin`, contraseña `GRAFANA_ADMIN_PASSWORD`, por defecto `change-me-local-only` y solo válida en local). Prometheus recoge `/actuator/prometheus` del backend (puerto 8081 del host) y del gateway (8080); Grafana arranca con el origen de datos y los dashboards de `infra/observability/`. Sin el perfil no arranca nada de esto. Detalle, dashboards, alerta y cómo borrar solo sus datos: [docs/observabilidad.md](docs/observabilidad.md).
 
 ### Trazas de LLM
 

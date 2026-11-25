@@ -21,6 +21,15 @@ services:
   #     context: ../../shoplab-ingest
   #   image: shoplab-ingest:local
 
+  # Descomentar para construir shoplab-gateway desde el repo clonado al lado. Un prefijo nuevo se declara aqui:
+  # gateway:
+  #   build:
+  #     context: ../../shoplab-gateway
+  #   image: shoplab-gateway:local
+  #   environment:
+  #     SHOPLAB_GATEWAY_ROUTES_CATALOG_PREFIX: /api/catalog
+  #     SHOPLAB_GATEWAY_ROUTES_CATALOG_URI: http://catalog-service:8080
+
   # Descomentar para construir y depurar shoplab-backend localmente:
   # backend:
   #   build:

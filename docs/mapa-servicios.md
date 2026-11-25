@@ -71,9 +71,9 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
   - `retrieval.document`: Catálogo de documentos fuente ingeridos (políticas, manuales, FAQs).
   - `retrieval.chunk`: Fragmentos de texto con vectores de incrustación (`vector(1024)` / pgvector) e índices HNSW.
 - **APIs expuestas**:
-  - `POST /api/retrieval/search`: Endpoint REST para búsqueda semántica e híbrida ponderada.
-  - `POST /api/retrieval/documents`: Registro y carga de nuevos documentos en el corpus.
-  - `GET /api/retrieval/documents`: Listado y consulta del estado de indexación.
+  - `GET /api/knowledge/search`: Endpoint REST para búsqueda semántica e híbrida ponderada.
+  - `POST /api/documents`: Registro y carga de nuevos documentos en el corpus.
+  - `GET /api/documents`: Listado y consulta del estado de indexación.
   - *Servidor MCP*: Endpoint `/mcp` con la herramienta `search_knowledge_base`.
   - `GET /actuator/health`, `GET /actuator/prometheus`.
 - **Eventos Kafka**:
@@ -172,17 +172,16 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 
 ### 3.7. `gateway` (API Gateway perimetral)
 
-- **Repositorio**: `shoplab-gateway` (o módulo de plataforma en `shoplab-infra`)
-- **Contexto delimitado**: Punto de entrada unificado para clientes externos (SPA Angular y aplicaciones móviles). Provee enrutamiento dinámico, terminación TLS, CORS y propagación homogénea de cabeceras de contexto (`traceparent`, `X-Request-Id`).
+- **Repositorio**: `shoplab-gateway` ([ADR-0032](adr/0032-gateway-estrangulador.md), LAB-107)
+- **Contexto delimitado**: Punto de entrada de la API para clientes externos (SPA Angular y aplicaciones móviles). Enruta por prefijo y propaga las cabeceras de contexto (`traceparent`, `X-Request-Id`). JWT y límite de peticiones llegan con LAB-60. La web estática (`/`) la sirve el frontend, no el gateway.
 - **Esquema de base de datos**: Ninguno (*stateless*).
-- **APIs expuestas / Reglas de enrutamiento**:
-  - `/api/chat/**` -> `chat-service`
-  - `/api/retrieval/**` -> `retrieval-service`
+- **APIs expuestas / Reglas de enrutamiento** (destino al extraerse cada servicio; hasta entonces, el monolito):
+  - `/api/chat/**` y `/api/assistant/**` -> `chat-service`
+  - `/api/documents/**` y `/api/knowledge/**` -> `retrieval-service`
   - `/api/eval/**` -> `eval-service`
   - `/api/catalog/**` -> `catalog-service`
   - `/api/orders/**` -> `order-service`
   - `/api/tickets/**` -> `ticket-service`
-  - `/` -> Frontend SPA Angular
 - **Eventos Kafka**: Ninguno.
 - **Dependencias**:
   - Servicios internos desplegados en el clúster `dev`.

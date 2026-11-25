@@ -34,13 +34,17 @@ check_endpoint() {
 }
 
 # 1. LiteLLM Gateway
-check_endpoint "LiteLLM Gateway" "http://localhost:4000/health/liveliness" "healthy\|ok\|true"
+check_endpoint "LiteLLM Gateway" "http://localhost:4000/health/liveliness" "healthy\|ok\|true\|alive"
 
 # 2. Ingest Service
 check_endpoint "Ingest Service" "http://localhost:8000/health" "ok\|healthy"
 
 # 3. Backend Actuator Health
-check_endpoint "Backend Health" "http://localhost:8080/actuator/health" "UP"
+check_endpoint "Backend Health" "http://localhost:8081/actuator/health" "UP"
+
+# 3b. Gateway (LAB-107): su salud y una lectura de la API a través de él
+check_endpoint "Gateway Health" "http://localhost:8080/actuator/health" "UP"
+check_endpoint "API por el gateway" "http://localhost:8080/api/documents" "\["
 
 # 4. Frontend SPA
 check_endpoint "Frontend Web" "http://localhost:4200" "<!DOCTYPE html>\|<app-root>\|html"

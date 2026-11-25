@@ -20,7 +20,7 @@ Del resto de endpoints de Actuator solo está expuesto `health`.
 
 ```bash
 docker compose -f infra/docker-compose.yml --profile observability up -d --wait   # Prometheus y Grafana
-cd backend && ./mvnw spring-boot:run                                               # el backend, en el puerto 8080
+cd backend && SERVER_PORT=8081 ./mvnw spring-boot:run                              # el backend, en el puerto 8081
 ```
 
 | Servicio | URL | Acceso |
@@ -30,8 +30,8 @@ cd backend && ./mvnw spring-boot:run                                            
 
 - En Prometheus, *Status → Targets* debe mostrar `helpdesk-backend` en `up`. Los dashboards están en la carpeta *ShopLab*
   de Grafana, con el origen de datos ya creado.
-- Prometheus recoge `host.docker.internal:8080`: el backend corre en el host y el puerto es fijo (Prometheus no expande
-  variables de entorno). Si arrancas el backend en otro puerto, edita el objetivo de
+- Prometheus recoge `host.docker.internal:8081` (backend) y `host.docker.internal:8080` (gateway, LAB-107): los puertos
+  son fijos (Prometheus no expande variables de entorno). Si usas otros, edita los objetivos de
   `infra/observability/prometheus/prometheus.yml`.
 - El dashboard `ShopLab · Pods` muestra «sin datos» en compose: no hay pods.
 - Sin `--profile observability` no arranca nada de esto.

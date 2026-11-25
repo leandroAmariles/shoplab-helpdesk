@@ -37,7 +37,7 @@ El comando es **idempotente**: si un repositorio ya está clonado, lo detecta e 
    ```bash
    docker compose -f infra/docker-compose.yml up -d --wait
    ```
-   *Todos los servicios (`postgres`, `litellm`, `ingest`, `backend`, `frontend`) arrancan con imágenes publicadas en GHCR con versiones semánticas fijadas en `.env` (prohibido `:latest`).*
+   *Todos los servicios (`postgres`, `litellm`, `ingest`, `backend`, `gateway`, `frontend`) arrancan con imágenes publicadas en GHCR con versiones semánticas fijadas en `.env` (prohibido `:latest`). La API entra por el `gateway` en el `8080`; el backend queda en el `8081` para depurar (LAB-107).*
 
 ### Paso 3: Modificar un servicio específico
 
@@ -56,15 +56,19 @@ Si vas a modificar código en `shoplab-frontend` o `shoplab-ingest`:
 
 #### Opción B: Modo Host en IDE (Backend Java)
 Si vas a depurar el backend en tu entorno local (IntelliJ IDEA, VS Code):
-1. Detén el contenedor del backend para liberar el puerto `8080`:
+1. Detén el contenedor del backend:
    ```bash
    docker compose -f infra/docker-compose.yml stop backend
    ```
-2. Ejecuta el backend localmente:
+2. Ejecuta el backend localmente en el `8081` (el `8080` es del gateway):
    ```bash
-   cd backend && ./mvnw spring-boot:run
+   cd backend && SERVER_PORT=8081 ./mvnw spring-boot:run
    ```
    *Se conectará a PostgreSQL (`localhost:5432`) y LiteLLM (`localhost:4000`) expuestos por Docker.*
+3. Apunta el gateway al backend del host:
+   ```bash
+   GATEWAY_MONOLITH_URI=http://host.docker.internal:8081 docker compose -f infra/docker-compose.yml up -d --no-deps gateway
+   ```
 
 ### Paso 4: Probar y Validar
 1. Comprueba la salud del sistema completo:
