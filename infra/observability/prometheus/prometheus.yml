@@ -17,6 +17,12 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8080"]
 
+  # La base de conocimiento en su propio servicio (LAB-129): puerto 8082 del host.
+  - job_name: retrieval-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+
   # El servicio ingest corre en compose (LAB-20): se llega por el nombre del servicio en la red del proyecto.
   - job_name: ingest
     metrics_path: /metrics
