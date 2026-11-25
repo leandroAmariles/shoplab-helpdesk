@@ -164,9 +164,7 @@ services:
   # Parseo y troceado de documentos (LAB-20). Sin estado y sin acceso a la base de datos: entrega los chunks al modulo
   # retrieval del backend, que es quien los guarda.
   ingest:
-    build:
-      context: ../ingest
-    image: ${INGEST_IMAGE:-shoplab-ingest:local}
+    image: ${INGEST_IMAGE:-ghcr.io/leandroamariles/shoplab-ingest:v0.1.0}
     environment:
       INGEST_CHUNK_SIZE: ${INGEST_CHUNK_SIZE:-1000}
       INGEST_CHUNK_OVERLAP: ${INGEST_CHUNK_OVERLAP:-100}
@@ -179,6 +177,49 @@ services:
         - python
         - -c
         - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # Backend Spring Boot 4 / Spring Modulith (LAB-110). Expone el API REST y SSE en el puerto 8080.
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/shoplab-backend:v0.1.0}
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
+      POSTGRES_USER: ${POSTGRES_USER:-shoplab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      SPRING_AI_OPENAI_BASE_URL: http://litellm:4000/v1
+      SPRING_AI_OPENAI_API_KEY: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
+      SHOPLAB_RETRIEVAL_INGEST_BASE_URL: http://ingest:8000
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # Frontend Angular SPA (LAB-110). Interfaz de usuario servida en el puerto 4200.
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/leandroamariles/shoplab-frontend:v0.1.0}
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

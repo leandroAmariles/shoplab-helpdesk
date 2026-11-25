@@ -1,0 +1,28 @@
+# docker-compose.override.yml.example
+#
+# Uso: Copia este archivo a infra/docker-compose.override.yml y descomenta
+# el servicio que estes desarrollando en tu maquina local.
+#
+# Docker Compose fusiona automaticamente infra/docker-compose.override.yml
+# con infra/docker-compose.yml al ejecutar cualquier comando docker compose.
+# Las rutas relativas 'context' apuntan a los repositorios hermanos clonados
+# en carpetas adyacentes a shoplab-helpdesk (../../shoplab-*).
+
+services:
+  # Descomentar para construir y depurar shoplab-frontend desde el repo clonado al lado:
+  # frontend:
+  #   build:
+  #     context: ../../shoplab-frontend
+  #   image: shoplab-frontend:local
+
+  # Descomentar para construir y depurar shoplab-ingest desde el repo clonado al lado:
+  # ingest:
+  #   build:
+  #     context: ../../shoplab-ingest
+  #   image: shoplab-ingest:local
+
+  # Descomentar para construir y depurar shoplab-backend localmente:
+  # backend:
+  #   build:
+  #     context: ../../shoplab-helpdesk/backend
+  #   image: shoplab-backend:local
