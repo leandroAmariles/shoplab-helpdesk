@@ -67,17 +67,54 @@ Las versiones y el `CHANGELOG.md` salen solos de los títulos de PR (el commit d
 - **Configuración:** `release-please-config.json`, `.release-please-manifest.json` y `.github/workflows/release-please.yml`. Se usa una sola versión del repositorio; `frontend` e `ingest` se añaden a `extra-files` cuando tengan `package.json` / `pyproject.toml`.
 - **Token:** el workflow usa el secreto `RELEASE_PLEASE_TOKEN` (token de grano fino, solo este repositorio, `Contents` y `Pull requests` en lectura/escritura) porque los PRs y tags creados con `GITHUB_TOKEN` no disparan otros workflows. Anota aquí su caducidad y rótalo antes: **caduca el AAAA-MM-DD** (pendiente de completar al crearlo).
 
-## Arrancar
+## Arrancar y Desarrollo Local (LAB-110)
+
+`shoplab-helpdesk` actúa como **repositorio paraguas** (*umbrella repo*): contiene los ADRs, las guías de fase, la orquestación central de Docker Compose del sistema completo y las pruebas de extremo a extremo (E2E).
 
 Prerrequisitos: git, Docker con Compose v2+, JDK 21 o superior (Maven no hace falta: el backend incluye el wrapper `mvnw`), Node.js y Python 3.
 
-1. Clona el repositorio y entra en la carpeta raíz.
-2. (Opcional) Copia `infra/.env.example` a `infra/.env` para cambiar puertos, credenciales o modelos. `infra/.env` no se versiona.
-3. Levanta el entorno local: `docker compose -f infra/docker-compose.yml up -d --wait`.
+### Flujo de Desarrollo en 4 Pasos
 
-La primera vez descarga las imágenes y los modelos (unos 13 GB en total), así que puede tardar varios minutos. El comando termina cuando PostgreSQL y Ollama están saludables; los siguientes arranques tardan segundos.
+#### 1. Clonar el ecosistema de repositorios
+Para disponer de todos los repositorios hermanos en carpetas adyacentes (`../`):
+- En Linux / macOS / Git Bash: `make clone-all`
+- En Windows (PowerShell): `pwsh scripts/clone-all.ps1`
 
-### Backend
+#### 2. Levantar el sistema completo con GHCR
+Copia las variables de entorno y arranca todos los servicios con imágenes preconstruidas publicadas en GHCR con versiones fijadas en `.env` (prohibido `:latest`):
+```bash
+cp infra/.env.example infra/.env
+docker compose -f infra/docker-compose.yml up -d --wait
+```
+Esto levanta PostgreSQL, LiteLLM, Ollama, Backend, Frontend e Ingest en sus puertos canónicos:
+- **Frontend (Angular)**: [http://localhost:4200](http://localhost:4200)
+- **Backend API**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- **Ingest API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **LiteLLM Gateway**: [http://localhost:4000/health/liveliness](http://localhost:4000/health/liveliness)
+
+#### 3. Modificar un servicio específico
+Para desarrollar en un servicio sin tener que compilar los demás:
+- **Modo Contenedor con Override (Frontend / Ingest)**:
+  Copia `infra/docker-compose.override.yml.example` a `infra/docker-compose.override.yml` y descomenta el bloque del servicio que vas a editar (apunta a `../../shoplab-<servicio>`).
+  Reconstruye solo ese servicio con:
+  ```bash
+  docker compose -f infra/docker-compose.yml up -d --build frontend
+  ```
+- **Modo Host en IDE (Backend Java)**:
+  Detén el contenedor en Docker: `docker compose -f infra/docker-compose.yml stop backend`
+  Ejecuta en tu IDE o terminal con `./mvnw spring-boot:run` desde `backend/` (se conecta automáticamente a PostgreSQL `localhost:5432` y LiteLLM `localhost:4000` de Docker).
+
+#### 4. Probar y verificar
+Ejecuta la suite de verificación de integración E2E:
+```bash
+make test-e2e
+# O en Windows PowerShell:
+pwsh scripts/test-e2e.ps1
+```
+
+La guía completa de desarrollo multi-repo se encuentra en [docs/fases/F5-entorno-local-multi-repo.md](docs/fases/F5-entorno-local-multi-repo.md).
+
+### Desarrollo sobre Backend
 
 El backend **necesita PostgreSQL para arrancar**: al iniciar aplica las migraciones de cada módulo y, si no hay base de datos, falla indicando el módulo afectado. Levanta solo la base con `docker compose -f infra/docker-compose.yml up -d postgres` (el backend usa por defecto `localhost:5432/shoplab`; se cambia con `POSTGRES_URL`, `POSTGRES_USER` y `POSTGRES_PASSWORD`). Las pruebas (`./mvnw verify`) arrancan su propia PostgreSQL desechable con Testcontainers, así que solo necesitan Docker en marcha.
 
@@ -90,24 +127,22 @@ curl http://localhost:8080/actuator/health
 
 Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos por contexto de negocio (`chat`, `retrieval`, `orders`, `catalog`, `tickets`, cada uno dueño de su esquema de datos, y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests` y `ModuleArchitectureTests`; la guía está en [docs/modulos.md](docs/modulos.md) y la decisión en `docs/adr/0015-limites-de-contexto-y-repositorios.md`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
 
-### Frontend (Angular)
+### Desarrollo sobre Frontend (Angular en `../shoplab-frontend`)
 
-Requiere Node `22.22.3` o superior de la línea 22 (`frontend/.nvmrc`; con `nvm use` se selecciona). `npm ci` falla con un mensaje claro si la versión no cumple (`engine-strict`).
+Extraído a su propio repositorio según [ADR-0031](docs/adr/0031-extraccion-temprana-de-servicios.md). Requiere Node `22.22.3` o superior de la línea 22.
 
 ```bash
-cd frontend
+cd ../shoplab-frontend
 npm ci
 npm start                  # http://localhost:4200, redirige /api a http://localhost:8080
 npm test -- --watch=false  # Vitest + jsdom, sin navegador instalado
 npm run lint
-npm run build              # genera frontend/dist/browser
+npm run build              # genera dist/browser
 ```
 
-La app usa componentes standalone, signals y Angular Material (ver `docs/adr/0013-biblioteca-ui-angular-material.md`). El proxy de desarrollo (`frontend/proxy.conf.json`) evita configurar CORS: levanta el backend (`./mvnw spring-boot:run`) y llama a rutas relativas `/api/...`. Para apuntar a otro backend basta con cambiar el `target` de ese archivo.
+La app usa componentes standalone, signals y Angular Material (ver `docs/adr/0013-biblioteca-ui-angular-material.md`).
 
-**Chat (`/chat`)**: con el backend en `localhost:8080` y el modelo cargado, `npm start` en `frontend/` y abre `http://localhost:4200/chat`. La pantalla envía `POST /api/chat` y lee la respuesta como SSE con `fetch` (el navegador no permite `EventSource` con `POST`; ver `docs/adr/0014-markdown-seguro-en-el-chat.md`). Las respuestas del asistente se muestran como Markdown saneado: **solo** `core/markdown/markdown-renderer.ts` puede confiar en HTML (`bypassSecurityTrustHtml`), y ESLint falla si otro archivo lo intenta. La conversación visible vive en memoria de la pestaña y se pierde al recargar; el servidor recuerda cada conversación por un UUID que genera la pantalla (`docs/adr/0020-memoria-de-conversacion-en-tabla-propia.md`), y «Nueva conversación» empieza otra. Límite conocido: la imagen de contenedor aún no enruta `/api` al backend (lo resuelve el ingreso del clúster), así que el chat se prueba en desarrollo con el proxy.
-
-Los pasos de arranque de `ingest/` se documentan cuando tenga código.
+**Chat (`/chat`)**: con el backend en `localhost:8080` y el modelo cargado, abre `http://localhost:4200/chat`. La pantalla envía `POST /api/chat` y lee la respuesta como SSE con `fetch`.
 
 ### Datos de ejemplo (Olist)
 

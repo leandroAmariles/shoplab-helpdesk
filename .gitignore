@@ -21,9 +21,11 @@ __pycache__/
 .ipynb_checkpoints/
 .coverage
 
-# Entorno
+# Entorno y Compose Overrides
 .env
 *.local
+docker-compose.override.yml
+infra/docker-compose.override.yml
 
 # Datos descargados (Olist, etc.)
 data/raw/

@@ -1,0 +1,21 @@
+### Verificacion de Salud e Integracion Local (LAB-110)
+@baseUrl = http://localhost:8080
+@ingestUrl = http://localhost:8000
+@litellmUrl = http://localhost:4000
+@frontendUrl = http://localhost:4200
+
+### 1. Backend Spring Boot Health
+GET {{baseUrl}}/actuator/health
+Accept: application/json
+
+### 2. Ingest FastAPI Health
+GET {{ingestUrl}}/health
+Accept: application/json
+
+### 3. LiteLLM Model Gateway Liveliness
+GET {{litellmUrl}}/health/liveliness
+Accept: application/json
+
+### 4. Frontend SPA NGINX Index
+GET {{frontendUrl}}/
+Accept: text/html
