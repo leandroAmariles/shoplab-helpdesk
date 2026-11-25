@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.27.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.26.0...v0.27.0) (2026-11-24)
+
+
+### Features
+
+* **architecture:** [LAB-109] separar ingest, eval y frontend en repos propios ([#174](https://github.com/leandroAmariles/shoplab-helpdesk/issues/174)) ([cfdb996](https://github.com/leandroAmariles/shoplab-helpdesk/commit/cfdb99626bd7d4399ede8f9247808675c9c36b56))
+* **ci:** [LAB-103] workflows reutilizables y plantilla de servicio ([#173](https://github.com/leandroAmariles/shoplab-helpdesk/issues/173)) ([d53179f](https://github.com/leandroAmariles/shoplab-helpdesk/commit/d53179f1f519e5d32e67ddd60cfed34e91fad970))
+* **contracts:** [LAB-106] HTTP OpenAPI contracts, Angular client, and Spring Cloud Contract tests ([#171](https://github.com/leandroAmariles/shoplab-helpdesk/issues/171)) ([a5a6150](https://github.com/leandroAmariles/shoplab-helpdesk/commit/a5a6150d8bf19e441058ccfebd8b46062fe1829a))
+
 ## [0.26.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.25.0...v0.26.0) (2026-11-23)
 
 
