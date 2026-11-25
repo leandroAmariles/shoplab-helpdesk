@@ -35,3 +35,9 @@ services:
   #   build:
   #     context: ../../shoplab-helpdesk/backend
   #   image: shoplab-backend:local
+
+  # Construir shoplab-retrieval-service localmente:
+  # retrieval-service:
+  #   build:
+  #     context: ../../shoplab-retrieval-service
+  #   image: shoplab-retrieval-service:local

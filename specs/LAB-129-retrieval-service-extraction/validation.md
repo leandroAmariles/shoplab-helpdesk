@@ -57,6 +57,17 @@ probados en Bash y PowerShell. **La migración de los datos reales está pendien
 
 ## 4. Paridad en paralelo (US2)
 
+### Compose local (T037, T038, 2026-11-25)
+
+Proyecto aislado: `retrieval-db-init` termina en 0, `retrieval-service` v0.2.0 queda sano, `GET /api/documents`
+responde `[] 200`, crea `document`, `chunk`, `flyway_schema_history` e `indexing_lock`, sin errores en el log.
+**La comparación con el monolito sobre datos migrados está pendiente (T046).**
+
+### Release A del monolito (T058, 2026-11-25)
+
+`v0.29.0` publicada y fijada en `shoplab-infra` por el job de despliegue. **Sin comprobar en dev**: no hay acceso
+al clúster desde la sesión.
+
 ## 5. Corte (US3, SC-001, SC-003)
 
 ## 6. Fallos del chat (US4)

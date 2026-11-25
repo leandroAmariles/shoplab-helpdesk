@@ -113,8 +113,8 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T034 [P] [US2] Crear `infra/postgres/retrieval-db-init.sh` idempotente (rol `retrieval`, base `retrieval`, extensión `vector` como superusuario, `REVOKE CONNECT … FROM PUBLIC` en ambas bases)
 - [X] T035 [US2] Crear `scripts/migrate-retrieval.ps1` y `.sh` y `scripts/verify-retrieval-migration.ps1` y `.sh` según [data-migration.md](contracts/data-migration.md): `pg_restore --single-transaction`, fallo si el destino tiene filas sin `--replace`, comparación por recuento, suma de comprobación y vectores por modelo
 - [X] T036 [US2] Probar los scripts de T035 contra un PostgreSQL desechable: copia correcta; segunda ejecución sin `--replace` rechazada; una fila alterada hace fallar la verificación; el origen no cambia
-- [ ] T037 [US2] Añadir a `infra/docker-compose.yml` los servicios `retrieval-db-init` y `retrieval-service` (puerto de host 8082, imagen fijada) y la variable `LITELLM_KEY_RETRIEVAL` en `litellm-bootstrap`; actualizar `infra/.env.example` e `infra/docker-compose.override.yml.example`
-- [ ] T038 [US2] Añadir la clave `retrieval-<entorno>` (`models: [embeddings]`, 5.00 al día) a `infra/litellm/keys.yaml` y actualizar `infra/litellm/tests/test_bootstrap_keys.py`; ejecutar las pruebas de `infra/litellm`
+- [X] T037 [US2] Añadir a `infra/docker-compose.yml` los servicios `retrieval-db-init` y `retrieval-service` (puerto de host 8082, imagen fijada) y la variable `LITELLM_KEY_RETRIEVAL` en `litellm-bootstrap`; actualizar `infra/.env.example` e `infra/docker-compose.override.yml.example`
+- [X] T038 [US2] Añadir la clave `retrieval-<entorno>` (`models: [embeddings]`, 5.00 al día) a `infra/litellm/keys.yaml` y actualizar `infra/litellm/tests/test_bootstrap_keys.py`; ejecutar las pruebas de `infra/litellm`
 - [X] T039 [P] [US2] Añadir `shoplab-retrieval-service` a `scripts/clone-all.ps1` y al objetivo `clone-all` de `Makefile`, y el trabajo `retrieval-service` a `infra/observability/prometheus/prometheus.yml`
 
 ### Release y despliegue en dev, sin tráfico
