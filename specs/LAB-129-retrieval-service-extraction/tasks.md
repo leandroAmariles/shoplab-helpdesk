@@ -70,7 +70,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T013 [US1] APROBACIÓN: generar `leandroAmariles/shoplab-retrieval-service` desde la plantilla (`gh repo create --template`, público), clonarlo junto a los demás, fijar fusión por squash y cambiar solo el nombre en `shoplab-retrieval-service/pom.xml` y `shoplab-retrieval-service/.github/workflows/`
 - [X] T014 [US1] Cargar `DEPLOY_APP_ID` como variable de `shoplab-retrieval-service` (mismo valor que en `shoplab-gateway`)
 - [X] T015 [US1] MANUAL: crear un token limitado a `shoplab-retrieval-service` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-retrieval-service`
-- [ ] T016 [US1] MANUAL: cargar la llave de la GitHub App con `gh secret set DEPLOY_APP_PRIVATE_KEY -R leandroAmariles/shoplab-retrieval-service < <ruta-al-pem>` (o autorizar al agente indicando el archivo)
+- [X] T016 [US1] MANUAL: cargar la llave de la GitHub App con `gh secret set DEPLOY_APP_PRIVATE_KEY -R leandroAmariles/shoplab-retrieval-service < <ruta-al-pem>` (o autorizar al agente indicando el archivo)
 - [X] T017 [US1] APROBACIÓN: publicar `v0.1.0` de `shoplab-retrieval-service` y comprobar imagen `:v0.1.0` en GHCR con firma verificada (SC-008). El job de despliegue falla en esta release (se corrige en T040); anotar el resultado en `validation.md`
 - [X] T018 [US1] MANUAL / APROBACIÓN: hacer **público** el paquete `retrieval-service` en GitHub → Packages → Package settings. **No es reversible**
 
@@ -119,13 +119,13 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 ### Release y despliegue en dev, sin tráfico
 
-- [ ] T040 [US2] Rehacer `shoplab-infra/apps/retrieval-service/` (research D-12): `images:` con `ghcr.io/leandroamariles/retrieval-service`, ConfigMap de [configuration.md](contracts/configuration.md), `ExternalSecret` `external-secrets.io/v1` de `aws-secrets-manager`, `securityContext`, `startupProbe`, `/tmp`, 768 Mi, `ServiceMonitor` y política de salida como la del backend
-- [ ] T041 [US2] Permitir `retrieval-service` en `shoplab-infra/k8s/base/litellm/networkpolicy.yaml`
-- [ ] T042 [US2] Añadir `LITELLM_KEY_RETRIEVAL` y el secreto `retrieval-service` (contraseña de la base, igual a la del compose) a `shoplab-infra/scripts/ensure-secrets.sh`, su prueba y `shoplab-infra/terraform/envs/dev/secrets.auto.tfvars.example`
-- [ ] T043 [US2] MANUAL: añadir la contraseña de la base a `secrets.auto.tfvars`, ejecutar `make secrets` y `make up` (los secretos deben existir **antes** de T044, o el Job de claves falla)
-- [ ] T044 [US2] Ejecutar `shoplab-infra/scripts/sync-litellm-files.sh` y, APROBACIÓN, fusionar el PR de `shoplab-infra` con T040–T042 (si se quitó el `smoke`, ejecutar antes `make smoke` en local)
-- [ ] T045 [US2] APROBACIÓN: publicar la primera release funcional de `shoplab-retrieval-service` y sus stubs, y comprobar `retrieval-service-dev` sincronizada y sana
-- [ ] T046 [US2] Provisionar la base, copiar los datos con T035 y comparar monolito y servicio en paralelo (quickstart pasos 3 y 4), con cero embeddings calculados por la migración; anotar en `validation.md`
+- [X] T040 [US2] Rehacer `shoplab-infra/apps/retrieval-service/` (research D-12): `images:` con `ghcr.io/leandroamariles/retrieval-service`, ConfigMap de [configuration.md](contracts/configuration.md), `ExternalSecret` `external-secrets.io/v1` de `aws-secrets-manager`, `securityContext`, `startupProbe`, `/tmp`, 768 Mi, `ServiceMonitor` y política de salida como la del backend
+- [X] T041 [US2] Permitir `retrieval-service` en `shoplab-infra/k8s/base/litellm/networkpolicy.yaml`
+- [X] T042 [US2] Añadir `LITELLM_KEY_RETRIEVAL` y el secreto `retrieval-service` (contraseña de la base, igual a la del compose) a `shoplab-infra/scripts/ensure-secrets.sh`, su prueba y `shoplab-infra/terraform/envs/dev/secrets.auto.tfvars.example`
+- [X] T043 [US2] MANUAL: añadir la contraseña de la base a `secrets.auto.tfvars`, ejecutar `make secrets` y `make up` (los secretos deben existir **antes** de T044, o el Job de claves falla)
+- [X] T044 [US2] Ejecutar `shoplab-infra/scripts/sync-litellm-files.sh` y, APROBACIÓN, fusionar el PR de `shoplab-infra` con T040–T042 (si se quitó el `smoke`, ejecutar antes `make smoke` en local)
+- [X] T045 [US2] APROBACIÓN: publicar la primera release funcional de `shoplab-retrieval-service` y sus stubs, y comprobar `retrieval-service-dev` sincronizada y sana
+- [X] T046 [US2] Provisionar la base, copiar los datos con T035 y comparar monolito y servicio en paralelo (quickstart pasos 3 y 4), con cero embeddings calculados por la migración; anotar en `validation.md`
 
 **Checkpoint**: el servicio responde igual que el monolito y nadie lo usa todavía.
 
@@ -142,7 +142,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T049 [US5] Crear `shoplab-retrieval-service/src/main/resources/db/migration/retrieval/V5__indexing_lock.sql`: `name text` PK (hoy solo `embeddings`), `owner text` no vacío, `locked_until timestamptz` no nulo
 - [X] T050 [US5] Crear `SVC/application/port/out/IndexingLockPort.java` y `SVC/infrastructure/out/persistence/JdbcIndexingLockAdapter.java`; usarlo en `SVC/application/usecase/DocumentEmbedder.java` (renovar antes de cada lote, liberar al terminar y en el apagado) y borrar `IndexingGuard.java`
 - [X] T051 [US5] Subir los reintentos a 12 cada 10 s en `SVC/infrastructure/in/event/IndexAfterIngestListener.java` y aplicarlos también en `IndexOnStartupRunner.java` cuando la ejecución se omita, con sus pruebas, hasta que T047 y T048 pasen
-- [ ] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
+- [X] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
 
 **Checkpoint**: el servicio está listo para recibir tráfico.
 
@@ -159,7 +159,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T055 [P] [US4] Cambiar `MONOT/chat/infrastructure/out/knowledge/ChatRetrievalContractConsumerTest.java` a los stubs `com.shoplab:shoplab-retrieval-service` con versión fijada, y dar a `.github/workflows/ci.yml` el acceso decidido en T003
 - [X] T056 [US4] Añadir `shoplab-contracts` 1.3.0 como dependencia en `backend/pom.xml`; crear `MONO/chat/config/RetrievalClientConfig.java` y `RetrievalClientProperties.java` (`base-url`, `timeout` 15 s); reescribir `MONO/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClient.java` sobre la interfaz generada
 - [X] T057 [US4] Propagar `traceparent` entrante junto a `X-Request-Id` (`MONO/shared/infrastructure/in/rest/filter/RequestIdFilter.java`) y declarar las propiedades en `backend/src/main/resources/application.yml` hasta que T054 y T055 pasen
-- [ ] T058 [US4] APROBACIÓN: fusionar y publicar la release A del monolito; comprobar en dev que el chat sigue igual y subir `BACKEND_IMAGE` en `infra/docker-compose.yml`
+- [X] T058 [US4] APROBACIÓN: fusionar y publicar la release A del monolito; comprobar en dev que el chat sigue igual y subir `BACKEND_IMAGE` en `infra/docker-compose.yml`
 - [ ] T059 [US4] En local, con `mode=http` hacia `retrieval-service`, comprobar citas, servicio caído (`SLHD_CHAT_00004`), cortesías y la consulta larga (quickstart paso 6)
 
 **Checkpoint**: el corte es solo configuración.
@@ -172,8 +172,8 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 **Independent Test**: quickstart pasos 5 y 7: métricas idénticas, pantalla de documentos igual, reversión ensayada.
 
-- [ ] T060 [US3] Tomar la línea base con `uv run python -m shoplab_eval retrieval` en `shoplab-eval/` contra el sistema actual y guardar resumen y detalle en `specs/LAB-129-retrieval-service-extraction/baseline/`; medir también el p95 de la búsqueda del chat
-- [ ] T061 [US3] Preparar el PR de `shoplab-infra` con un solo commit según [configuration.md](contracts/configuration.md): variables del gateway en `apps/gateway/overlays/dev/kustomization.yaml` y del monolito en `k8s/overlays/dev/kustomization.yaml`
+- [X] T060 [US3] Tomar la línea base con `uv run python -m shoplab_eval retrieval` en `shoplab-eval/` contra el sistema actual y guardar resumen y detalle en `specs/LAB-129-retrieval-service-extraction/baseline/`; medir también el p95 de la búsqueda del chat
+- [X] T061 [US3] Preparar el PR de `shoplab-infra` con un solo commit según [configuration.md](contracts/configuration.md): variables del gateway en `apps/gateway/overlays/dev/kustomization.yaml` y del monolito en `k8s/overlays/dev/kustomization.yaml`
 - [ ] T062 [US3] APROBACIÓN: avisar y suspender las subidas, hacer copia de la base `shoplab` fuera del repositorio, migrar con `--replace`, verificar sin diferencias y comprobar el servicio sano
 - [ ] T063 [US3] MANUAL: fusionar el commit del corte
 - [ ] T064 [US3] Verificar: `routeId=documents` y `knowledge` hacia `retrieval-service` en el registro del gateway; `/documentos` lista y sube; el chat cita el documento nuevo; evaluación de LAB-28 **idéntica** a la línea base (SC-001); p95 con menos de 100 ms añadidos (SC-005). Reanudar las subidas

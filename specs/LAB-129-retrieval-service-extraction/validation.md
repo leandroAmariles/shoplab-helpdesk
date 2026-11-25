@@ -48,7 +48,15 @@ Proyecto aislado `lab129pg` con un archivo de entorno vacío; la configuración 
 
 ## 2. Línea base (FR-023)
 
+T060, 2026-11-25, contra el monolito en dev: `baseline/monolith/` (76 casos, `bge-m3`, hit_rate@5 0.9342, MRR
+0.6556). La misma medición contra `retrieval-service` con los datos migrados da **archivos idénticos**, resumen y
+detalle. Falta repetirla tras el corte (SC-001). El p95 de la búsqueda del chat aún no se ha medido (SC-005).
+
 ## 3. Migración (SC-002)
+
+T046, 2026-11-25, datos reales: 25 documentos, 143 fragmentos y 143 vectores `bge-m3`; verificación sin
+diferencias. Al reiniciar, el servicio aplicó solo V5 y calculó 0 embeddings (`documents=0`). Es la copia para
+comparar: **en el corte se repite con `--replace`**.
 
 Scripts probados contra un PostgreSQL desechable (`bash infra/postgres/tests/test-retrieval-migration.sh`,
 2026-11-25): provisión repetible; el rol `retrieval` no entra en `shoplab`; copia idéntica con las tablas a su
@@ -56,6 +64,13 @@ nombre; sin `--replace` se niega; una fila alterada hace fallar la verificación
 probados en Bash y PowerShell. **La migración de los datos reales está pendiente (T046).**
 
 ## 4. Paridad en paralelo (US2)
+
+### Dev (T040–T046, 2026-11-25)
+
+`retrieval-service-dev` `Synced/Healthy` en v0.2.0; el job de claves creó `retrieval-dev`. 8 de 8 respuestas
+idénticas entre monolito y servicio (listado, cinco búsquedas, consulta vacía `422`, `.txt` `415`). La consulta de
+4000 caracteres: servicio `200`; el monolito la rechaza por HTTP con `414` (en proceso no tiene ese límite).
+
 
 ### Compose local (T037, T038, 2026-11-25)
 
@@ -65,8 +80,8 @@ responde `[] 200`, crea `document`, `chunk`, `flyway_schema_history` e `indexing
 
 ### Release A del monolito (T058, 2026-11-25)
 
-`v0.29.0` publicada y fijada en `shoplab-infra` por el job de despliegue. **Sin comprobar en dev**: no hay acceso
-al clúster desde la sesión.
+`v0.29.0` publicada y fijada en `shoplab-infra` por el job de despliegue. Comprobado después en dev
+(`make up`): el chat responde `200` con 4 fragmentos de contexto, en modo `in-process`.
 
 ## 5. Corte (US3, SC-001, SC-003)
 
@@ -96,3 +111,7 @@ detiene sin guardar. `./mvnw clean verify`: 281 pruebas, 0 fallos, cobertura 97 
 ## 9. Latencia (SC-005)
 
 ## 10. Despliegue independiente y retirada (SC-004, FR-021)
+
+T052/SC-004, 2026-11-25: con la llave cargada, el job de despliegue de `shoplab-retrieval-service` actualizó dev
+(commit `2d459ba` de `shoplab-infra`) sin release del monolito. La versión ya era la 0.2.0, así que se comprobó el
+camino, no un cambio de comportamiento. La retirada del módulo está pendiente.
