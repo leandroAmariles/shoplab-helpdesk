@@ -69,10 +69,10 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T012 [US1] APROBACIÓN: crear `leandroAmariles/shoplab-service-template` público con `gh repo create`, subir el contenido de `TPL/` y marcarlo como plantilla (`is_template`); actualizar la guía `docs/fases/F5-creacion-de-servicios-desde-plantilla.md`
 - [X] T013 [US1] APROBACIÓN: generar `leandroAmariles/shoplab-retrieval-service` desde la plantilla (`gh repo create --template`, público), clonarlo junto a los demás, fijar fusión por squash y cambiar solo el nombre en `shoplab-retrieval-service/pom.xml` y `shoplab-retrieval-service/.github/workflows/`
 - [X] T014 [US1] Cargar `DEPLOY_APP_ID` como variable de `shoplab-retrieval-service` (mismo valor que en `shoplab-gateway`)
-- [ ] T015 [US1] MANUAL: crear un token limitado a `shoplab-retrieval-service` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-retrieval-service`
+- [X] T015 [US1] MANUAL: crear un token limitado a `shoplab-retrieval-service` (Contents y Pull requests: lectura y escritura) y cargarlo con `gh secret set RELEASE_PLEASE_TOKEN -R leandroAmariles/shoplab-retrieval-service`
 - [ ] T016 [US1] MANUAL: cargar la llave de la GitHub App con `gh secret set DEPLOY_APP_PRIVATE_KEY -R leandroAmariles/shoplab-retrieval-service < <ruta-al-pem>` (o autorizar al agente indicando el archivo)
-- [ ] T017 [US1] APROBACIÓN: publicar `v0.1.0` de `shoplab-retrieval-service` y comprobar imagen `:v0.1.0` en GHCR con firma verificada (SC-008). El job de despliegue falla en esta release (se corrige en T040); anotar el resultado en `validation.md`
-- [ ] T018 [US1] MANUAL / APROBACIÓN: hacer **público** el paquete `retrieval-service` en GitHub → Packages → Package settings. **No es reversible**
+- [X] T017 [US1] APROBACIÓN: publicar `v0.1.0` de `shoplab-retrieval-service` y comprobar imagen `:v0.1.0` en GHCR con firma verificada (SC-008). El job de despliegue falla en esta release (se corrige en T040); anotar el resultado en `validation.md`
+- [X] T018 [US1] MANUAL / APROBACIÓN: hacer **público** el paquete `retrieval-service` en GitHub → Packages → Package settings. **No es reversible**
 
 ### `smoke` de shoplab-infra (research D-10)
 
@@ -142,7 +142,7 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 - [X] T049 [US5] Crear `shoplab-retrieval-service/src/main/resources/db/migration/retrieval/V5__indexing_lock.sql`: `name text` PK (hoy solo `embeddings`), `owner text` no vacío, `locked_until timestamptz` no nulo
 - [X] T050 [US5] Crear `SVC/application/port/out/IndexingLockPort.java` y `SVC/infrastructure/out/persistence/JdbcIndexingLockAdapter.java`; usarlo en `SVC/application/usecase/DocumentEmbedder.java` (renovar antes de cada lote, liberar al terminar y en el apagado) y borrar `IndexingGuard.java`
 - [X] T051 [US5] Subir los reintentos a 12 cada 10 s en `SVC/infrastructure/in/event/IndexAfterIngestListener.java` y aplicarlos también en `IndexOnStartupRunner.java` cuando la ejecución se omita, con sus pruebas, hasta que T047 y T048 pasen
-- [ ] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
+- [X] T052 [US5] APROBACIÓN: publicar la release y comprobar que dev se actualiza **sin release del monolito** (SC-004); anotar en `validation.md`
 
 **Checkpoint**: el servicio está listo para recibir tráfico.
 
@@ -154,11 +154,11 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 **Independent Test**: con `mode=http` en local, el chat responde con las mismas citas; sin la variable, nada cambia.
 
-- [ ] T053 [US4] Publicar el cliente generado: aplicar T004 en `shoplab-contracts/generators/java/pom.xml`, actualizar `shoplab-contracts/README.md` y, APROBACIÓN, publicar `shoplab-contracts` 1.3.0
-- [ ] T054 [P] [US4] Escribir `MONOT/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClientTests.java` (WireMock) con la tabla de [chat-client.md](contracts/chat-client.md): orden, sin texto, título vacío, vacío, `4xx`/`5xx`/conexión/tiempo/cuerpo ilegible → `SLHD_CHAT_00004`, sin reintentos, `X-Request-Id`, `traceparent`, codificación de la consulta
-- [ ] T055 [P] [US4] Cambiar `MONOT/chat/infrastructure/out/knowledge/ChatRetrievalContractConsumerTest.java` a los stubs `com.shoplab:shoplab-retrieval-service` con versión fijada, y dar a `.github/workflows/ci.yml` el acceso decidido en T003
-- [ ] T056 [US4] Añadir `shoplab-contracts` 1.3.0 como dependencia en `backend/pom.xml`; crear `MONO/chat/config/RetrievalClientConfig.java` y `RetrievalClientProperties.java` (`base-url`, `timeout` 15 s); reescribir `MONO/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClient.java` sobre la interfaz generada
-- [ ] T057 [US4] Propagar `traceparent` entrante junto a `X-Request-Id` (`MONO/shared/infrastructure/in/rest/filter/RequestIdFilter.java`) y declarar las propiedades en `backend/src/main/resources/application.yml` hasta que T054 y T055 pasen
+- [X] T053 [US4] Publicar el cliente generado: aplicar T004 en `shoplab-contracts/generators/java/pom.xml`, actualizar `shoplab-contracts/README.md` y, APROBACIÓN, publicar `shoplab-contracts` 1.3.0
+- [X] T054 [P] [US4] Escribir `MONOT/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClientTests.java` (WireMock) con la tabla de [chat-client.md](contracts/chat-client.md): orden, sin texto, título vacío, vacío, `4xx`/`5xx`/conexión/tiempo/cuerpo ilegible → `SLHD_CHAT_00004`, sin reintentos, `X-Request-Id`, `traceparent`, codificación de la consulta
+- [X] T055 [P] [US4] Cambiar `MONOT/chat/infrastructure/out/knowledge/ChatRetrievalContractConsumerTest.java` a los stubs `com.shoplab:shoplab-retrieval-service` con versión fijada, y dar a `.github/workflows/ci.yml` el acceso decidido en T003
+- [X] T056 [US4] Añadir `shoplab-contracts` 1.3.0 como dependencia en `backend/pom.xml`; crear `MONO/chat/config/RetrievalClientConfig.java` y `RetrievalClientProperties.java` (`base-url`, `timeout` 15 s); reescribir `MONO/chat/infrastructure/out/knowledge/HttpKnowledgeSearchClient.java` sobre la interfaz generada
+- [X] T057 [US4] Propagar `traceparent` entrante junto a `X-Request-Id` (`MONO/shared/infrastructure/in/rest/filter/RequestIdFilter.java`) y declarar las propiedades en `backend/src/main/resources/application.yml` hasta que T054 y T055 pasen
 - [ ] T058 [US4] APROBACIÓN: fusionar y publicar la release A del monolito; comprobar en dev que el chat sigue igual y subir `BACKEND_IMAGE` en `infra/docker-compose.yml`
 - [ ] T059 [US4] En local, con `mode=http` hacia `retrieval-service`, comprobar citas, servicio caído (`SLHD_CHAT_00004`), cortesías y la consulta larga (quickstart paso 6)
 

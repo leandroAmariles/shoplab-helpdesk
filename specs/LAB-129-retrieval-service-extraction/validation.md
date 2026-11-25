@@ -61,6 +61,19 @@ probados en Bash y PowerShell. **La migración de los datos reales está pendien
 
 ## 6. Fallos del chat (US4)
 
+### Releases del servicio (T017, T045, T052, 2026-11-25)
+
+- `v0.1.0` (esqueleto): imagen publicada, firmada y descargable sin credenciales (SC-008). Despliegue fallido por
+  falta de `DEPLOY_APP_PRIVATE_KEY`.
+- `v0.2.0` (módulo y cerrojo): imagen y stubs publicados sin release del monolito. El despliegue en dev sigue
+  pendiente, así que SC-004 no está comprobado del todo.
+
+### Cliente del chat (T053–T057, 2026-11-25)
+
+- `shoplab-contracts` 1.3.0 publicado. `clean verify` excluyendo las dos clases de prompts: 1648 pruebas, 0 fallos,
+  cobertura 97 %. `PromptDefaultsTests` y `PromptInjectionTests` fallan también en `main` en esta copia de Windows
+  (saltos CRLF). `LangfuseChatTraceTests` falló una vez de cuatro: intermitente.
+
 ## 7. Reversión (SC-007)
 
 ## 8. Dos instancias (US5, SC-006)
