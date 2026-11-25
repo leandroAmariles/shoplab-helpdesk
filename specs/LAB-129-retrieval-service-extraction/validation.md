@@ -1,0 +1,49 @@
+# Validación: LAB-129
+
+Evidencia de cada paso de [quickstart.md](quickstart.md). Un paso sin resultado está pendiente.
+
+## Riesgos previos (T003, T004)
+
+- **Paquetes entre repositorios**: run 45678575081 de `shoplab-gateway`, rama temporal ya borrada: `BUILD SUCCESS`.
+- **Cliente generado**: proyecto de prueba con Boot 4.1.2 sobre el JAR modificado: 1 prueba, 0 fallos.
+
+## 1. Plataforma (US1, SC-008)
+
+### Plantilla (T005–T008, T012, T013)
+
+- `./mvnw verify` en verde en la plantilla y en `shoplab-retrieval-service` recién renombrado; cobertura 94 %.
+- Imagen construida con la credencial como secreto de construcción; arranca como UID 10001, `readiness` 200 y
+  `/api/x` sin token 404 (no 401).
+
+### Workflows (T009, T010)
+
+- Rama temporal de `shoplab-retrieval-service` apuntando a la rama de `shoplab-ci` (run 45680327003): compilación,
+  pruebas, cobertura, Qodana y Trivy en verde. Publicación y firma de la imagen: sin probar todavía.
+
+### PostgreSQL del compose (T024, T025, 2026-11-25)
+
+Proyecto aislado `lab129pg` con un archivo de entorno vacío; la configuración resuelta usa `postgres:17.7` en
+`litellm-postgres` y `langfuse-postgres`.
+
+- Volúmenes nuevos: los dos sanos.
+- Copias de los volúmenes 17 existentes: los dos sanos (116 y 84 tablas). Los originales no se tocaron y los
+  volúmenes de prueba se borraron.
+- `postgres` (pgvector 16) no cambia: su valor por defecto ya era el de `.env`.
+
+## 2. Línea base (FR-023)
+
+## 3. Migración (SC-002)
+
+## 4. Paridad en paralelo (US2)
+
+## 5. Corte (US3, SC-001, SC-003)
+
+## 6. Fallos del chat (US4)
+
+## 7. Reversión (SC-007)
+
+## 8. Dos instancias (US5, SC-006)
+
+## 9. Latencia (SC-005)
+
+## 10. Despliegue independiente y retirada (SC-004, FR-021)
