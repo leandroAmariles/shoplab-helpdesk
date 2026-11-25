@@ -147,7 +147,9 @@ jobs:
           # (LAB-129). backend/qodana.yaml copies the Maven settings that read it.
           args: --project-dir,backend,--baseline,qodana.sarif.json,-e,GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           pr-mode: false
-          use-caches: true
+          # The cache keeps the project model but not the Maven repository of the container: a restored model points at
+          # jars that are not there and nothing resolves (LAB-129).
+          use-caches: false
           upload-result: true
           artifact-name: qodana-report
           use-annotations: ${{ env.CAN_WRITE }}
