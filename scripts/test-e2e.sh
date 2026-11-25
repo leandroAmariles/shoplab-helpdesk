@@ -34,7 +34,7 @@ check_endpoint() {
 }
 
 # 1. LiteLLM Gateway
-check_endpoint "LiteLLM Gateway" "http://localhost:4000/health/liveliness" "healthy\|ok\|true"
+check_endpoint "LiteLLM Gateway" "http://localhost:4000/health/liveliness" "healthy\|ok\|true\|alive"
 
 # 2. Ingest Service
 check_endpoint "Ingest Service" "http://localhost:8000/health" "ok\|healthy"

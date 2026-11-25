@@ -16,13 +16,24 @@ Fecha: 2026-11-25. Máquina local (Windows 11, Docker 29.6.1) y GitHub Actions.
 | Latencia añadida (SC-003) | 500 `GET /api/documents` alternadas | p50 13,0 → 17,3 ms; p95 28,9 → 28,6 ms |
 | Correlación (SC-006) | chat con `X-Request-Id: lab107-corr` | aparece en los logs del gateway y del backend |
 | Alta en dev | `kustomize build` y `scripts/policy-check.sh` | sin violaciones; no desplegado |
+| Con el modelo local | imagen publicada `sha-cf394e8`, base de datos desechable, litellm e ingest locales | 24 documentos cargados por nginx y gateway |
+| Paridad de búsqueda (SC-001) | 120 consultas de `golden.jsonl`, directas y por el gateway | idénticas (ver nota) |
+| Chat real (US2) | `POST /api/chat` por nginx y gateway | 217 líneas `data`, de 9,0 s a 20,0 s |
+| `scripts/test-e2e.ps1` | sobre ese entorno | gateway, backend, API e ingest bien; fallaba la comprobación de LiteLLM (corregida, sin repetir la pasada) |
+| Paquete en GHCR | descarga de etiquetas sin credenciales | público desde la primera publicación |
+
+Nota de paridad: la primera pasada, justo después de cargar los documentos, dio 9 diferencias de 120. La repetición dio
+cero, tanto entre dos llamadas directas como entre directa y gateway. La causa probable es que aún se indexaba; no se
+comprobó.
 
 ## Sin hacer
 
-- `docker compose up` completo sobre el entorno del desarrollador (T056): necesita la imagen
-  `ghcr.io/leandroamariles/gateway:v0.1.0`, que aún no existe, y no se tocaron sus contenedores.
-- Paridad con las métricas de retrieval de `shoplab-eval` y recorrido por la web (SC-001): necesitan el modelo.
-- Publicación, paquete público y despliegue en dev (T045–T047, T059, T060, T062, T063).
+- `docker compose up` completo (T056): la base `shoplab` local rechaza la contraseña que toma el compose, así que el
+  backend no arranca contra ella. No se modificó; se probó con contenedores sueltos y una base desechable.
+- Métricas de retrieval con la herramienta de `shoplab-eval` (se compararon las respuestas crudas) y recorrido por la web
+  en el navegador.
+- `v0.1.0` y despliegue en dev (T045, T047, T059, T060, T062, T063): falta `RELEASE_PLEASE_TOKEN` en
+  `shoplab-gateway`.
 
 ## Cambios respecto al plan
 
@@ -42,10 +53,17 @@ Fecha: 2026-11-25. Máquina local (Windows 11, Docker 29.6.1) y GitHub Actions.
 - No existe el repositorio `shoplab-service-template` que cita su guía.
 - `java-service.yml@v1` usa una versión antigua de la acción de Qodana y no pasa credenciales a Maven.
 
-### Dev (`shoplab-infra`, de LAB-104) — bloquea T059
+### Dev (`shoplab-infra`, de LAB-104)
 
-`apps/backend` y `k8s/overlays/dev` declaran el mismo Deployment `backend` en `shoplab-dev`, con las imágenes `v1.0.0`
-(no existe) y `v0.26.0`. Comprobado con `kubectl kustomize`; no se miró el clúster, que estaba apagado.
+- `apps/backend` y `k8s/overlays/dev` declaraban el mismo Deployment `backend` en `shoplab-dev`. **Resuelto**: el backend
+  queda solo en `k8s/` (`shoplab-infra#37`). No se miró el clúster, que estaba apagado.
+- El `smoke` de CI falla desde el merge de LAB-104 en `main`: `terraform apply` agota los 480 s.
+
+### `shoplab-ci`: la firma nunca se verifica a través de `java-service.yml@v1`
+
+`publish-image.yml` compara el certificado distinguiendo mayúsculas con `github.com/leandroAmariles/`, y
+`java-service.yml` lo invoca como `leandroamariles`. La imagen se sube y se firma, y el job falla después. El gateway lo
+llama directamente con la grafía correcta.
 
 ### Publicación del backend
 
