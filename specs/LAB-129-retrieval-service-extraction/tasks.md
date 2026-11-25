@@ -76,9 +76,9 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 ### `smoke` de shoplab-infra (research D-10)
 
-- [ ] T019 [US1] Reproducir el fallo en un PR de `shoplab-infra` y confirmar o descartar la hipótesis del `429` al bajar `registry:2`; anotar la evidencia en research D-10
-- [ ] T020 [US1] Intento 1: bajar `registry:2` desde `mirror.gcr.io`, fijarlo en `shoplab-infra/versions.env` y etiquetarlo antes de `up.sh` en `shoplab-infra/scripts/smoke.sh`; no subir `APPLY_TIMEOUT`
-- [ ] T021 [US1] Solo si T020 no da verde: intento 2 según el log, en `shoplab-infra/scripts/` o `shoplab-infra/.github/workflows/ci.yml`
+- [X] T019 [US1] Reproducir el fallo en un PR de `shoplab-infra` y confirmar o descartar la hipótesis del `429` al bajar `registry:2`; anotar la evidencia en research D-10
+- [X] T020 [US1] Intento 1: bajar `registry:2` desde `mirror.gcr.io`, fijarlo en `shoplab-infra/versions.env` y etiquetarlo antes de `up.sh` en `shoplab-infra/scripts/smoke.sh`; no subir `APPLY_TIMEOUT`
+- [X] T021 [US1] Solo si T020 no da verde: intento 2 según el log, en `shoplab-infra/scripts/` o `shoplab-infra/.github/workflows/ci.yml`
 - [ ] T022 [US1] Dar el `smoke` por solucionado únicamente con dos ejecuciones seguidas en verde. Si no, quitar de `shoplab-infra/.github/workflows/ci.yml` el job `smoke`, su entrada en `needs` de `ci-gate`, la salida `smoke`, el paso «Decide whether smoke is needed» y `fetch-depth: 0`; borrar `shoplab-infra/scripts/is-dev-deploy-only.sh` y `shoplab-infra/scripts/tests/dev-deploy-only.test.sh` y su llamada en `shoplab-infra/Makefile` (`test-ci-scripts`); conservar `scripts/smoke.sh` y `make smoke`
 - [ ] T023 [US1] Actualizar `shoplab-infra/README.md` y `shoplab-infra/docs/gitops.md` con el resultado de T022 y, APROBACIÓN, fusionar el PR con `ci-gate` en verde
 

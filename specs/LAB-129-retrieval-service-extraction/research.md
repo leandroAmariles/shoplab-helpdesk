@@ -105,6 +105,10 @@ dentro de `docker build`, y `publish-image.yml` no pasaba credencial. Se pasa co
   `publish-image.yml`, comparar la identidad del certificado sin distinguir mayúsculas (`(?i)`); en
   `java-service.yml`, credenciales Maven (`server-id: github-shoplab-contracts`) y Qodana `v2026.2.2`.
 
+Hallado en la CI del código ya trasladado: con el `mvn` del runner, un proyecto con la extensión de Spring Cloud
+Contract falla al descargar (`ClassCastException: BasicAuthCache`). `java-service.yml` usa `./mvnw` si existe; en verde
+en el run 45684032699. En local no se reprodujo.
+
 ## D-10 `smoke` de shoplab-infra
 
 - **Observado**: en el run 45667096942, `aws_eks_cluster` sigue «Still creating» más de 8 min en los dos intentos,
@@ -136,6 +140,10 @@ dentro de `docker build`, y `publish-image.yml` no pasaba credencial. Se pasa co
   `RELEASE_PLEASE_TOKEN`. El repositorio nuevo necesita los tres; los valores secretos no se pueden copiar desde GitHub.
 - La GitHub App de despliegue no se instala en el repositorio nuevo: `deploy.yml` pide un token limitado a
   `shoplab-infra`, donde ya está instalada. El paquete de la imagen sí hay que hacerlo público, como el del gateway.
+
+**Resultado (2026-11-25)**: hipótesis del `apply` **confirmada** (run 45680227212: con `registry:2` presente el clúster
+se crea en 13 s). Quedó el `destroy`: `argocd_initial_app` agota la desinstalación. Intento 2: soltar los *finalizers*
+de Argo CD antes de destruir (hipótesis: el borrado en cascada espera recursos que en CI no terminan).
 
 ## D-11 PostgreSQL del compose
 
