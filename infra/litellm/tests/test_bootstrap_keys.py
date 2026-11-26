@@ -105,7 +105,7 @@ def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsy
     ]
     assert "sk-shoplab" not in " ".join(out)
     backend = gateway.keys["sk-shoplab-backend-local"]
-    assert backend["models"] == ["chat", "chat-fallback", "embeddings"]
+    assert backend["models"] == ["chat", "chat-fallback"]
     assert backend["max_budget"] == 5.0
     assert backend["budget_duration"] == "1d"
 
@@ -157,7 +157,7 @@ def test_ingest_has_no_model_access_instead_of_an_empty_list(gateway, env):
 
 def test_cloud_model_is_allowed_only_with_a_provider_key(gateway, env):
     _run({**env, "CLOUD_PROVIDER_API_KEY": "provider-key"})
-    assert gateway.keys["sk-shoplab-backend-local"]["models"] == ["chat", "chat-cloud", "chat-fallback", "embeddings"]
+    assert gateway.keys["sk-shoplab-backend-local"]["models"] == ["chat", "chat-cloud", "chat-fallback"]
 
 
 def test_unknown_keys_are_never_deleted(gateway, env):

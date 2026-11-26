@@ -1,7 +1,7 @@
 # Configuracion del gateway de modelos (LAB-84). Es una PLANTILLA: entrypoint.sh la renderiza con render_config.py
 # (expande ${VAR:-defecto}; las referencias os.environ/NOMBRE las resuelve LiteLLM y nunca quedan en el archivo).
 #
-# El backend solo pide los nombres logicos `chat` y `embeddings`. Cambiar el modelo real se hace aqui o con las
+# El backend solo pide el nombre logico `chat`, y retrieval-service `embeddings`. Cambiar el modelo real se hace aqui o con las
 # variables LITELLM_*, y se aplica recreando/reiniciando solo el gateway (FR-006, FR-007).
 # Los precios son de REFERENCIA (no representan dinero real): permiten medir y presupuestar tambien modelos locales
 # (FR-022). Editables con las variables LITELLM_*_INPUT_COST / LITELLM_*_OUTPUT_COST.
