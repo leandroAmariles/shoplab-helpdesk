@@ -61,7 +61,7 @@ comparar: **en el corte se repite con `--replace`**.
 Scripts probados contra un PostgreSQL desechable (`bash infra/postgres/tests/test-retrieval-migration.sh`,
 2026-11-25): provisión repetible; el rol `retrieval` no entra en `shoplab`; copia idéntica con las tablas a su
 nombre; sin `--replace` se niega; una fila alterada hace fallar la verificación; el origen no cambia. Envoltorios
-probados en Bash y PowerShell. **La migración de los datos reales está pendiente (T046).**
+probados en Bash y PowerShell.
 
 ## 4. Paridad en paralelo (US2)
 
@@ -76,7 +76,7 @@ idénticas entre monolito y servicio (listado, cinco búsquedas, consulta vacía
 
 Proyecto aislado: `retrieval-db-init` termina en 0, `retrieval-service` v0.2.0 queda sano, `GET /api/documents`
 responde `[] 200`, crea `document`, `chunk`, `flyway_schema_history` e `indexing_lock`, sin errores en el log.
-**La comparación con el monolito sobre datos migrados está pendiente (T046).**
+La comparación sobre datos migrados se hizo en dev (sección 4).
 
 ### Release A del monolito (T058, 2026-11-25)
 
@@ -84,6 +84,20 @@ responde `[] 200`, crea `document`, `chunk`, `flyway_schema_history` e `indexing
 (`make up`): el chat responde `200` con 4 fragmentos de contexto, en modo `in-process`.
 
 ## 5. Corte (US3, SC-001, SC-003)
+
+2026-11-25 (T061–T063):
+
+- Copia de seguridad de `shoplab` fuera del repositorio y migración final con `--replace`: sin diferencias (25
+  documentos, 143 fragmentos, `bge-m3`). `retrieval-service` reiniciado.
+- Corte en `shoplab-infra` (commit `66ed236`).
+- **Incidente**: el relevo del backend quedó en `Pending` por falta de CPU en el nodo. Hasta que se aplicó
+  `maxSurge: 0` (`df72c12`), unos veinte minutos, el chat siguió leyendo el módulo del monolito mientras documentos y
+  búsqueda ya iban al servicio.
+- 2026-11-26, con el backend 0.30.0: `GET /api/documents` por el gateway responde `200` con
+  `routeId=documents destination=http://retrieval-service:8080`, y una pregunta al chat responde `200` con eventos
+  `sources`, `token` y `done`.
+- **Sin comprobar (T064)**: la ruta `knowledge` en el registro, subir un documento desde `/documentos` y que el chat lo
+  cite, y repetir la evaluación de LAB-28. SC-001 y SC-003 quedan sin comprobar después del corte.
 
 ## 6. Fallos del chat (US4)
 
@@ -102,6 +116,8 @@ responde `[] 200`, crea `document`, `chunk`, `flyway_schema_history` e `indexing
 
 ## 7. Reversión (SC-007)
 
+**No ensayada (T065).** SC-007 sin comprobar. Desde la release B, volver atrás exige además la imagen `v0.29.0`.
+
 ## 8. Dos instancias (US5, SC-006)
 
 `IndexingAcrossInstancesIntegrationTest` y `JdbcIndexingLockAdapterTest` (2026-11-25): con dos instancias cada
@@ -110,8 +126,22 @@ detiene sin guardar. `./mvnw clean verify`: 281 pruebas, 0 fallos, cobertura 97 
 
 ## 9. Latencia (SC-005)
 
+Antes del corte, en dev: etapa de recuperación del chat con mediana de 53 ms y p95 de 57 ms. **No se midió después**,
+así que SC-005 queda sin comprobar.
+
 ## 10. Despliegue independiente y retirada (SC-004, FR-021)
 
 T052/SC-004, 2026-11-25: con la llave cargada, el job de despliegue de `shoplab-retrieval-service` actualizó dev
 (commit `2d459ba` de `shoplab-infra`) sin release del monolito. La versión ya era la 0.2.0, así que se comprobó el
-camino, no un cambio de comportamiento. La retirada del módulo está pendiente.
+camino, no un cambio de comportamiento. 
+
+### Retirada del módulo (T066–T073, 2026-11-26)
+
+- `./mvnw clean verify` en local: 1382 pruebas, 0 fallos, excluyendo `PromptInjectionTests` y `PromptDefaultsTests`.
+  `docs/modulos/` regenerado.
+- `shoplab-helpdesk` #186, release 0.30.0 (#187) desplegada en dev; compose y claves en #188; limpieza en
+  `shoplab-infra` #44.
+- Compose local: `retrieval-service` y backend 0.30.0 sanos; el chat responde con fuentes.
+- En la CI de `main` hubo dos fallos que no se repitieron con el mismo árbol: Qodana (70 hallazgos y avisos de
+  *sanity check*; la CI del PR había dado 0) y la descarga del POM padre desde Maven Central (`429`).
+- **Sin comprobar (T074)**: la evaluación de LAB-28 tras la retirada.
