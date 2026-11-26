@@ -97,7 +97,7 @@ trazas Langfuse y stubs publicados.
 - [x] T024 [US1] Actualizar `infra/docker-compose.yml` añadiendo `chat-db-init`, `chat-service` (puerto host `${CHAT_PORT:-8083}:8080`, imagen fijada), `LITELLM_KEY_CHAT` en `litellm-bootstrap`, y actualizar `infra/.env.example` e `infra/docker-compose.override.yml.example`
 - [x] T025 [P] [US1] Añadir `shoplab-chat-service` a `scripts/clone-all.ps1`, al objetivo `clone-all` de `Makefile` y al scrape de `infra/observability/prometheus/prometheus.yml`
 - [x] T026 [US1] Completar `shoplab-infra/apps/chat-service/base/` y `overlays/dev/` (DB `chat`, `retrieval-service`, LiteLLM `chat-dev`, Langfuse prompts y tracing, secretos `ExternalSecret`, sondas y `newTag` alineado con T018) y añadir la clave `chat-dev` en `shoplab-infra/k8s/base/litellm/`
-- [ ] T027 [US1] MANUAL: añadir los secretos de `chat-service` (contraseña DB `chat`, `LITELLM_KEY_CHAT`, claves de Langfuse y `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN`) a `secrets.auto.tfvars` / Secrets Manager
+- [x] T027 [US1] MANUAL: añadir los secretos de `chat-service` (contraseña DB `chat`, `LITELLM_KEY_CHAT`, claves de Langfuse y `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN`) a `secrets.auto.tfvars` / Secrets Manager
 - [x] T028 [US1] APROBACIÓN: fusionar el PR de alta de `chat-service` en `shoplab-infra` (sin mover rutas del gateway aún) y verificar sincronización sana en `shoplab-dev` (anotar en `validation.md`)
 
 **Checkpoint**: `chat-service` está sano en local y en `dev`, con su base, clave LiteLLM y conectividad a `retrieval-service` y Langfuse, aún sin tráfico de usuarios.
