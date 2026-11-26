@@ -55,7 +55,25 @@ Correcciones que salieron del ensayo:
 - `infra/docker-compose.yml`: al monolito le faltaba `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http` (dev sí lo fija).
 - `contracts/http-api.md`: una propiedad desconocida es `400 SLHD_GENE_00002`, no `422 SLHD_EVAL_00002`.
 
-## Estado real antes del corte
+## Dev: línea base y pasada previa de migración (2026-11-26)
+
+Entorno de dev levantado con `make up`. El historial se alimentó con dos mediciones reales de recuperación
+(`lab130-base-1` y `lab130-base-2`, 76 casos cada una) hechas con `shoplab-eval` por el stack local de compose, que
+escribe en el mismo PostgreSQL que dev (en dev las claves de LiteLLM aún no existían).
+
+- Rol y base `eval` creados con `eval-db-init`; `eval-service` quedó sano en dev.
+- Línea base en [`baseline/monolith/`](baseline/monolith/) (respuestas HTTP del monolito de dev y `db-counts.txt`).
+- Pasada previa (el guardado **no** estaba suspendido todavía): `migrate-eval` y `verify-eval-migration` con exit 0
+  (`eval_run` 2, `eval_case` 76, `eval_result` 152; MD5 y secuencias iguales).
+- `eval-service` de dev frente a la línea base: 0 diferencias.
+
+### Bloqueo de capacidad en dev
+
+El nodo tiene 1930m de CPU asignables y 1920m pedidos. `eval-service` pide 100m, los mismos que ClickHouse: ClickHouse
+quedó `Pending`, el sync de `shoplab-dev` quedó en `Running` esperando su salud, y el hook `PostSync`
+`litellm-bootstrap-keys` no creó las claves virtuales (retrieval respondía `503`, token no encontrado).
+
+## Estado antes de levantar dev
 
 - **El historial real está vacío**: `eval_run`, `eval_case` y `eval_result` tienen 0 filas en la base `shoplab` del
   host, que es la que usa dev. Con eso SC-001 se cumple sin comprobar nada y `compare` no tiene ids. Antes de T039

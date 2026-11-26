@@ -130,7 +130,7 @@ el stub parado, `503 SLHD_EVAL_00005`; el guardado y el historial siguen funcion
 
 ### Línea base y paridad
 
-- [ ] T039 [US3] Congelar en `specs/LAB-130-eval-service-extraction/baseline/monolith/` la salida del monolito: recuentos y MD5 por tabla, y las respuestas de `GET /api/eval/history/runs`, `/runs/{id}` y `/compare` para un conjunto fijo de ids (FR-026, research D-10)
+- [X] T039 [US3] Congelar en `specs/LAB-130-eval-service-extraction/baseline/monolith/` la salida del monolito: recuentos y MD5 por tabla, y las respuestas de `GET /api/eval/history/runs`, `/runs/{id}` y `/compare` para un conjunto fijo de ids (FR-026, research D-10)
 - [X] T040 [US3] Script `scripts/compare-eval-baseline.{sh,ps1}` que repite las peticiones contra el servicio y compara con la línea base, ignorando solo `traceUrl` si cambia la plantilla; probarlo contra el propio monolito (debe dar 0 diferencias)
 
 ### Despliegue en dev
