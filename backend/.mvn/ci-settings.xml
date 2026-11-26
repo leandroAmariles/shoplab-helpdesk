@@ -13,6 +13,11 @@
             <username>x-access-token</username>
             <password>${env.GITHUB_TOKEN}</password>
         </server>
+        <server>
+            <id>github-shoplab-chat</id>
+            <username>x-access-token</username>
+            <password>${env.GITHUB_TOKEN}</password>
+        </server>
         <!-- distributionManagement: publishing the stubs of this repository. -->
         <server>
             <id>github</id>

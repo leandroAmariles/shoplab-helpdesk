@@ -1,75 +1,71 @@
 package com.shoplab.helpdesk.eval.infrastructure.out.chat;
 
+import com.shoplab.contracts.chat.client.AssistantSettingsApi;
+import com.shoplab.contracts.chat.model.AssistantSettingsResponse;
+import com.shoplab.contracts.chat.model.ServedPromptResponse;
 import com.shoplab.helpdesk.eval.application.port.out.AssistantSettingsPort;
+import com.shoplab.helpdesk.eval.config.ChatSettingsClientProperties;
+import com.shoplab.helpdesk.eval.domain.exception.EvalStoreUnavailableException;
 import com.shoplab.helpdesk.eval.domain.model.AssistantSettingsSnapshot;
 import com.shoplab.helpdesk.eval.domain.model.PromptVersion;
 import com.shoplab.helpdesk.eval.domain.model.RetrievalConfig;
 import com.shoplab.helpdesk.eval.domain.model.enums.PromptSource;
+import java.time.Duration;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 /**
- * Reactive HTTP client for {@code GET /api/assistant/settings} on {@code chat}.
- * Enabled via {@code shoplab.chat.settings.client.mode=http} for service extraction (LAB-106 / LAB-130).
+ * Reactive HTTP client for {@code GET /api/assistant/settings} on {@code chat-service} (LAB-59).
+ * Enabled via {@code shoplab.chat.settings.client.mode=http} during expand-and-contract cutover.
  */
 @Component
 @ConditionalOnProperty(name = "shoplab.chat.settings.client.mode", havingValue = "http")
 public class HttpAssistantSettingsClient implements AssistantSettingsPort {
 
-    private final WebClient webClient;
+    private final AssistantSettingsApi settingsApi;
+    private final Duration timeout;
 
     @Autowired
-    public HttpAssistantSettingsClient(
-            WebClient.Builder webClientBuilder,
-            @Value("${shoplab.chat.settings.client.base-url:http://localhost:8080}") String baseUrl) {
-        this(webClientBuilder.baseUrl(baseUrl).build());
+    public HttpAssistantSettingsClient(AssistantSettingsApi settingsApi, ChatSettingsClientProperties properties) {
+        this(settingsApi, properties.timeout());
     }
 
-    public HttpAssistantSettingsClient(WebClient webClient) {
-        this.webClient = webClient;
+    public HttpAssistantSettingsClient(AssistantSettingsApi settingsApi, Duration timeout) {
+        this.settingsApi = settingsApi;
+        this.timeout = timeout;
     }
 
     @Override
     public Mono<AssistantSettingsSnapshot> current() {
-        return webClient.get()
-                .uri("/api/assistant/settings")
-                .retrieve()
-                .bodyToMono(AssistantSettingsApiResponse.class)
-                .map(HttpAssistantSettingsClient::toSnapshot);
+        return Mono.defer(settingsApi::getAssistantSettings)
+                .timeout(timeout)
+                .flatMap(response -> Mono.justOrEmpty(response.getBody()))
+                .switchIfEmpty(Mono.error(() -> new IllegalStateException("Chat settings answered without a body")))
+                .map(HttpAssistantSettingsClient::toSnapshot)
+                .onErrorMap(EvalStoreUnavailableException::new);
     }
 
-    private static AssistantSettingsSnapshot toSnapshot(AssistantSettingsApiResponse response) {
-        List<PromptVersion> prompts = response.prompts() == null
+    private static AssistantSettingsSnapshot toSnapshot(AssistantSettingsResponse response) {
+        List<PromptVersion> prompts = response.getPrompts() == null
                 ? List.of()
-                : response.prompts().stream().map(HttpAssistantSettingsClient::toPrompt).toList();
+                : response.getPrompts().stream().map(HttpAssistantSettingsClient::toPrompt).toList();
         return new AssistantSettingsSnapshot(
                 new RetrievalConfig(
-                        response.topK(),
-                        response.similarityThreshold(),
-                        response.maxContextCharacters(),
+                        response.getTopK(),
+                        response.getSimilarityThreshold(),
+                        response.getMaxContextCharacters(),
                         null,
                         null),
                 prompts);
     }
 
-    private static PromptVersion toPrompt(ServedPromptApiResponse prompt) {
-        PromptSource source = PromptSource.fromValue(prompt.source())
+    private static PromptVersion toPrompt(ServedPromptResponse prompt) {
+        String sourceValue = prompt.getSource() == null ? null : prompt.getSource().getValue();
+        PromptSource source = PromptSource.fromValue(sourceValue)
                 .orElseThrow(() -> new IllegalStateException("The chat published an unknown prompt source"));
-        return new PromptVersion(prompt.name(), prompt.version(), source, false);
-    }
-
-    private record AssistantSettingsApiResponse(
-            int topK,
-            double similarityThreshold,
-            int maxContextCharacters,
-            List<ServedPromptApiResponse> prompts) {
-    }
-
-    private record ServedPromptApiResponse(String name, Integer version, String source) {
+        return new PromptVersion(prompt.getName(), prompt.getVersion(), source, false);
     }
 }

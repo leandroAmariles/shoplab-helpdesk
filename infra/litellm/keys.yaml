@@ -18,6 +18,16 @@ keys:
     models_when:
       - env: CLOUD_PROVIDER_API_KEY
         models: [chat-cloud]
+  # chat-service (LAB-59): modelos de conversación (chat, fallback y cloud condicional).
+  - alias: chat-${GATEWAY_ENVIRONMENT}
+    consumer: chat
+    key_env: LITELLM_KEY_CHAT
+    max_budget: 5.00
+    budget_duration: 1d
+    models: [chat, chat-fallback]
+    models_when:
+      - env: CLOUD_PROVIDER_API_KEY
+        models: [chat-cloud]
   # retrieval-service (LAB-129): solo embeddings, de los documentos y de las consultas.
   - alias: retrieval-${GATEWAY_ENVIRONMENT}
     consumer: retrieval

@@ -29,6 +29,12 @@ server:
 shoplab:
   chat:
     max-message-length: 4000
+    # Assistant settings client for eval -> chat-service (LAB-59). Defaults to in-process until cutover.
+    settings:
+      client:
+        mode: ${SHOPLAB_CHAT_SETTINGS_CLIENT_MODE:in-process}
+        base-url: ${SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL:http://localhost:8083}
+        timeout: ${SHOPLAB_CHAT_SETTINGS_CLIENT_TIMEOUT:5s}
     gateway:
       # The name under which the gateway reports an answer of its primary model (the model group, `chat`); the group
       # of the fallback model is reported under another name, which is how the trace marks a fallback. Blank means
