@@ -130,7 +130,7 @@ cd backend
 curl http://localhost:8080/actuator/health
 ```
 
-Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos por contexto de negocio (`chat`, `retrieval`, `orders`, `catalog`, `tickets`, cada uno dueño de su esquema de datos, y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests` y `ModuleArchitectureTests`; la guía está en [docs/modulos.md](docs/modulos.md) y la decisión en `docs/adr/0015-limites-de-contexto-y-repositorios.md`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
+Con un JDK inferior a 21 la construcción falla con un mensaje que indica la versión requerida. Los módulos por contexto de negocio (`chat`, `orders`, `catalog`, `tickets`, `eval`, cada uno dueño de su esquema de datos, y el módulo abierto `shared` con los errores comunes, ver `docs/adr/0010-modulo-shared-errores.md`) y sus fronteras se verifican en `ModularityTests` y `ModuleArchitectureTests`; la guía está en [docs/modulos.md](docs/modulos.md) y la decisión en `docs/adr/0015-limites-de-contexto-y-repositorios.md`; la decisión de plataforma está en `docs/adr/0004-spring-boot-4-spring-ai-2.md`. El chat en streaming (`POST /api/chat`) se prueba como se explica en [docs/chat-streaming.md](docs/chat-streaming.md).
 
 ### Desarrollo sobre Frontend (Angular en `../shoplab-frontend`)
 

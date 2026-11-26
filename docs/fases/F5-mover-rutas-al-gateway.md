@@ -38,6 +38,8 @@ Un prefijo nuevo se declara igual, con su prefijo:
 
 ## En local
 
+Desde LAB-129, `documents` y `knowledge` ya van a `retrieval-service` por defecto en el compose.
+
 ```bash
 SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI=http://retrieval-service:8080 \
   docker compose -f infra/docker-compose.yml up -d --no-deps gateway
@@ -61,6 +63,19 @@ kubectl -n shoplab-dev logs deploy/gateway | grep "access requestId"            
 
 Quitar la variable (o revertir el commit en `shoplab-infra`). El prefijo vuelve al monolito. Los datos escritos en el
 servicio mientras estuvo activo **no** vuelven solos: cada historia de extracción define cómo tratarlos.
+
+## Retirar el esquema antiguo de `retrieval`
+
+Tras LAB-129 el esquema `retrieval` de la base `shoplab` queda sin uso, pero ninguna release ni migración lo borra.
+Es un paso manual, solo después de comprobar en `dev` la versión del backend sin el módulo, y con una copia previa:
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T postgres pg_dump -U shoplab -Fc shoplab > shoplab-antes.dump
+docker compose -f infra/docker-compose.yml exec -T postgres \
+  psql -U shoplab -d shoplab -c 'DROP SCHEMA retrieval CASCADE'
+```
+
+Después ya no se puede volver a una versión del backend con el módulo y sus datos.
 
 ## Si algo falla
 

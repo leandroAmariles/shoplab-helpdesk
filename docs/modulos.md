@@ -10,7 +10,6 @@ se describe en [mapa-servicios.md](mapa-servicios.md) ([ADR-0031](adr/0031-extra
 | Módulo | Contexto | Esquema | Migraciones |
 |---|---|---|---|
 | `chat` | Conversación con el asistente (streaming SSE) | `chat` | `db/migration/chat` |
-| `retrieval` | Recuperación sobre la base de conocimiento | `retrieval` | `db/migration/retrieval` |
 | `orders` | Pedidos | `orders` | `db/migration/orders` |
 | `catalog` | Catálogo de productos | `catalog` | `db/migration/catalog` |
 | `tickets` | Tickets de soporte | `tickets` | `db/migration/tickets` |
@@ -54,51 +53,23 @@ CI falla si `docs/modulos/` no coincide con lo que genera el código.
 3. Las tablas nuevas van en una migración `V<n>__<descripcion>.sql` de ese módulo, solo sobre su propio esquema.
 4. Regenerar `docs/modulos/` (comando de arriba).
 
-## Datos de `retrieval`
+## Base de conocimiento (fuera del monolito)
 
-`retrieval.document` (un archivo fuente del corpus) y `retrieval.chunk` (un fragmento con su vector de 1024
-dimensiones, el modelo de embeddings que lo generó y metadatos JSONB) los crea
-`db/migration/retrieval/V2__knowledge_base_tables.sql` (LAB-19). Solo `retrieval` los lee y escribe; el resto de
-módulos guarda, como mucho, el `id` de un documento o chunk. `ingest` no tiene credenciales de base de datos: entrega
-su salida a `retrieval`.
+Desde LAB-129 la base de conocimiento vive en `shoplab-retrieval-service`, con su propia base de datos
+([ADR-0033](adr/0033-extraccion-de-retrieval-service.md)): la ingesta, los embeddings, la búsqueda y
+`/api/documents` son suyos. `chat` la consulta por HTTP desde `HttpKnowledgeSearchClient`, con el cliente generado de
+`shoplab-contracts`, y traduce la respuesta a su propio `ContextFragment`
+(`SHOPLAB_RETRIEVAL_CLIENT_BASE_URL`, `SHOPLAB_RETRIEVAL_CLIENT_TIMEOUT`). El esquema `retrieval` de la base del
+monolito quedó sin uso.
 
-**Ingesta (LAB-20).** El caso de uso `IngestDocumentServicePort` de `retrieval` envía el documento (PDF o Markdown) a
-`POST /ingest` del servicio `ingest` (`shoplab.retrieval.ingest.*`; contrato en `ingest/openapi.json`, ADR-0016) y
-guarda el resultado en una transacción: una fila en `document` por origen (la reingesta conserva su `id` y reemplaza
-sus chunks) y una por chunk en `chunk`. Los chunks se guardan **sin vector**: `V3__chunk_embedding_optional.sql` hace
-opcionales `embedding` y `embedding_model` (siempre los dos a la vez) y la historia de embeddings (LAB-21) los completa;
-mientras tanto no participan en la búsqueda, que filtra `embedding IS NOT NULL`.
-
-**Embeddings (LAB-21, ADR-0017).** `retrieval` es el único que calcula embeddings, con el `EmbeddingModel` de Spring AI
-detrás de `EmbeddingPort`; `ingest` no conoce ningún modelo. `V4__document_index_status.sql` añade a `document` el
-estado de indexado (`PENDING`, `INDEXED`, `ERROR` con `index_error`). Tras una ingesta el documento queda `PENDING` y
-`IndexDocumentsServicePort.indexPending(retryFailed)` calcula los vectores por lotes y los guarda por documento, todo o
-nada, con el nombre del modelo real (`shoplab.retrieval.embedding.model-name` / `SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME`; el backend pide al gateway el nombre lógico `embeddings`). Para cambiar de
-modelo se cambia esa variable y se arranca con `shoplab.retrieval.embedding.reindex-on-startup=true` (o `force`), o se
-llama a `ReindexDocumentsServicePort.reindex(force)`; no se vuelve a llamar a `ingest`. `SearchChunksServicePort`
-calcula el embedding de la consulta y busca solo entre chunks con vector del modelo configurado. Ajustes en
-`shoplab.retrieval.embedding.*` (`batch-size`, `search-limit`, `auto-index`, `reindex-on-startup`).
-
-**Consumo desde `chat` (LAB-22, ADR-0018).** `retrieval.api` publica `KnowledgeSearchApi` (y `KnowledgeChunk`), la búsqueda
-por similitud entre los chunks del modelo configurado. `chat` es el único consumidor: la llama desde su adaptador de salida
-`KnowledgeSearchAdapter` y la traduce a su propio `ContextFragment`; no accede a las tablas ni a clases internas de
-`retrieval`.
+## Datos de `chat`
 
 **Memoria de la conversación (LAB-24, ADR-0020) y feedback de respuestas (LAB-33, ADR-0030).** El esquema `chat` tiene la tabla `conversation_turn` (una fila por turno:
 pregunta, respuesta completa, `turn_id` UUID público, `delivered_documents` y `trace_id`, por `conversation_id`), que solo lee y escribe `chat` a través de `ConversationMemoryPort`, y la tabla `feedback` (`V3__answer_feedback.sql`, relación 1:1 con `conversation_turn` mediante `turn_ref UNIQUE`, valoración `UP`/`DOWN`, comentario opcional de hasta 500 caracteres y campos de promoción a caso golden `promoted_case_id`, `promoted_case_jsonl` y `promoted_at`), gestionada por `FeedbackStorePort` (`JdbcFeedbackAdapter`).
 Contienen texto libre del cliente: no se registra ni se mide en logs o etiquetas de métricas, y todavía no tienen caducidad ni borrado.
 
-**Citas (LAB-23, ADR-0019).** `KnowledgeChunk` lleva también `title`, el título legible del documento (columna
-`document.title`, sin migración); `chat` lo entrega al cliente en el evento `sources` junto a la sección y el texto del
-fragmento.
-
-**Subida y lista de documentos (LAB-25, ADR-0021).** `retrieval` publica `POST /api/documents` (multipart, parte
-`file`, hasta `shoplab.retrieval.upload.max-bytes` = 10 MiB) y `GET /api/documents` en `DocumentController`. La subida
-reutiliza `IngestDocumentServicePort` (responde `201` si el documento es nuevo y `200` si reemplaza a uno del mismo
-nombre) y los embeddings los dispara el evento de siempre; el documento queda `PENDING`. La lista sale de
-`ListDocumentsServicePort` → `DocumentCatalogPort` (`JdbcDocumentCatalogAdapter`): estado, causa del último error y
-chunks guardados por documento, el más reciente primero. Métricas `retrieval.upload{outcome}` y
-`retrieval.documents{status}`. La pantalla es `/documentos` del frontend.
+**Citas (LAB-23, ADR-0019).** El título legible del documento llega con cada resultado de la búsqueda; `chat` lo
+entrega al cliente en el evento `sources` junto a la sección y el texto del fragmento.
 
 Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo, y la extensión `vector` vive en
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,

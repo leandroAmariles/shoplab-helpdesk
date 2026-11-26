@@ -1,0 +1,166 @@
+# LAB-129: casos HTTP de la extracción de retrieval-service. Escritos a partir de spec.md; no se han ejecutado como
+# conjunto. Los casos que suben documentos escriben en la base de conocimiento: en local es la misma que usa DEV.
+#
+# Sin cubrir aquí (no se alcanzan con una petición HTTP):
+#   FR-001..FR-007 (plantilla, workflows, smoke, compose, repositorio y pipeline)
+#   FR-011..FR-016 (base propia, migración, cerrojo con dos instancias, contrato y stubs)
+#   FR-019..FR-021, FR-023..FR-025 (despliegue, entorno local, retirada del módulo, mediciones y documentación)
+#   US3.4 (métricas de LAB-28, con eval/) y US5 (dos instancias, con las pruebas del servicio)
+#   502 SLHD_RETR_00005/00007/00008 y 429 SLHD_RETR_00010: exigen que ingest o el modelo fallen o sin presupuesto
+
+# server.port del servicio es 8080 dentro del contenedor; el compose lo publica en el 8082.
+@baseUrl = http://localhost:8082
+@gatewayUrl = http://localhost:8080
+
+### FR-022 - salud del servicio: expects 200 UP
+GET {{baseUrl}}/actuator/health
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-022 - métricas con los nombres de siempre: expects 200 con retrieval_documents
+GET {{baseUrl}}/actuator/prometheus
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-008, FR-009 / US2.3 - subir un documento nuevo: expects 201 (200 si ya existía uno con ese nombre)
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab129
+
+--lab129
+Content-Disposition: form-data; name="file"; filename="lab129-prueba.md"
+Content-Type: text/markdown
+
+# Politica de prueba LAB-129
+
+## Plazo
+
+El plazo de prueba de LAB-129 es de siete dias.
+--lab129--
+
+> {% client.test("201 o 200", function() { client.assert(response.status === 201 || response.status === 200); }); %}
+
+### FR-008 / US2.4 - volver a subir el mismo nombre reemplaza: expects 200
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab129
+
+--lab129
+Content-Disposition: form-data; name="file"; filename="lab129-prueba.md"
+Content-Type: text/markdown
+
+# Politica de prueba LAB-129
+
+## Plazo
+
+El plazo de prueba de LAB-129 es de nueve dias.
+--lab129--
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-010 / US2.3 - el documento pasa a INDEXED (repetir si sigue PENDING): expects 200
+GET {{baseUrl}}/api/documents
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-008 - tipo no admitido: expects 415 SLHD_RETR_00001
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab129
+
+--lab129
+Content-Disposition: form-data; name="file"; filename="nota.txt"
+Content-Type: text/plain
+
+hola
+--lab129--
+
+> {% client.test("415", function() { client.assert(response.status === 415); }); %}
+
+### Edge "archivo del tamaño máximo" - por encima de 10 MiB: expects 413 SLHD_RETR_00002
+# Cree antes ./grande.md de más de 10485760 bytes; justo en el límite debe aceptarse.
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab129
+
+--lab129
+Content-Disposition: form-data; name="file"; filename="grande.md"
+Content-Type: text/markdown
+
+< ./grande.md
+--lab129--
+
+> {% client.test("413", function() { client.assert(response.status === 413); }); %}
+
+### FR-008 - documento sin texto: expects 422 SLHD_RETR_00003
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=lab129
+
+--lab129
+Content-Disposition: form-data; name="file"; filename="vacio.md"
+Content-Type: text/markdown
+
+
+--lab129--
+
+> {% client.test("422", function() { client.assert(response.status === 422); }); %}
+
+### FR-008 / US2.4 - búsqueda con el límite por defecto: expects 200 {model, results}, hasta 5
+GET {{baseUrl}}/api/knowledge/search?query=plazo%20de%20prueba%20de%20LAB-129
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-008 - limit en el máximo: expects 200 con hasta 50
+GET {{baseUrl}}/api/knowledge/search?query=devoluciones&limit=50
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-008 - limit por encima del máximo: expects 200, recortado a 50
+GET {{baseUrl}}/api/knowledge/search?query=devoluciones&limit=51
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-008 - consulta en blanco: expects 422 SLHD_RETR_00009
+GET {{baseUrl}}/api/knowledge/search?query=%20%20
+
+> {% client.test("422", function() { client.assert(response.status === 422); }); %}
+
+### Edge "caracteres especiales": { } & + # % y acentos llegan sin alterarse: expects 200
+GET {{baseUrl}}/api/knowledge/search?query=%C2%BF%7Bx%7D%20%26%20a%2Bb%20%231%20100%25%20env%C3%ADos%3F
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-018 / US3.2 - el listado por el gateway lo atiende el servicio: expects 200
+# Comprobar en el log del gateway: routeId=documents destination=http://retrieval-service:8080
+GET {{gatewayUrl}}/api/documents
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-018 / US3.2 - la búsqueda por el gateway: expects 200
+GET {{gatewayUrl}}/api/knowledge/search?query=devoluciones
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-017 / US4.2, US4.3 - el chat usa el documento subido y lo cita: expects 200, evento sources
+POST {{gatewayUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{"message": "¿Cuál es el plazo de prueba de LAB-129?"}
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}
+
+### FR-017 / US4.4 - servicio parado: expects 503 SLHD_CHAT_00004
+# Antes: docker compose -f infra/docker-compose.yml stop retrieval-service   (después: start)
+POST {{gatewayUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{"message": "¿Cuál es el plazo para devolver un producto?"}
+
+> {% client.test("503", function() { client.assert(response.status === 503); }); %}
+
+### FR-017 / US4.4 - con el servicio parado las cortesías siguen respondiendo: expects 200
+POST {{gatewayUrl}}/api/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+{"message": "gracias"}
+
+> {% client.test("200", function() { client.assert(response.status === 200); }); %}

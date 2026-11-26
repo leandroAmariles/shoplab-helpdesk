@@ -16,6 +16,10 @@ de coste de LLM y de lag de Kafka llegan con LAB-65.
 `/actuator/prometheus` no sale por el ingress (solo `/api` y `/`): se recoge por la red interna de compose o del clúster.
 Del resto de endpoints de Actuator solo está expuesto `health`.
 
+Las métricas de la base de conocimiento (`retrieval.upload`, `retrieval.documents`) las publica desde LAB-129
+`retrieval-service`, con el mismo nombre: en el clúster las recoge su `ServiceMonitor` y en local el trabajo
+`retrieval-service` de Prometheus.
+
 ## En local (docker compose)
 
 ```bash

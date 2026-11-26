@@ -85,6 +85,9 @@ Cada release publicada (`vX.Y.Z`) genera y distribuye artefactos inmutables sin 
   `GITHUB_TOKEN=$(gh auth token) ./mvnw -s .mvn/ci-settings.xml verify`. La imagen recibe el token como secreto:
   `docker build --secret id=github_token,env=GITHUB_TOKEN backend`.
 
+- **Stubs de productor**: los de la búsqueda los publica `retrieval-service`
+  (`com.shoplab:shoplab-retrieval-service:<versión>:stubs`), y el cliente del chat se prueba contra ellos.
+
 ### 3.2. Frontend Angular (npm)
 - **Paquete**: `@leandroamariles/shoplab-contracts` en GitHub Packages npm.
 - **Configuración en el consumidor (`.npmrc` y `package.json`)**:

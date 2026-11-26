@@ -64,7 +64,8 @@ El CI ejecuta `ruff` y `pytest` en `data/kb-tools`, y una de las pruebas valida 
 
 ## Subir documentos desde la aplicación
 
-Desde LAB-25 (ADR-0021) un documento del corpus se carga en la base de conocimiento del asistente desde la pantalla
+La base de conocimiento la gestiona `retrieval-service` (LAB-129), con su propia base de datos; el gateway le envía
+`/api/documents` y `/api/knowledge`. Desde LAB-25 (ADR-0021) un documento del corpus se carga desde la pantalla
 **Documentos** (`/documentos`), sin comandos:
 
 1. Elige uno o varios PDF o Markdown (o arrástralos). Cada archivo admite hasta 10 MB y se suben de uno en uno, con
