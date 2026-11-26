@@ -10,7 +10,7 @@ Evidencia por paso de [quickstart.md](quickstart.md). Estado al 2026-11-26.
 | B. Datos y despliegue (US3, parcial) | **hecho** | Scripts de migración/verificación probados y corte ensayado en aislado (abajo). Manifiestos `apps/eval-service` fusionados en `shoplab-infra` (PR #48, CI en verde) |
 | C. Corte | **hecho** | Ver «Corte en dev» |
 | US5. Documentación | hecho | ADR-0035, mapa de servicios, módulos, contratos, `admin-eval`, procedimiento de retiro del esquema |
-| D. Retiro de `backend/` (US4) | **en PR** | Ver «Retiro de `backend/`»; faltan la fusión, `shoplab-infra` y la imagen en GHCR |
+| D. Retiro de `backend/` (US4) | **hecho** | #195 y `shoplab-infra` #55 fusionados; ver «T067» |
 
 ## T037 — Scripts de migración contra PostgreSQL 16 desechable
 
@@ -184,10 +184,32 @@ un paquete Java ajeno en la skill `code-context-builder`.
 | T066 | Imagen `backend` marcada como deprecada en ADR-0035; no se borra |
 | T070 | Pasos 1 y 3 verificados en dev; paso 2 con el `chat-service` real parado (`settings` 503, guardar `201`, historial `200`) y `requests.http` 16/16 en un compose desechable sin monolito; paso 4 (compose desde cero, `psql`, CI del PR) y 5 en el PR #195. `mvn verify` de `eval-service`: el de la CI de `v0.1.0` |
 | T072 | PR #194 y #195 (helpdesk), #55 (infra) |
-| T067 | **Pendiente**: fusionar #194, #195 e infra #55, y comprobar CI y dev |
+| T067 | Hecho; ver abajo |
 
 Hallazgo ajeno a LAB-130: el chat de dev respondía `SLHD_CHAT_00002` porque la `NetworkPolicy` de LiteLLM no admite a
-`chat-service` (`retrieval-service` sí conecta). Corrección en `shoplab-infra` #54, sin fusionar.
+`chat-service` (`retrieval-service` sí conecta). Corrección en `shoplab-infra` #54, fusionada: `chat-service` llega a LiteLLM y `POST /api/chat` responde `200`.
+
+## T067 — Verificación tras fusionar el retiro (2026-11-26)
+
+Fusionados: #194 (`6bb013c`), #195 (`be15b52`), `shoplab-infra` #54 (`8ae7488`) y #55 (`54a97dc`).
+
+| Comprobación | Resultado |
+|---|---|
+| CI de `main` | `shoplab-helpdesk` y `shoplab-infra` en verde, incluidos `static` y `kustomize`; sin release (`refactor`) ni flujo `Images` |
+| Repositorios | 0 archivos en `backend/` y en `k8s/base/backend`; lo que `git grep "backend/"` aún devuelve describe el retiro, son plantillas de spec-kit o un paquete ajeno |
+| Argo | las 7 aplicaciones `Synced/Healthy`; sin Deployment, Service, HPA, secretos ni políticas `backend` |
+| API por el gateway | historial, detalle, comparación, `settings`, ejecución guardada, documentos, búsqueda, chat y `/admin-eval` en `200`; `POST /api/eval/runs` vacío con token `422` (token aceptado, sin escribir) |
+| Prometheus | `gateway`, `retrieval-service`, `chat-service` y `eval-service` `up`; `ServiceDown` inactiva y sana; `BackendDown` ya no está |
+| LiteLLM | el job de claves se completa con `chat`, `retrieval`, `ingest` y `eval` |
+| Datos | `eval` 3 ejecuciones; esquema antiguo `shoplab.eval` 2; `orders.orders` 99441, `catalog.products` 32951 |
+| Restauración | tag `backend-final-pre-LAB-130` en el remoto |
+
+Quedan fuera de la historia:
+
+- Dependabot falla en `/frontend`, `/ingest`, `/eval` (carpetas que ya no existían antes de LAB-130) y en `/infra`
+  (sin Dockerfile).
+- El bootstrap de LiteLLM no borra claves: `backend-dev` sigue registrada y las entradas `LITELLM_KEY_BACKEND` de los
+  secretos de `shoplab-infra` quedan sin uso.
 
 ## Estado antes de levantar dev
 
