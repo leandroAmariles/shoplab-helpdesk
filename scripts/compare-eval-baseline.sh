@@ -47,7 +47,7 @@ if [ "$mode" = "record" ]; then
         fetch "/api/eval/history/compare?base=$id1&target=$id2&metric=$metric" > "$baseline_dir/compare-$id1-$id2.json"
         echo "grabado $baseline_dir/compare-$id1-$id2.json"
       fi
-    done < "$baseline_dir/ids.txt"
+    done < <(tr -d '' < "$baseline_dir/ids.txt")
   fi
   exit 0
 fi
@@ -77,7 +77,7 @@ if [ -f "$baseline_dir/ids.txt" ]; then
     if [ -n "${id2:-}" ] && [ -n "${metric:-}" ]; then
       check_one "compare-$id1-$id2.json" "/api/eval/history/compare?base=$id1&target=$id2&metric=$metric"
     fi
-  done < "$baseline_dir/ids.txt"
+  done < <(tr -d '' < "$baseline_dir/ids.txt")
 fi
 
 [ "$status" -eq 0 ] && echo "0 diferencias frente a la línea base" || echo "HAY DIFERENCIAS frente a la línea base" >&2
