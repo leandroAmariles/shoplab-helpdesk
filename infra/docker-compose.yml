@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
 
   litellm:
-    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:1.110.2}
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:1.111.0}
     entrypoint: ["sh", "/app/shoplab/entrypoint.sh"]
     environment:
       DATABASE_URL: postgresql://litellm:${LITELLM_POSTGRES_PASSWORD:-change-me-local-only}@litellm-postgres:5432/litellm
@@ -144,7 +144,7 @@ services:
 
   # Crea o actualiza las claves virtuales de keys.yaml y termina (servicio de un solo disparo, idempotente).
   litellm-bootstrap:
-    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:1.110.2}
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:1.111.0}
     entrypoint: ["python", "/app/shoplab/bootstrap_keys.py", "/app/shoplab/keys.yaml"]
     environment:
       LITELLM_BASE_URL: http://litellm:4000
