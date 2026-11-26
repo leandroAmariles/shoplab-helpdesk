@@ -42,12 +42,8 @@ jobs:
               - 'ml/**'
               - 'data/kb/**'
               - 'data/olist/**'
-              - 'backend/src/main/resources/db/migration/orders/**'
-              - 'backend/src/main/resources/db/migration/catalog/**'
             olist:
               - 'data/olist/**'
-              - 'backend/src/main/resources/db/migration/orders/**'
-              - 'backend/src/main/resources/db/migration/catalog/**'
             kb:
               - 'data/kb-tools/**'
               - 'data/kb/**'

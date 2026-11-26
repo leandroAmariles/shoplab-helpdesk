@@ -1,7 +1,12 @@
 package com.shoplab.helpdesk.eval;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.net.URI;
@@ -9,12 +14,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * The three endpoints of the evaluation history through the whole application, against a real PostgreSQL: the
@@ -26,6 +35,36 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class EvalApiIntegrationTests {
 
     private static final String TOKEN = "api-token";
+
+    private static final WireMockServer CHAT_SERVICE = new WireMockServer(wireMockConfig().dynamicPort());
+
+    @BeforeAll
+    static void startChatServiceStub() {
+        CHAT_SERVICE.start();
+        CHAT_SERVICE.stubFor(get(urlEqualTo("/api/assistant/settings")).willReturn(okJson("""
+                {
+                  "topK": 4,
+                  "similarityThreshold": 0.6,
+                  "maxContextCharacters": 8000,
+                  "prompts": [
+                    {"name": "chat-system", "version": null, "source": "DEFAULT"},
+                    {"name": "chat-small-talk", "version": null, "source": "DEFAULT"},
+                    {"name": "chat-context", "version": null, "source": "DEFAULT"},
+                    {"name": "chat-empty-context", "version": null, "source": "DEFAULT"}
+                  ]
+                }
+                """)));
+    }
+
+    @AfterAll
+    static void stopChatServiceStub() {
+        CHAT_SERVICE.stop();
+    }
+
+    @DynamicPropertySource
+    static void chatServiceProperties(DynamicPropertyRegistry registry) {
+        registry.add("shoplab.chat.settings.client.base-url", CHAT_SERVICE::baseUrl);
+    }
 
     @LocalServerPort
     private int port;

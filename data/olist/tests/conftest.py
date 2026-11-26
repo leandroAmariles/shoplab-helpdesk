@@ -13,7 +13,7 @@ from testcontainers.community.postgres import PostgresContainer
 from olist_loader.config import Settings
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-MIGRATIONS = REPO_ROOT / "backend" / "src" / "main" / "resources" / "db" / "migration"
+MIGRATIONS = Path(__file__).resolve().parents[1] / "schema"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 POSTGRES_IMAGE = "pgvector/pgvector:0.8.7-pg16"  # same image as infra/docker-compose.yml
 SCHEMAS = ("orders", "catalog")
