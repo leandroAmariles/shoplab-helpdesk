@@ -2,8 +2,9 @@
 
 La pantalla **Evaluación** muestra cómo evolucionan las métricas del asistente de una ejecución de evaluación a la siguiente, qué
 casos fallan en una ejecución y qué cambió entre dos. Es **solo lectura**: no lanza mediciones, no edita casos, prompts ni
-dataset, no borra ejecuciones y no usa el token de guardado. Las ejecuciones las guarda `eval/` (LAB-31); la decisión de cómo se
-leen está en [ADR-0029](adr/0029-lectura-del-historial-de-evaluacion.md).
+dataset, no borra ejecuciones y no usa el token de guardado. Las ejecuciones las guarda `shoplab-eval` contra `eval-service`
+(LAB-31, LAB-130, [ADR-0035](adr/0035-extraccion-de-eval-service.md)); la decisión de cómo se leen está en
+[ADR-0029](adr/0029-lectura-del-historial-de-evaluacion.md).
 
 > **El dataset golden es un borrador hasta su revisión humana.** Estos valores no son una certificación de calidad.
 
@@ -88,8 +89,8 @@ La pantalla no enseña el detalle técnico del servidor, solo qué falló.
 
 | Propiedad | Variable | Por defecto | Qué hace |
 |---|---|---|---|
-| `shoplab.eval.history.trace-url-template` | `SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE` | `http://localhost:3001/trace/{traceId}` | Plantilla del enlace a la traza de Langfuse. **Vacía = sin enlace** (se muestra el identificador). Debe ser `http` o `https` y contener `{traceId}` una vez; si no, el arranque falla |
-| `shoplab.chat.feedback.base-golden-case-number` | `SHOPLAB_CHAT_FEEDBACK_BASE_GOLDEN_CASE_NUMBER` | `120` | Último número `G<NNN>` del archivo `eval/golden.jsonl` base, a partir del cual se sugiere el siguiente identificador libre (`G121`, …) al promover feedback con 👎 |
+| `shoplab.eval.history.trace-url-template` (`eval-service`) | `SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE` | `http://localhost:3001/trace/{traceId}` | Plantilla del enlace a la traza de Langfuse. **Vacía = sin enlace** (se muestra el identificador). Debe ser `http` o `https` y contener `{traceId}` una vez; si no, el arranque falla |
+| `shoplab.chat.feedback.base-golden-case-number` (`chat-service`) | `SHOPLAB_CHAT_FEEDBACK_BASE_GOLDEN_CASE_NUMBER` | `120` | Último número `G<NNN>` del archivo `golden.jsonl` base, a partir del cual se sugiere el siguiente identificador libre (`G121`, …) al promover feedback con 👎 |
 
 No hay cambios de infraestructura ni secretos nuevos.
 

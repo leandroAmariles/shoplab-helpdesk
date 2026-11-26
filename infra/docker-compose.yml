@@ -250,6 +250,23 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Rol y base de eval-service en el mismo PostgreSQL (LAB-130). Idempotente y de un solo disparo.
+  eval-db-init:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.7-pg16}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-shoplab}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      APP_DB: ${POSTGRES_DB:-shoplab}
+      EVAL_DB_PASSWORD: ${EVAL_DB_PASSWORD:-change-me-local-only}
+    entrypoint: ["bash", "/eval-db-init.sh"]
+    volumes:
+      - ./postgres/eval-db-init.sh:/eval-db-init.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   # Orquestador conversacional en su propio servicio (LAB-59): SSE chat, citas RAG, memoria, feedback, prompts y trazas.
   # El 8083 del host es solo para depurar.
   chat-service:
@@ -285,6 +302,31 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # Historial de ejecuciones de evaluacion y admin-eval en su propio servicio (LAB-130). El 8084 del host es para depurar.
+  eval-service:
+    image: ${EVAL_IMAGE:-ghcr.io/leandroamariles/eval-service:v0.1.0}
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/eval
+      POSTGRES_USER: eval
+      POSTGRES_PASSWORD: ${EVAL_DB_PASSWORD:-change-me-local-only}
+      SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL: http://chat-service:8080
+      SHOPLAB_EVAL_PERSISTENCE_TOKEN: ${SHOPLAB_EVAL_PERSISTENCE_TOKEN:-}
+      SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE: ${SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE:-http://localhost:3001/trace/{traceId}}
+    ports:
+      - "${EVAL_PORT:-8084}:8080"
+    depends_on:
+      eval-db-init:
+        condition: service_completed_successfully
+      chat-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
   # Backend Spring Boot 4 / Spring Modulith (LAB-110): solo eval + shared hasta LAB-130. La API entra por `gateway`;
   # el 8081 del host es solo para depurar (LAB-107).
   backend:
@@ -293,6 +335,8 @@ services:
       POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
       POSTGRES_USER: ${POSTGRES_USER:-shoplab}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      # Hasta que se retire el monolito: sin `http`, la v0.31.0 sirve su configuración interna y no la de chat-service.
+      SHOPLAB_CHAT_SETTINGS_CLIENT_MODE: http
       SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL: http://chat-service:8080
     ports:
       - "${BACKEND_PORT:-8081}:8080"
@@ -319,7 +363,7 @@ services:
       SHOPLAB_GATEWAY_ROUTES_CHAT_URI: ${SHOPLAB_GATEWAY_ROUTES_CHAT_URI:-http://chat-service:8080}
       SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI: ${SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI:-http://retrieval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI: ${SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI:-http://retrieval-service:8080}
-      SHOPLAB_GATEWAY_ROUTES_EVAL_URI:
+      SHOPLAB_GATEWAY_ROUTES_EVAL_URI: ${SHOPLAB_GATEWAY_ROUTES_EVAL_URI:-}
       SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI: ${SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:-http://chat-service:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
