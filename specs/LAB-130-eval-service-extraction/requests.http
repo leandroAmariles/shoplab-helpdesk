@@ -1,0 +1,466 @@
+# HTTP test requests for LAB-130 (eval-service extraction)
+# Generated per .ai/rules/http-test-requests.md from specs/LAB-130-eval-service-extraction/spec.md
+#
+# Not covered here (non-HTTP / infrastructure / CI-only requirements):
+# - FR-001, FR-002: Repo creation from template & ArchUnit zero monolith/chat code dependency check
+# - FR-003..FR-006: Dedicated PostgreSQL role/DB, pg_dump/pg_restore migration, MD5 & IDENTITY sequence verification
+# - FR-010, FR-015: OpenAPI publication in shoplab-contracts & Spring Cloud Contract producer/consumer stub tests
+# - FR-020..FR-027: Argo CD ApplicationSet deployment, cutover window, monolith retirement, Olist preservation & ADR-0035
+
+@baseUrl = http://localhost:8080
+@evalToken = change-me-local-only
+@runBase = lab130-http-1
+@runTarget = lab130-http-2
+@runRetrieval = lab130-ret-1
+
+### 1. FR-009 / Edge Case "Ejecución sin token" — POST /api/eval/runs without X-Eval-Token expects 403 SLHD_EVAL_00001
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+
+{
+  "run_id": "{{runBase}}",
+  "kind": "QUALITY"
+}
+
+> {%
+client.test("403 without token", function() {
+  client.assert(response.status === 403, "Expected 403");
+  client.assert(response.body.code === "SLHD_EVAL_00001", "Expected SLHD_EVAL_00001");
+});
+%}
+
+### 2. FR-009 / Edge Case "Ejecución con token inválido" — GET /api/eval/settings with wrong token expects 403 SLHD_EVAL_00001
+GET {{baseUrl}}/api/eval/settings
+X-Eval-Token: invalid-token-placeholder
+
+> {%
+client.test("403 with wrong token", function() {
+  client.assert(response.status === 403, "Expected 403");
+  client.assert(response.body.code === "SLHD_EVAL_00001", "Expected SLHD_EVAL_00001");
+});
+%}
+
+### 3. US2 Scenario 1 & FR-013, FR-014 — GET /api/eval/settings reads active assistant settings from chat-service — expects 200 (or 503 SLHD_EVAL_00005 if chat-service is down, US2 Scenario 2 / FR-016)
+GET {{baseUrl}}/api/eval/settings
+X-Eval-Token: {{evalToken}}
+X-Request-Id: req-lab130-settings-01
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+
+> {%
+client.test("200 settings or 503 SLHD_EVAL_00005 when chat-service is down", function() {
+  client.assert(response.status === 200 || response.status === 503, "Expected 200 or 503");
+  if (response.status === 200) {
+    client.assert(response.body.retrieval !== undefined, "Expected retrieval block");
+    client.assert(Array.isArray(response.body.prompts), "Expected prompts array");
+  } else {
+    client.assert(response.body.code === "SLHD_EVAL_00005", "Expected SLHD_EVAL_00005");
+  }
+});
+%}
+
+### 4. US1 Scenario 3 & FR-007 — GET /api/eval/runs/{runId} before saving — expects 404 SLHD_EVAL_00004
+GET {{baseUrl}}/api/eval/runs/{{runBase}}
+X-Eval-Token: {{evalToken}}
+
+> {%
+client.test("404 before run is saved", function() {
+  client.assert(response.status === 404, "Expected 404");
+  client.assert(response.body.code === "SLHD_EVAL_00004", "Expected SLHD_EVAL_00004");
+});
+%}
+
+### 5. US1 Scenario 3, US3 Scenario 3 & FR-007, FR-012 — Save first QUALITY evaluation run — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "{{runBase}}",
+  "kind": "QUALITY",
+  "started_at": "2026-11-26T12:00:00Z",
+  "finished_at": "2026-11-26T12:05:00Z",
+  "origin": "local",
+  "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+  "dataset_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cases_measured": 2,
+  "cases_excluded": 0,
+  "assistant_model": "chat",
+  "embedding_model": "bge-m3",
+  "prompts": [
+    {"name": "chat-system", "version": 3, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-small-talk", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-context", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-empty-context", "version": null, "source": "DEFAULT", "pinned": false}
+  ],
+  "judge": {
+    "model": "judge",
+    "underlying_model": "ollama_chat/qwen2.5:7b",
+    "temperature": 0.0,
+    "seed": 42,
+    "max_input_chars": 6000
+  },
+  "evaluator": {
+    "library": "ragas",
+    "library_version": "0.3.5",
+    "judgment_instructions_version": "2"
+  },
+  "retrieval_config": {
+    "top_k": 4,
+    "similarity_threshold": 0.6,
+    "max_context_characters": 8000
+  },
+  "results": [
+    {
+      "case": {
+        "id": "G501",
+        "category": "returns",
+        "question": "¿Cuál es el plazo estándar para devolver un producto en buen estado?",
+        "reference_answer": "El plazo estándar para devolver un producto sin usar es de treinta días naturales desde la entrega.",
+        "expected_documents": ["returns-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {
+        "faithfulness": 0.90,
+        "answer_relevancy": 0.85,
+        "context_precision": 1.0
+      },
+      "retrieved_documents": ["returns-policy"],
+      "abstained": false,
+      "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    {
+      "case": {
+        "id": "G502",
+        "category": "payments",
+        "question": "¿Qué medios de pago acepta la tienda para compras en línea?",
+        "reference_answer": "La tienda acepta tarjetas de crédito, débito y transferencia bancaria según las condiciones vigentes.",
+        "expected_documents": ["payments-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {
+        "faithfulness": 0.80,
+        "answer_relevancy": 0.80,
+        "context_precision": 0.50
+      },
+      "retrieved_documents": ["payments-policy"],
+      "abstained": false,
+      "trace_id": null
+    }
+  ]
+}
+
+> {%
+client.test("201 run saved", function() {
+  client.assert(response.status === 201, "Expected 201");
+  client.assert(response.body.run_id === "lab130-http-1", "Expected run_id");
+});
+%}
+
+### 6. US1 Scenario 4 & Edge Case "Mismo identificador guardado dos veces" — Duplicate run_id expects 409 SLHD_EVAL_00003
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "{{runBase}}",
+  "kind": "QUALITY",
+  "started_at": "2026-11-26T12:00:00Z",
+  "finished_at": "2026-11-26T12:05:00Z",
+  "origin": "local",
+  "dataset_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "embedding_model": "bge-m3",
+  "prompts": [
+    {"name": "chat-system", "version": 3, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-small-talk", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-context", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-empty-context", "version": null, "source": "DEFAULT", "pinned": false}
+  ],
+  "judge": {
+    "model": "judge",
+    "underlying_model": "ollama_chat/qwen2.5:7b",
+    "temperature": 0.0,
+    "seed": 42,
+    "max_input_chars": 6000
+  },
+  "evaluator": {"library": "ragas", "library_version": "0.3.5", "judgment_instructions_version": "2"},
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000},
+  "results": [
+    {
+      "case": {
+        "id": "G501",
+        "category": "returns",
+        "question": "¿Cuál es el plazo estándar para devolver un producto en buen estado?",
+        "reference_answer": "El plazo estándar para devolver un producto sin usar es de treinta días naturales desde la entrega.",
+        "expected_documents": ["returns-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {"faithfulness": 0.10, "answer_relevancy": 0.10, "context_precision": 0.10},
+      "retrieved_documents": ["returns-policy"],
+      "abstained": false
+    }
+  ]
+}
+
+> {%
+client.test("409 duplicate run_id", function() {
+  client.assert(response.status === 409, "Expected 409");
+  client.assert(response.body.code === "SLHD_EVAL_00003", "Expected SLHD_EVAL_00003");
+});
+%}
+
+### 7. US1 Scenario 3 & FR-007 — GET /api/eval/runs/{runId} after saving — expects 200 StoredRunResponse
+GET {{baseUrl}}/api/eval/runs/{{runBase}}
+X-Eval-Token: {{evalToken}}
+
+> {%
+client.test("200 stored run summary", function() {
+  client.assert(response.status === 200, "Expected 200");
+  client.assert(response.body.run_id === "lab130-http-1", "Expected run_id");
+});
+%}
+
+### 8. Edge Case "Cuerpo con propiedades desconocidas / texto de respuesta prohibido (FR-012)" — expects 400 SLHD_GENE_00002
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "lab130-unknown-prop",
+  "kind": "QUALITY",
+  "unexpected_answer_text": "must-never-be-accepted"
+}
+
+> {%
+client.test("400 unknown property rejected", function() {
+  client.assert(response.status === 400, "Expected 400");
+  client.assert(response.body.code === "SLHD_GENE_00002", "Expected SLHD_GENE_00002");
+});
+%}
+
+### 9. Rule Boundary: Score outside [0.0, 1.0] (1.01 > 1.0) — expects 422 SLHD_EVAL_00002
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "lab130-invalid-score",
+  "kind": "QUALITY",
+  "started_at": "2026-11-26T12:00:00Z",
+  "finished_at": "2026-11-26T12:05:00Z",
+  "origin": "local",
+  "dataset_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "embedding_model": "bge-m3",
+  "prompts": [
+    {"name": "chat-system", "version": 3, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-small-talk", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-context", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-empty-context", "version": null, "source": "DEFAULT", "pinned": false}
+  ],
+  "judge": {"model": "judge"},
+  "evaluator": {"library": "ragas"},
+  "retrieval_config": {"top_k": 4, "similarity_threshold": 0.6, "max_context_characters": 8000},
+  "results": [
+    {
+      "case": {
+        "id": "G501",
+        "category": "returns",
+        "question": "¿Cuál es el plazo estándar para devolver un producto en buen estado?",
+        "reference_answer": "El plazo estándar para devolver un producto sin usar es de treinta días naturales desde la entrega.",
+        "expected_documents": ["returns-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {"faithfulness": 1.01},
+      "retrieved_documents": ["returns-policy"],
+      "abstained": false
+    }
+  ]
+}
+
+> {%
+client.test("422 invalid score > 1.0", function() {
+  client.assert(response.status === 422, "Expected 422");
+  client.assert(response.body.code === "SLHD_EVAL_00002", "Expected SLHD_EVAL_00002");
+});
+%}
+
+### 10. Save second QUALITY run (for comparison sequence, US3 Scenario 4 & 5) — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "{{runTarget}}",
+  "kind": "QUALITY",
+  "started_at": "2026-11-26T12:10:00Z",
+  "finished_at": "2026-11-26T12:15:00Z",
+  "origin": "local",
+  "commit_sha": "fedcba9876543210fedcba9876543210fedcba98",
+  "dataset_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cases_measured": 2,
+  "cases_excluded": 0,
+  "assistant_model": "chat",
+  "embedding_model": "bge-m3",
+  "prompts": [
+    {"name": "chat-system", "version": 4, "source": "LANGFUSE", "pinned": false},
+    {"name": "chat-small-talk", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-context", "version": null, "source": "DEFAULT", "pinned": false},
+    {"name": "chat-empty-context", "version": null, "source": "DEFAULT", "pinned": false}
+  ],
+  "judge": {
+    "model": "judge",
+    "underlying_model": "ollama_chat/qwen2.5:7b",
+    "temperature": 0.0,
+    "seed": 42,
+    "max_input_chars": 6000
+  },
+  "evaluator": {
+    "library": "ragas",
+    "library_version": "0.3.5",
+    "judgment_instructions_version": "2"
+  },
+  "retrieval_config": {
+    "top_k": 4,
+    "similarity_threshold": 0.6,
+    "max_context_characters": 8000
+  },
+  "results": [
+    {
+      "case": {
+        "id": "G501",
+        "category": "returns",
+        "question": "¿Cuál es el plazo estándar para devolver un producto en buen estado?",
+        "reference_answer": "El plazo estándar para devolver un producto sin usar es de treinta días naturales desde la entrega.",
+        "expected_documents": ["returns-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.90,
+        "context_precision": 1.0
+      },
+      "retrieved_documents": ["returns-policy"],
+      "abstained": false,
+      "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    {
+      "case": {
+        "id": "G502",
+        "category": "payments",
+        "question": "¿Qué medios de pago acepta la tienda para compras en línea?",
+        "reference_answer": "La tienda acepta tarjetas de crédito, débito y transferencia bancaria según las condiciones vigentes.",
+        "expected_documents": ["payments-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {
+        "faithfulness": 0.95,
+        "answer_relevancy": 0.85,
+        "context_precision": 1.0
+      },
+      "retrieved_documents": ["payments-policy"],
+      "abstained": false,
+      "trace_id": null
+    }
+  ]
+}
+
+### 11. Save RETRIEVAL run (to test non-comparable kind boundary SLHD_EVAL_00006) — expects 201
+POST {{baseUrl}}/api/eval/runs
+Content-Type: application/json
+X-Eval-Token: {{evalToken}}
+
+{
+  "run_id": "{{runRetrieval}}",
+  "kind": "RETRIEVAL",
+  "started_at": "2026-11-26T12:20:00Z",
+  "finished_at": "2026-11-26T12:21:00Z",
+  "origin": "local",
+  "dataset_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cases_measured": 1,
+  "cases_excluded": 0,
+  "embedding_model": "bge-m3",
+  "prompts": [],
+  "retrieval_config": {
+    "top_k": 4,
+    "similarity_threshold": 0.6,
+    "max_context_characters": 8000,
+    "depth": 20,
+    "ks": [1, 3, 5]
+  },
+  "results": [
+    {
+      "case": {
+        "id": "G501",
+        "category": "returns",
+        "question": "¿Cuál es el plazo estándar para devolver un producto en buen estado?",
+        "reference_answer": "El plazo estándar para devolver un producto sin usar es de treinta días naturales desde la entrega.",
+        "expected_documents": ["returns-policy"]
+      },
+      "case_kind": "answered",
+      "scores": {
+        "reciprocal_rank": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_5": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      },
+      "retrieved_documents": ["returns-policy"]
+    }
+  ]
+}
+
+### 12. FR-008, FR-009 & US3 Scenario 4 — List history runs WITHOUT token (boundary limit=500 max allowed) — expects 200
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=500
+
+> {%
+client.test("200 history list without token", function() {
+  client.assert(response.status === 200, "Expected 200");
+  client.assert(response.body.kind === "QUALITY", "Expected QUALITY");
+});
+%}
+
+### 13. Rule Boundary: History limit outside [1, 500] (limit=501) — expects 422 SLHD_EVAL_00002
+GET {{baseUrl}}/api/eval/history/runs?kind=QUALITY&limit=501
+
+> {%
+client.test("422 limit > 500", function() {
+  client.assert(response.status === 422, "Expected 422");
+  client.assert(response.body.code === "SLHD_EVAL_00002", "Expected SLHD_EVAL_00002");
+});
+%}
+
+### 14. FR-008, FR-012 & US3 Scenario 4 — Get history run detail WITHOUT token (no answer/chunk text stored) — expects 200
+GET {{baseUrl}}/api/eval/history/runs/{{runBase}}
+
+> {%
+client.test("200 run detail with trace_url and no answer text", function() {
+  client.assert(response.status === 200, "Expected 200");
+  client.assert(response.body.run.run_id === "lab130-http-1", "Expected run_id");
+});
+%}
+
+### 15. US3 Scenario 4 & 5 — Compare two QUALITY runs (default drop=0.05) — expects 200
+GET {{baseUrl}}/api/eval/history/compare?base={{runBase}}&target={{runTarget}}&metric=faithfulness&drop=0.05
+
+> {%
+client.test("200 run comparison", function() {
+  client.assert(response.status === 200, "Expected 200");
+  client.assert(response.body.counts.worse === 1, "Expected 1 worse case");
+  client.assert(response.body.counts.better === 1, "Expected 1 better case");
+});
+%}
+
+### 16. Edge Case / Rule Boundary: Compare runs of different kinds (QUALITY vs RETRIEVAL) — expects 422 SLHD_EVAL_00006
+GET {{baseUrl}}/api/eval/history/compare?base={{runBase}}&target={{runRetrieval}}&metric=faithfulness
+
+> {%
+client.test("422 non-comparable kinds", function() {
+  client.assert(response.status === 422, "Expected 422");
+  client.assert(response.body.code === "SLHD_EVAL_00006", "Expected SLHD_EVAL_00006");
+});
+%}
