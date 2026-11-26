@@ -49,9 +49,9 @@ public class HttpAssistantSettingsClient implements AssistantSettingsPort {
     }
 
     private static AssistantSettingsSnapshot toSnapshot(AssistantSettingsResponse response) {
-        List<PromptVersion> prompts = response.getPrompts() == null
-                ? List.of()
-                : response.getPrompts().stream().map(HttpAssistantSettingsClient::toPrompt).toList();
+        List<PromptVersion> prompts = response.getPrompts().stream()
+                .map(HttpAssistantSettingsClient::toPrompt)
+                .toList();
         return new AssistantSettingsSnapshot(
                 new RetrievalConfig(
                         response.getTopK(),
@@ -63,8 +63,7 @@ public class HttpAssistantSettingsClient implements AssistantSettingsPort {
     }
 
     private static PromptVersion toPrompt(ServedPromptResponse prompt) {
-        String sourceValue = prompt.getSource() == null ? null : prompt.getSource().getValue();
-        PromptSource source = PromptSource.fromValue(sourceValue)
+        PromptSource source = PromptSource.fromValue(prompt.getSource().getValue())
                 .orElseThrow(() -> new IllegalStateException("The chat published an unknown prompt source"));
         return new PromptVersion(prompt.getName(), prompt.getVersion(), source, false);
     }
