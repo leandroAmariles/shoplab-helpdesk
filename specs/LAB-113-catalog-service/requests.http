@@ -1,0 +1,86 @@
+### LAB-113 catalog-service
+# Not covered here: FR-001..FR-005, FR-007, FR-017..FR-024 (repository, data, build, deployment and out of scope items).
+# SSE (GET /mcp/sse) never ends, so it is not part of this file.
+@baseUrl = http://localhost:8080
+@serviceUrl = http://localhost:8085
+
+### FR-008 / US2 scenario "indexing page" - expects 200 ordered by productId, totalElements 32951
+GET {{baseUrl}}/api/catalog/products?page=0&size=100
+
+> {%
+    client.test("200", () => client.assert(response.status === 200));
+    client.global.set("productId", response.body.content[0].productId);
+%}
+
+### FR-008 / next page - expects 200 with no productId repeated from the first page
+GET {{baseUrl}}/api/catalog/products?page=1&size=100
+
+### FR-008 / category and stock filters - expects 200 with only watches_gifts in stock
+GET {{baseUrl}}/api/catalog/products?category=watches_gifts&inStock=true&size=5
+
+### FR-008 / text search over category words - expects 200 with watches
+GET {{baseUrl}}/api/catalog/products?query=watches%20gifts&size=5
+
+### Edge case "special characters" - expects 200 with an empty content
+GET {{baseUrl}}/api/catalog/products?query=%27%25%22
+
+### Edge case "page out of range" - expects 200, content [] and totalElements 32951
+GET {{baseUrl}}/api/catalog/products?page=100000&size=50
+
+### Rule boundary size=200 - expects 200
+GET {{baseUrl}}/api/catalog/products?size=200
+
+### Rule boundary size=201 - expects 422 SLHD_CATALOG_00002
+GET {{baseUrl}}/api/catalog/products?size=201
+
+### US2 scenario 5, size=0 - expects 422 SLHD_CATALOG_00002
+GET {{baseUrl}}/api/catalog/products?size=0
+
+### US2 scenario 5, page=-1 - expects 422 SLHD_CATALOG_00002
+GET {{baseUrl}}/api/catalog/products?page=-1
+
+### FR-009 / US2 scenario 3 - expects 200 with dimensions, referencePrice, stock and available
+GET {{baseUrl}}/api/catalog/products/{{productId}}
+
+### FR-010 - expects 200 with stock, referencePrice, available and updatedAt
+GET {{baseUrl}}/api/catalog/products/{{productId}}/stock
+
+### FR-012 / US2 scenario 4 - expects 404 SLHD_CATALOG_00001 and header X-Request-Id: lab113-404
+GET {{baseUrl}}/api/catalog/products/does-not-exist
+X-Request-Id: lab113-404
+
+### FR-011 - expects 200 with name and nameEn
+GET {{baseUrl}}/api/catalog/categories
+
+### FR-013 / MCP handshake - expects 200 with protocolVersion
+POST {{serviceUrl}}/mcp
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": "1", "method": "initialize", "params": {}}
+
+### FR-014, FR-015 / US3 scenario 1 - expects searchProducts and getProductDetails
+POST {{serviceUrl}}/mcp
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": "2", "method": "tools/list", "params": {}}
+
+### FR-016 / US3 scenario 2 - expects text content, isError false
+POST {{serviceUrl}}/mcp
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": "3", "method": "tools/call",
+ "params": {"name": "searchProducts", "arguments": {"query": "watches", "limit": 2}}}
+
+### US3 scenario 3, nothing found - expects isError false with a "no products" message
+POST {{serviceUrl}}/mcp/messages
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": "4", "method": "tools/call",
+ "params": {"name": "search_products", "arguments": {"query": "does-not-exist"}}}
+
+### FR-015 / unknown id - expects isError false
+POST {{serviceUrl}}/mcp
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": "5", "method": "tools/call",
+ "params": {"name": "getProductDetails", "arguments": {"product_id": "does-not-exist"}}}

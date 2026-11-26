@@ -1,7 +1,7 @@
 # Prometheus local (perfil `observability` de docker compose, LAB-102).
 # Los servicios se recogen en los puertos que publica en el host el compose (host.docker.internal). Prometheus no
 # expande variables de entorno en este archivo: los puertos del host son fijos (gateway 8080, retrieval 8082,
-# chat 8083, eval 8084).
+# chat 8083, eval 8084, catalog 8085).
 global:
   scrape_interval: 15s
 
@@ -29,6 +29,12 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ["host.docker.internal:8084"]
+
+  # Catalogo e inventario en su propio servicio (LAB-113): puerto 8085 del host.
+  - job_name: catalog-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8085"]
 
   # El servicio ingest corre en compose (LAB-20): se llega por el nombre del servicio en la red del proyecto.
   - job_name: ingest

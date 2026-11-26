@@ -326,6 +326,44 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # Rol y base de catalog-service en el mismo PostgreSQL (LAB-113). Idempotente y de un solo disparo.
+  catalog-db-init:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.7-pg16}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-shoplab}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      APP_DB: ${POSTGRES_DB:-shoplab}
+      CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD:-change-me-local-only}
+    entrypoint: ["bash", "/catalog-db-init.sh"]
+    volumes:
+      - ./postgres/catalog-db-init.sh:/catalog-db-init.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Catalogo e inventario (LAB-113): API en /api/catalog por el gateway y servidor MCP en /mcp. El 8085 del host es para
+  # depurar. Los datos se copian una vez con scripts/migrate-catalog.sh.
+  catalog-service:
+    image: ${CATALOG_IMAGE:-ghcr.io/leandroamariles/catalog-service:v0.1.0}
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/catalog
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:-change-me-local-only}
+    ports:
+      - "${CATALOG_PORT:-8085}:8080"
+    depends_on:
+      catalog-db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
   # Puerta unica de la API (LAB-107, repo shoplab-gateway): reparte /api por prefijo; documents y knowledge van a
   # retrieval-service (LAB-129), chat y assistant a chat-service (LAB-59) y eval a eval-service (LAB-130).
   gateway:
@@ -336,11 +374,15 @@ services:
       SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI: ${SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI:-http://retrieval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_EVAL_URI: ${SHOPLAB_GATEWAY_ROUTES_EVAL_URI:-http://eval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI: ${SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:-http://chat-service:8080}
+      SHOPLAB_GATEWAY_ROUTES_CATALOG_PREFIX: /api/catalog
+      SHOPLAB_GATEWAY_ROUTES_CATALOG_URI: ${SHOPLAB_GATEWAY_ROUTES_CATALOG_URI:-http://catalog-service:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
+      catalog-service:
+        condition: service_healthy
       eval-service:
         condition: service_healthy
       retrieval-service:

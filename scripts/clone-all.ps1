@@ -16,6 +16,7 @@ $repos = @(
     "shoplab-chat-service",
     "shoplab-retrieval-service",
     "shoplab-eval-service",
+    "shoplab-catalog-service",
     "shoplab-frontend",
     "shoplab-ingest",
     "shoplab-eval",
