@@ -1,5 +1,9 @@
 # Chat en streaming (`POST /api/chat`)
 
+> El chat vive en `shoplab-chat-service` desde LAB-59 y el monolito se retiró en LAB-130. Donde esta guía diga
+> «el backend», léase `chat-service`; se arranca con el compose (`up -d chat-service`) o desde su repositorio.
+
+
 El backend responde al mensaje del cliente con la respuesta del modelo local **a medida que se genera** (la pide al gateway de modelos, LiteLLM, que la encamina a Ollama; `docs/gateway-de-modelos.md`),
 como un flujo de eventos del servidor (SSE). Especificación y decisiones: `specs/LAB-12-chat-streaming-sse/`.
 
@@ -125,7 +129,7 @@ en llegar al chat**, en todas las instancias y sin reiniciar. Cada turno toma la
 hasta terminar, aunque la etiqueta se mueva mientras responde.
 
 **Si Langfuse no ayuda** el chat usa, por este orden, la última versión válida cargada (aunque sea antigua) y el texto por defecto
-de `backend/src/main/resources/prompts/*.txt`, que es la única copia del texto en el repositorio. Una versión nueva se **descarta**
+de `src/main/resources/prompts/*.txt` de `shoplab-chat-service`, que es la única copia del texto. Una versión nueva se **descarta**
 (con un aviso que nombra el prompt, la versión y el motivo, nunca el texto) si no es de tipo texto, está vacía, supera
 `SHOPLAB_CHAT_PROMPTS_MAX_PROMPT_CHARACTERS`, le falta un marcador obligatorio o `chat-context` usa otra variable.
 

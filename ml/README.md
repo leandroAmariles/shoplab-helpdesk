@@ -5,8 +5,7 @@ Trabajo de ciencia de datos de ShopLab Helpdesk sobre los datos de Olist. Hoy co
 `catalog` con Pandas y NumPy para **conocer su calidad** y **validar los valores** que usan el corpus de políticas (LAB-18) y las
 herramientas del chat (LAB-41). Las siguientes historias de F8 (entrenamiento, MLflow, inferencia) se añadirán aquí.
 
-El notebook **solo analiza y propone**: no modifica los datos, el corpus ni el código de producción, y nada de `backend/` ni de
-`ingest/` importa este proyecto. Los experimentos de RAG siguen en [`notebooks/`](../notebooks/README.md).
+El notebook **solo analiza y propone**: no modifica los datos, el corpus ni el código de producción, y ningún código de producción importa este proyecto. Los experimentos de RAG siguen en [`notebooks/`](../notebooks/README.md).
 
 ## Qué hace
 

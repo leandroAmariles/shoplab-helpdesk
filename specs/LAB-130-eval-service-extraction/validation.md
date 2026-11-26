@@ -10,7 +10,7 @@ Evidencia por paso de [quickstart.md](quickstart.md). Estado al 2026-11-26.
 | B. Datos y despliegue (US3, parcial) | **hecho** | Scripts de migración/verificación probados y corte ensayado en aislado (abajo). Manifiestos `apps/eval-service` fusionados en `shoplab-infra` (PR #48, CI en verde) |
 | C. Corte | **hecho** | Ver «Corte en dev» |
 | US5. Documentación | hecho | ADR-0035, mapa de servicios, módulos, contratos, `admin-eval`, procedimiento de retiro del esquema |
-| D. Retiro de `backend/` (US4) | pendiente | Solo tras verificar el corte (T057–T067) |
+| D. Retiro de `backend/` (US4) | **en PR** | Ver «Retiro de `backend/`»; faltan la fusión, `shoplab-infra` y la imagen en GHCR |
 
 ## T037 — Scripts de migración contra PostgreSQL 16 desechable
 
@@ -88,6 +88,106 @@ quedó `Pending`, el sync de `shoplab-dev` quedó en `Running` esperando su salu
 | T051 | `GET /api/eval/settings` por el gateway devuelve la configuración de `chat-service` con los prompts de Langfuse |
 
 Al revertir, lo guardado después del corte no se ve en el monolito: vive solo en la base `eval`.
+
+## Retiro de `backend/` (2026-11-26)
+
+| Tarea | Resultado |
+|---|---|
+| T057 | Tag `backend-final-pre-LAB-130` publicado; `pg_dump` de la base `eval` y del esquema `eval` de `shoplab` en `shoplab-backups/LAB-130/` (fuera del repositorio); restauración en ADR-0035 |
+| T058 | Inventario abajo |
+| T059–T061 | `backend/` eliminado (208 archivos); fuera `images.yml`, `publish-stubs.yml`, `.github/scripts` (solo desplegaban la imagen del monolito), jobs `backend` y `qodana`, entradas de Dependabot y release-please, servicio del compose, job de Prometheus y la clave `backend` del gateway de modelos |
+| T063 | Proyecto de compose desechable con volúmenes nuevos y `.env.example`: todos los servicios `healthy` sin el monolito; historial `200` por gateway y frontend; claves `chat`, `retrieval`, `ingest` y `eval` creadas. Solo se reutilizó el volumen de modelos de Ollama |
+| T064 | `catalog`, `orders`, `tickets` y `eval` presentes (`orders.orders` 99441 filas, `catalog.products` 32951, `eval.eval_run` 2); ningún `DROP SCHEMA` nuevo en el PR |
+| T065 | Constitución 1.0.3, `.ai/context/project-context.md` y `README.md` |
+| Pruebas | `infra/litellm` 81, `notebooks` 111, dashboards y perfiles del compose válidos |
+
+### Inventario de referencias antes del retiro (archivo: líneas con «backend», fuera de `backend/`, specs y ADR)
+
+- `README.md`: 35
+- `docs/observabilidad.md`: 15
+- `infra/litellm/tests/test_bootstrap_keys.py`: 14
+- `.github/workflows/ci.yml`: 13
+- `docs/chat-streaming.md`: 12
+- `docs/gateway-de-modelos.md`: 12
+- `infra/docker-compose.yml`: 12
+- `docs/fases/F5-entorno-local-multi-repo.md`: 9
+- `infra/.env.example`: 9
+- `.github/scripts/tests/deploy-dev.test.sh`: 6
+- `.github/scripts/tests/fixtures/infra/k8s/base/backend/deployment.yaml`: 5
+- `docs/olist-dataset.md`: 5
+- `infra/litellm/keys.yaml`: 5
+- `.agents/skills/code-context-builder/SKILL.md`: 4
+- `.ai/skills/code-context-builder/SKILL.md`: 4
+- `.claude/skills/code-context-builder/SKILL.md`: 4
+- `.github/workflows/images.yml`: 4
+- `.github/workflows/publish-stubs.yml`: 4
+- `.specify/memory/constitution.md`: 4
+- `data/olist/README.md`: 4
+- `docs/fases/F5-mover-rutas-al-gateway.md`: 4
+- `docs/modulos.md`: 4
+- `infra/docker-compose.override.yml.example`: 4
+- `infra/litellm/tests/test_shoplab_callbacks.py`: 4
+- `infra/observability/dashboards/pods.json`: 4
+- `.ai/context/project-context.md`: 3
+- `.github/dependabot.yml`: 3
+- `.specify/templates/plan-template.md`: 3
+- `data/olist/tests/test_preflight.py`: 3
+- `infra/observability/dashboards/http.json`: 3
+- `infra/observability/dashboards/jvm.json`: 3
+- `infra/observability/prometheus/prometheus.yml`: 3
+- `ml/README.md`: 3
+- `data/olist/src/olist_loader/preflight.py`: 2
+- `docs/admin-eval.md`: 2
+- `docs/contratos.md`: 2
+- `docs/despliegue-continuo.md`: 2
+- `docs/mapa-servicios.md`: 2
+- `infra/litellm/config.yaml`: 2
+- `scripts/test-e2e.sh`: 2
+- `.gitattributes`: 1
+- `.github/scripts/tests/fixtures/infra/k8s/base/kustomization.yaml`: 1
+- `.github/scripts/tests/fixtures/infra/k8s/overlays/dev/kustomization.yaml`: 1
+- `.specify/templates/tasks-template.md`: 1
+- `.trivyignore`: 1
+- `data/kb-tools/README.md`: 1
+- `data/kb-tools/pyproject.toml`: 1
+- `data/olist/pyproject.toml`: 1
+- `data/olist/src/olist_loader/config.py`: 1
+- `data/olist/src/olist_loader/errors.py`: 1
+- `data/olist/tests/test_cli.py`: 1
+- `data/olist/tests/test_migrations.py`: 1
+- `docs/fases/F5-contratos-http-versionado-y-retiro.md`: 1
+- `infra/litellm/bootstrap_keys.py`: 1
+- `infra/litellm/tests/test_render_config.py`: 1
+- `ml/ci/prepare-database.sh`: 1
+- `ml/data/intents/DATASHEET.md`: 1
+- `ml/pyproject.toml`: 1
+- `ml/src/intent_dataset/sources.py`: 1
+- `ml/src/olist_eda/config.py`: 1
+- `ml/src/olist_eda/db.py`: 1
+- `ml/tests/test_config.py`: 1
+- `ml/tests/test_db.py`: 1
+- `notebooks/README.md`: 1
+- `notebooks/pyproject.toml`: 1
+- `notebooks/tests/test_notebook.py`: 1
+- `notebooks/vendor/ingest_shim/app/openapi_export.py`: 1
+- `release-please-config.json`: 1
+- `scripts/test-e2e.ps1`: 1
+
+Las referencias a `backend/` que quedan describen su retiro, son ejemplos genéricos de las plantillas de spec-kit o
+un paquete Java ajeno en la skill `code-context-builder`.
+
+## Cierre (2026-11-26)
+
+| Tarea | Resultado |
+|---|---|
+| T062 | `shoplab-infra` #55 (borrador, CI en verde): sin `k8s/base/backend`, sin `GATEWAY_MONOLITH_URI`, `ServiceDown` en lugar de `BackendDown`, `quality.sh` con `eval-service-eval`. **Sin fusionar** |
+| T066 | Imagen `backend` marcada como deprecada en ADR-0035; no se borra |
+| T070 | Pasos 1 y 3 verificados en dev; paso 2 con el `chat-service` real parado (`settings` 503, guardar `201`, historial `200`) y `requests.http` 16/16 en un compose desechable sin monolito; paso 4 (compose desde cero, `psql`, CI del PR) y 5 en el PR #195. `mvn verify` de `eval-service`: el de la CI de `v0.1.0` |
+| T072 | PR #194 y #195 (helpdesk), #55 (infra) |
+| T067 | **Pendiente**: fusionar #194, #195 e infra #55, y comprobar CI y dev |
+
+Hallazgo ajeno a LAB-130: el chat de dev respondía `SLHD_CHAT_00002` porque la `NetworkPolicy` de LiteLLM no admite a
+`chat-service` (`retrieval-service` sí conecta). Corrección en `shoplab-infra` #54, sin fusionar.
 
 ## Estado antes de levantar dev
 

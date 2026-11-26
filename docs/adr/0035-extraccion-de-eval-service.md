@@ -50,3 +50,20 @@ dónde viven sus datos, cómo se hace el corte, cómo lee la configuración del 
 - El esquema `eval` antiguo en `shoplab` queda sin uso; su borrado (`DROP SCHEMA eval CASCADE` con copia previa) es un
   paso manual documentado en [F5-mover-rutas-al-gateway.md](../fases/F5-mover-rutas-al-gateway.md).
 - La evaluación online de LAB-69 se añade en `eval-service` sin crear otro servicio.
+
+## Imagen del monolito
+
+`ghcr.io/leandroamariles/backend` queda **deprecada**: no se publican versiones nuevas y ningún compose ni overlay la
+usa. Se conserva (última: `v0.31.0`) para poder restaurar.
+
+## Cómo restaurar
+
+El punto de restauración es el tag `backend-final-pre-LAB-130` (último commit de `main` con `backend/`). Las copias de
+datos se tomaron el 2026-11-26 con `pg_dump --format=custom` de la base `eval` (`eval-db.dump`) y del esquema `eval` de
+la base `shoplab` (`shoplab-eval-schema.dump`); se guardan fuera del repositorio.
+
+1. Código: `git checkout backend-final-pre-LAB-130 -- backend` y revertir el PR de retiro (compose, CI y configuración).
+2. Datos: para llevar al monolito lo guardado después del corte, restaurar la base `eval` sobre `shoplab`:
+   `pg_restore --clean --if-exists -d shoplab eval-db.dump` (sustituye el esquema `eval`; hacer antes otra copia).
+3. Dev: en `shoplab-infra`, revertir el retiro del monolito y el commit de corte del gateway.
+

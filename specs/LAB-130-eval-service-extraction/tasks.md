@@ -179,16 +179,16 @@ siguen en PostgreSQL (quickstart 4).
 **Puerta de entrada**: T045…T050 verificados y al menos una ejecución real guardada y leída por el servicio. Va en un
 PR aparte.
 
-- [ ] T057 [US4] Crear con `git tag` el punto de restauración `backend-final-pre-LAB-130` y una copia (`pg_dump`) de la base `eval` y del esquema `eval` de `shoplab`; documentar la restauración en el ADR-0035 (US4-4)
-- [ ] T058 [US4] Inventariar con `git grep -n -i "backend"` las referencias fuera de `backend/` (workflows, compose, Prometheus, README, `.gitignore`, Qodana/Trivy, `release-please`, docs) y guardar la lista en `validation.md`
-- [ ] T059 [US4] Eliminar `backend/` completo (código, migraciones, pruebas, `Dockerfile`, `qodana.*`, `.mvn`, `mvnw`)
-- [ ] T060 [P] [US4] Retirar de `.github/workflows/` los filtros y jobs de `backend` en `ci.yml`, la publicación de la imagen en `images.yml`, `publish-stubs.yml` y las entradas de `release-please` que solo servían al monolito; conservar lo que protege al resto (Python, notebooks, ml, infra)
-- [ ] T061 [P] [US4] Retirar el servicio `backend` de `infra/docker-compose.yml`, su scraping en `infra/prometheus/` y `LITELLM_KEY_BACKEND` de compose, `.env.example` y del gateway de modelos si ya no tiene consumidores; ajustar el scraping para que apunte a `eval-service`
-- [ ] T062 [P] [US4] En `shoplab-infra/`: retirar `apps/backend` de la ApplicationSet y el despliegue, y la ruta por defecto del gateway hacia `backend` (FR-024); además, `scripts/quality.sh` lee el token del secreto `backend-eval`: pasarlo a `eval-service-eval` antes de borrar el del monolito
-- [ ] T063 [US4] Comprobar que `docker compose -f infra/docker-compose.yml up` arranca desde cero sin `backend/` y con `eval-service` (FR-023, US4-2)
-- [ ] T064 [US4] Verificar con `psql` que los esquemas `catalog`, `orders`, `tickets` (Olist) y `eval` siguen intactos y que no hay `DROP SCHEMA` en ningún archivo del PR (FR-025, SC-008)
-- [ ] T065 [US4] Enmendar `.specify/memory/constitution.md` (PATCH 1.0.3): la restricción de stack deja de nombrar `backend/` y pasa a servicios por repositorio; actualizar el informe de impacto; revisar `.ai`, `GEMINI.md` y `README.md` si citan `backend/` (research D-9)
-- [ ] T066 [US4] Retirar la imagen `backend` de GHCR o dejarla deprecada con una nota (APROBACIÓN)
+- [X] T057 [US4] Crear con `git tag` el punto de restauración `backend-final-pre-LAB-130` y una copia (`pg_dump`) de la base `eval` y del esquema `eval` de `shoplab`; documentar la restauración en el ADR-0035 (US4-4)
+- [X] T058 [US4] Inventariar con `git grep -n -i "backend"` las referencias fuera de `backend/` (workflows, compose, Prometheus, README, `.gitignore`, Qodana/Trivy, `release-please`, docs) y guardar la lista en `validation.md`
+- [X] T059 [US4] Eliminar `backend/` completo (código, migraciones, pruebas, `Dockerfile`, `qodana.*`, `.mvn`, `mvnw`)
+- [X] T060 [P] [US4] Retirar de `.github/workflows/` los filtros y jobs de `backend` en `ci.yml`, la publicación de la imagen en `images.yml`, `publish-stubs.yml` y las entradas de `release-please` que solo servían al monolito; conservar lo que protege al resto (Python, notebooks, ml, infra)
+- [X] T061 [P] [US4] Retirar el servicio `backend` de `infra/docker-compose.yml`, su scraping en `infra/prometheus/` y `LITELLM_KEY_BACKEND` de compose, `.env.example` y del gateway de modelos si ya no tiene consumidores; ajustar el scraping para que apunte a `eval-service`
+- [X] T062 [P] [US4] En `shoplab-infra/`: retirar `apps/backend` de la ApplicationSet y el despliegue, y la ruta por defecto del gateway hacia `backend` (FR-024); además, `scripts/quality.sh` lee el token del secreto `backend-eval`: pasarlo a `eval-service-eval` antes de borrar el del monolito
+- [X] T063 [US4] Comprobar que `docker compose -f infra/docker-compose.yml up` arranca desde cero sin `backend/` y con `eval-service` (FR-023, US4-2)
+- [X] T064 [US4] Verificar con `psql` que los esquemas `catalog`, `orders`, `tickets` (Olist) y `eval` siguen intactos y que no hay `DROP SCHEMA` en ningún archivo del PR (FR-025, SC-008)
+- [X] T065 [US4] Enmendar `.specify/memory/constitution.md` (PATCH 1.0.3): la restricción de stack deja de nombrar `backend/` y pasa a servicios por repositorio; actualizar el informe de impacto; revisar `.ai`, `GEMINI.md` y `README.md` si citan `backend/` (research D-9)
+- [X] T066 [US4] Retirar la imagen `backend` de GHCR o dejarla deprecada con una nota (APROBACIÓN)
 - [ ] T067 [US4] APROBACIÓN Fusionar el PR de retiro, comprobar que CI y dev siguen en verde y que `git grep -n "backend/"` no devuelve referencias vivas (SC-008)
 
 ---
@@ -197,9 +197,9 @@ PR aparte.
 
 - [X] T068 [P] Generar `specs/LAB-130-eval-service-extraction/requests.http` (regla `http-test-requests`): un caso por escenario de aceptación y por regla de la spec (token, 409 repetido, historial, comparación, 422 no comparable, settings con chat caído)
 - [X] T069 [P] Ejecutar la skill `new-properties` y entregar el YAML de propiedades nuevas para el yml de cada entorno
-- [ ] T070 Pasar `quickstart.md` completo y guardar la evidencia en `validation.md`
+- [X] T070 Pasar `quickstart.md` completo y guardar la evidencia en `validation.md`
 - [X] T071 [P] Comprobar cobertura ≥ 80 % y 0 violaciones de Checkstyle/PMD en `shoplab-eval-service`
-- [ ] T072 Marcar este `tasks.md` y abrir los PR con título `type(scope): [LAB-130] descripción` (skill `commit-and-push`)
+- [X] T072 Marcar este `tasks.md` y abrir los PR con título `type(scope): [LAB-130] descripción` (skill `commit-and-push`)
 
 ---
 

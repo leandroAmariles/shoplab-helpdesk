@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
       notebooks: ${{ steps.filter.outputs.notebooks }}
       ml: ${{ steps.filter.outputs.ml }}
       olist: ${{ steps.filter.outputs.olist }}
@@ -32,9 +31,6 @@ jobs:
         id: filter
         with:
           filters: |
-            backend:
-              - 'backend/**'
-              - 'docs/modulos/**'
             notebooks:
               - 'notebooks/**'
               - 'data/kb/**'
@@ -76,86 +72,6 @@ jobs:
           if [ "$KB" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"data/kb-tools"'); fi
           if [ "$LITELLM" = "true" ] || [ "$CI_CHANGED" = "true" ]; then items+=('"infra/litellm"'); fi
           echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
-
-  backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      packages: read
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-          cache-dependency-path: backend/pom.xml
-          server-id: github-shoplab-contracts
-          server-username: GITHUB_ACTOR
-          server-password: GITHUB_TOKEN
-      - name: Verify (Checkstyle, PMD, Modulith, tests, JaCoCo gate)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B -ntp -s .mvn/ci-settings.xml clean verify
-      - name: Module documentation is up to date
-        # ModularityTests regenerates docs/modulos from the code (LAB-105); a diff means it was not committed.
-        run: |
-          if [ -n "$(git status --porcelain -- ../docs/modulos)" ]; then
-            git status --short -- ../docs/modulos
-            echo "::error::docs/modulos is out of date: run './mvnw test -Dtest=ModularityTests' in backend/ and commit the result"
-            exit 1
-          fi
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jacoco-report
-          path: backend/target/site/jacoco/
-          if-no-files-found: warn
-          retention-days: 14
-
-  qodana:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      security-events: write
-      pull-requests: write
-      checks: write
-      packages: read
-    env:
-      # Fork PRs get a read-only token: skip comments, annotations and SARIF upload there.
-      CAN_WRITE: ${{ github.event.pull_request.head.repo.fork != true }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Qodana scan
-        uses: JetBrains/qodana-action@v2026.2.2
-        with:
-          # The analysis resolves the dependencies inside its container: it needs the token for GitHub Packages
-          # (LAB-129). backend/qodana.yaml copies the Maven settings that read it.
-          args: --project-dir,backend,--baseline,qodana.sarif.json,-e,GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          pr-mode: false
-          # The cache keeps the project model but not the Maven repository of the container: a restored model points at
-          # jars that are not there and nothing resolves (LAB-129).
-          use-caches: false
-          upload-result: true
-          artifact-name: qodana-report
-          use-annotations: ${{ env.CAN_WRITE }}
-          post-pr-comment: ${{ env.CAN_WRITE }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload SARIF to code scanning
-        if: always() && env.CAN_WRITE == 'true'
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
 
   trivy:
     runs-on: ubuntu-latest
@@ -335,7 +251,7 @@ jobs:
           fi
 
   ci-gate:
-    needs: [changes, backend, qodana, trivy, python, ml-notebook, observability]
+    needs: [changes, trivy, python, ml-notebook, observability]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

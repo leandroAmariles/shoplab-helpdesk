@@ -1,26 +1,12 @@
 version: 2
 
 registries:
-  github-maven:
-    type: maven-repository
-    url: https://maven.pkg.github.com/leandroAmariles
-    token: ${{ secrets.DEPENDABOT_PACKAGES_TOKEN }}
   github-npm:
     type: npm-registry
     url: https://npm.pkg.github.com
     token: ${{ secrets.DEPENDABOT_PACKAGES_TOKEN }}
 
 updates:
-  - package-ecosystem: maven
-    directory: /backend
-    registries:
-      - github-maven
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(deps)"
-
   - package-ecosystem: npm
     directory: /frontend
     registries:
@@ -65,18 +51,6 @@ updates:
       - dependency-name: "docker/login-action"
         update-types: ["version-update:semver-major"]
       - dependency-name: "docker/build-push-action"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: docker
-    directory: /backend
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(deps)"
-    # Java major bumps (21 -> 25) follow java.version in backend/pom.xml, not Dependabot.
-    ignore:
-      - dependency-name: "eclipse-temurin"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker

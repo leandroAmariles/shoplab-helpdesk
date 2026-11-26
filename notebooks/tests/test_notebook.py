@@ -80,7 +80,7 @@ def test_the_sections_the_spec_asks_for_are_there(notebook):
         assert expected.lower() in headings.lower(), expected
 
 
-@pytest.mark.parametrize("folder", ["backend/src", "ingest/app"])
+@pytest.mark.parametrize("folder", ["ingest/app"])
 def test_production_code_does_not_import_anything_from_the_notebook(folder):
     target = repo_root() / folder
     if not target.exists():

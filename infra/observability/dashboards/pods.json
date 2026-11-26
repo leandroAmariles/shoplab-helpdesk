@@ -1,7 +1,7 @@
 {
   "uid": "shoplab-pods",
   "title": "ShopLab · Pods",
-  "description": "Estado, reinicios, disponibilidad y consumo de los pods del backend (LAB-102).",
+  "description": "Estado, reinicios, disponibilidad y consumo de los pods de los servicios (LAB-102).",
   "tags": [
     "shoplab"
   ],
@@ -50,10 +50,10 @@
         "name": "pod",
         "label": "Pods (regex)",
         "type": "textbox",
-        "query": "backend-.*",
+        "query": "(chat|eval|retrieval)-service-.*",
         "current": {
-          "text": "backend-.*",
-          "value": "backend-.*"
+          "text": "(chat|eval|retrieval)-service-.*",
+          "value": "(chat|eval|retrieval)-service-.*"
         },
         "hide": 0
       }

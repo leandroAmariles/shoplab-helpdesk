@@ -1,6 +1,9 @@
 <!--
 Sync Impact Report (temporary - remove before committing)
-- Version change: 1.0.1 -> 1.0.2 (PATCH, LAB-116): `ml/` (F8: exploratory analysis and classic ML)
+- Version change: 1.0.2 -> 1.0.3 (PATCH, LAB-130): the `backend/` monolith is retired; the backend stack now
+  describes one repository per service behind the gateway (ADR-0031, ADR-0035). No principle redefined; the
+  spec-kit templates keep their generic `backend/` examples.
+- Earlier: 1.0.1 -> 1.0.2 (PATCH, LAB-116): `ml/` (F8: exploratory analysis and classic ML)
   added to Technology & Architecture Constraints; `notebooks/` clarified as the RAG experiments.
   No principle redefined; no template or existing spec needs migration.
 - Earlier: 1.0.0 -> 1.0.1 (PATCH, LAB-11): backend stack corrected from Spring Boot 3
@@ -72,7 +75,9 @@ in `docs/adr/` using the template. PostgreSQL 16 + pgvector is the single data s
 
 ## Technology & Architecture Constraints
 
-- **Backend**: Java 21, Spring Boot 4.x, Spring AI 2.0, Spring Modulith (`backend/`; ADR-0004).
+- **Backend**: Java 21, Spring Boot 4.x, Spring AI 2.0 (ADR-0004). One repository and database per service
+  (`shoplab-retrieval-service`, `shoplab-chat-service`, `shoplab-eval-service`) behind `shoplab-gateway`
+  (ADR-0031, ADR-0032, ADR-0035); this repository holds no Java service.
 - **Frontend**: Angular with streaming chat, agent console and admin (`frontend/`).
 - **Ingestion & evaluation**: Python / FastAPI (`ingest/`), golden dataset and metrics (`eval/`),
   RAG experiments in `notebooks/` (never imported by production code).
@@ -117,4 +122,4 @@ Runtime guidance lives in `.ai/rules/development-guidelines.md`, `.ai/context/sk
   pull request review MUST verify compliance. Deviations MUST be justified in writing and, if
   lasting, recorded as an ADR.
 
-**Version**: 1.0.2 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-20
+**Version**: 1.0.3 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-26
