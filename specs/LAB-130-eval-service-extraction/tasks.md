@@ -189,7 +189,7 @@ PR aparte.
 - [X] T064 [US4] Verificar con `psql` que los esquemas `catalog`, `orders`, `tickets` (Olist) y `eval` siguen intactos y que no hay `DROP SCHEMA` en ningún archivo del PR (FR-025, SC-008)
 - [X] T065 [US4] Enmendar `.specify/memory/constitution.md` (PATCH 1.0.3): la restricción de stack deja de nombrar `backend/` y pasa a servicios por repositorio; actualizar el informe de impacto; revisar `.ai`, `GEMINI.md` y `README.md` si citan `backend/` (research D-9)
 - [X] T066 [US4] Retirar la imagen `backend` de GHCR o dejarla deprecada con una nota (APROBACIÓN)
-- [ ] T067 [US4] APROBACIÓN Fusionar el PR de retiro, comprobar que CI y dev siguen en verde y que `git grep -n "backend/"` no devuelve referencias vivas (SC-008)
+- [X] T067 [US4] APROBACIÓN Fusionar el PR de retiro, comprobar que CI y dev siguen en verde y que `git grep -n "backend/"` no devuelve referencias vivas (SC-008)
 
 ---
 
