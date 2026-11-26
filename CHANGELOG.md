@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.29.0...v0.30.0) (2026-11-26)
+
+
+### Features
+
+* **chat:** [LAB-129] retirar el módulo retrieval ([#186](https://github.com/leandroAmariles/shoplab-helpdesk/issues/186)) ([fb288b9](https://github.com/leandroAmariles/shoplab-helpdesk/commit/fb288b9352b5db323dfd15ea8aae176c8360d32f))
+
 ## [0.29.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.28.0...v0.29.0) (2026-11-25)
 
 
