@@ -1,7 +1,7 @@
 {
   "uid": "shoplab-jvm",
   "title": "ShopLab · JVM",
-  "description": "Memoria, hilos, recolección de basura y CPU del backend (LAB-102).",
+  "description": "Memoria, hilos, recolección de basura y CPU de un servicio (LAB-102).",
   "tags": [
     "shoplab"
   ],
@@ -40,8 +40,8 @@
         "refresh": 2,
         "sort": 1,
         "current": {
-          "text": "helpdesk-backend",
-          "value": "helpdesk-backend"
+          "text": "chat-service",
+          "value": "chat-service"
         },
         "includeAll": false,
         "multi": false

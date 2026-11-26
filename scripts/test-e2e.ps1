@@ -45,7 +45,8 @@ function Test-ServiceEndpoint {
 
 Test-ServiceEndpoint -Name "LiteLLM Gateway" -Url "http://localhost:4000/health/liveliness" -ExpectedPattern "healthy|ok|true|alive"
 Test-ServiceEndpoint -Name "Ingest Service" -Url "http://localhost:8000/health" -ExpectedPattern "ok|healthy"
-Test-ServiceEndpoint -Name "Backend Health" -Url "http://localhost:8081/actuator/health" -ExpectedPattern "UP"
+Test-ServiceEndpoint -Name "Chat Health" -Url "http://localhost:8083/actuator/health" -ExpectedPattern "UP"
+Test-ServiceEndpoint -Name "Eval Health" -Url "http://localhost:8084/actuator/health" -ExpectedPattern "UP"
 Test-ServiceEndpoint -Name "Retrieval Health" -Url "http://localhost:8082/actuator/health" -ExpectedPattern "UP"
 # Gateway (LAB-107): su salud y una lectura de la API a través de él
 Test-ServiceEndpoint -Name "Gateway Health" -Url "http://localhost:8080/actuator/health" -ExpectedPattern "UP"

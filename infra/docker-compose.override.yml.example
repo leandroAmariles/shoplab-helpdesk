@@ -30,11 +30,11 @@ services:
   #     SHOPLAB_GATEWAY_ROUTES_CATALOG_PREFIX: /api/catalog
   #     SHOPLAB_GATEWAY_ROUTES_CATALOG_URI: http://catalog-service:8080
 
-  # Descomentar para construir y depurar shoplab-backend localmente:
-  # backend:
+  # Construir shoplab-eval-service localmente (LAB-130):
+  # eval-service:
   #   build:
-  #     context: ../../shoplab-helpdesk/backend
-  #   image: shoplab-backend:local
+  #     context: ../../shoplab-eval-service
+  #   image: shoplab-eval-service:local
 
   # Construir shoplab-retrieval-service localmente:
   # retrieval-service:

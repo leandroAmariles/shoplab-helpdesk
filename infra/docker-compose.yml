@@ -10,7 +10,7 @@
 #                  anadir `-f infra/docker-compose.ollama-host.yml`.
 #   llmops         langfuse (LAB-64): web, worker y sus almacenes (postgres, clickhouse, redis, minio) con prefijo
 #                  `langfuse-`. Interfaz en http://localhost:3001. Activar: --profile llmops.
-#   observability  prometheus + grafana (LAB-102): Prometheus recoge del host el backend (puerto 8081) y el gateway
+#   observability  prometheus + grafana (LAB-102): Prometheus recoge del host los servicios (8082-8084) y el gateway
 #                  (8080); Grafana arranca con el origen de datos y los dashboards de infra/observability/.
 #                  Activar: --profile observability.
 #   kafka          reservado, sin servicios todavia (F4).
@@ -150,7 +150,6 @@ services:
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-shoplab-master-local-only}
       GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-local}
-      LITELLM_KEY_BACKEND: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
       LITELLM_KEY_CHAT: ${LITELLM_KEY_CHAT:-sk-shoplab-chat-local}
       LITELLM_KEY_INGEST: ${LITELLM_KEY_INGEST:-sk-shoplab-ingest-local}
       LITELLM_KEY_EVAL: ${LITELLM_KEY_EVAL:-sk-shoplab-eval-local}
@@ -164,7 +163,7 @@ services:
     restart: "no"
 
   # Parseo y troceado de documentos (LAB-20). Sin estado y sin acceso a la base de datos: entrega los chunks al modulo
-  # retrieval del backend, que es quien los guarda.
+  # retrieval-service, que es quien los guarda.
   ingest:
     image: ${INGEST_IMAGE:-ghcr.io/leandroamariles/ingest:v0.26.0}
     environment:
@@ -204,7 +203,7 @@ services:
     restart: "no"
 
   # Base de conocimiento en su propio servicio (LAB-129): el gateway le envia /api/documents y /api/knowledge, y el
-  # chat del backend la consulta aqui. El 8082 del host es solo para depurar.
+  # chat-service la consulta aqui. El 8082 del host es solo para depurar.
   retrieval-service:
     image: ${RETRIEVAL_IMAGE:-ghcr.io/leandroamariles/retrieval-service:v0.2.0}
     environment:
@@ -327,50 +326,22 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # Backend Spring Boot 4 / Spring Modulith (LAB-110): solo eval + shared hasta LAB-130. La API entra por `gateway`;
-  # el 8081 del host es solo para depurar (LAB-107).
-  backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.31.0}
-    environment:
-      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
-      POSTGRES_USER: ${POSTGRES_USER:-shoplab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
-      # Hasta que se retire el monolito: sin `http`, la v0.31.0 sirve su configuración interna y no la de chat-service.
-      SHOPLAB_CHAT_SETTINGS_CLIENT_MODE: http
-      SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL: http://chat-service:8080
-    ports:
-      - "${BACKEND_PORT:-8081}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      chat-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-    restart: unless-stopped
-
   # Puerta unica de la API (LAB-107, repo shoplab-gateway): reparte /api por prefijo; documents y knowledge van a
-  # retrieval-service (LAB-129), chat y assistant van a chat-service (LAB-59), y eval sigue en el monolito hasta LAB-130.
+  # retrieval-service (LAB-129), chat y assistant a chat-service (LAB-59) y eval a eval-service (LAB-130).
   gateway:
     image: ${GATEWAY_IMAGE:-ghcr.io/leandroamariles/gateway:v0.1.0}
     environment:
-      # Backend en el IDE: GATEWAY_MONOLITH_URI=http://host.docker.internal:8081
-      GATEWAY_MONOLITH_URI: ${GATEWAY_MONOLITH_URI:-http://backend:8080}
       SHOPLAB_GATEWAY_ROUTES_CHAT_URI: ${SHOPLAB_GATEWAY_ROUTES_CHAT_URI:-http://chat-service:8080}
       SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI: ${SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI:-http://retrieval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI: ${SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI:-http://retrieval-service:8080}
-      SHOPLAB_GATEWAY_ROUTES_EVAL_URI: ${SHOPLAB_GATEWAY_ROUTES_EVAL_URI:-}
+      SHOPLAB_GATEWAY_ROUTES_EVAL_URI: ${SHOPLAB_GATEWAY_ROUTES_EVAL_URI:-http://eval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI: ${SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:-http://chat-service:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
-      backend:
+      eval-service:
         condition: service_healthy
       retrieval-service:
         condition: service_healthy
@@ -409,7 +380,7 @@ services:
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    # El backend corre en el host: host.docker.internal tambien debe resolver en Linux.
+    # Los servicios se recogen por el host: host.docker.internal tambien debe resolver en Linux.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

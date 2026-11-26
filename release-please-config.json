@@ -19,14 +19,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "xml",
-          "path": "backend/pom.xml",
-          "xpath": "//*[local-name()='project']/*[local-name()='version']"
-        }
-      ]
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }

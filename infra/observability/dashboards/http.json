@@ -1,7 +1,7 @@
 {
   "uid": "shoplab-http",
   "title": "ShopLab · HTTP",
-  "description": "Tasa, latencia p95 y errores de las peticiones del backend (LAB-102).",
+  "description": "Tasa, latencia p95 y errores de las peticiones de un servicio (LAB-102).",
   "tags": [
     "shoplab"
   ],
@@ -40,8 +40,8 @@
         "refresh": 2,
         "sort": 1,
         "current": {
-          "text": "helpdesk-backend",
-          "value": "helpdesk-backend"
+          "text": "chat-service",
+          "value": "chat-service"
         },
         "includeAll": false,
         "multi": false

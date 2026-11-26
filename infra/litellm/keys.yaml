@@ -6,18 +6,6 @@
 environment: ${GATEWAY_ENVIRONMENT}
 
 keys:
-  - alias: backend-${GATEWAY_ENVIRONMENT}
-    consumer: backend
-    key_env: LITELLM_KEY_BACKEND
-    max_budget: 5.00
-    budget_duration: 1d
-    # `chat-fallback` es solo el destino del fallback: el backend nunca lo pide, pero LiteLLM omite el fallback si la
-    # clave no puede llamarlo (verificado contra el gateway real).
-    models: [chat, chat-fallback]
-    # El proveedor cloud solo se permite si hay clave de proveedor (FR-011, FR-012).
-    models_when:
-      - env: CLOUD_PROVIDER_API_KEY
-        models: [chat-cloud]
   # chat-service (LAB-59): modelos de conversación (chat, fallback y cloud condicional).
   - alias: chat-${GATEWAY_ENVIRONMENT}
     consumer: chat

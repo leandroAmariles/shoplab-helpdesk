@@ -39,8 +39,9 @@ check_endpoint "LiteLLM Gateway" "http://localhost:4000/health/liveliness" "heal
 # 2. Ingest Service
 check_endpoint "Ingest Service" "http://localhost:8000/health" "ok\|healthy"
 
-# 3. Backend Actuator Health
-check_endpoint "Backend Health" "http://localhost:8081/actuator/health" "UP"
+# 3. Salud de los servicios (Actuator)
+check_endpoint "Chat Health" "http://localhost:8083/actuator/health" "UP"
+check_endpoint "Eval Health" "http://localhost:8084/actuator/health" "UP"
 check_endpoint "Retrieval Health" "http://localhost:8082/actuator/health" "UP"
 
 # 3b. Gateway (LAB-107): su salud y una lectura de la API a través de él
