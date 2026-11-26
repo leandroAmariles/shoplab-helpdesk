@@ -514,7 +514,7 @@ services:
     restart: unless-stopped
 
   langfuse-minio:
-    image: ${LANGFUSE_MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:304e0bbeb70a9aa0c40ff26d5a9c0a24296019c6d326ba8b75214fb73441d6e9}
+    image: ${LANGFUSE_MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:b9b1cce81a4a6cc9bf250e68d621cc0b9fb8ed15aefe18fcd1840525eab6a81a}
     profiles: [llmops]
     # El bucket `langfuse` es el directorio /data/langfuse: se crea antes de arrancar el servidor.
     entrypoint: sh
