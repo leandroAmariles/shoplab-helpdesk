@@ -1,8 +1,5 @@
 package com.shoplab.helpdesk.chat;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.shoplab.helpdesk.chat.support.RecordedSpansConfig.SECRET_KEY;
 import static com.shoplab.helpdesk.chat.support.RecordedSpansConfig.SPANS;
@@ -13,29 +10,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.application.port.out.ChatTracePort;
+import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.infrastructure.out.tracing.DerivedTraceIdGenerator;
 import com.shoplab.helpdesk.chat.support.RecordedSpansConfig;
-import com.shoplab.helpdesk.retrieval.application.port.in.IndexDocumentsServicePort;
-import com.shoplab.helpdesk.retrieval.application.port.in.IngestDocumentServicePort;
-import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
-import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContext;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -46,43 +37,21 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @PostgresTest
-@Import({RecordedSpansConfig.class, TurnTraceIntegrationTests.EmbeddingDouble.class})
+@Import({RecordedSpansConfig.class, StubKnowledgeContextConfig.class})
 @ExtendWith(OutputCaptureExtension.class)
 class TurnTraceIntegrationTests {
 
     private static final String SOURCE = "trace-test-policy.md";
-    private static final String MODEL = "trace-model";
     private static final String QUESTION = "Plazos\\n\\nTreinta dias.";
     private static final String CONVERSATION = "7d1c5a0e-2b7e-4a52-9b3e-3f6f4a0c9d21";
-    private static final String ANSWER = """
-            {"document":{"name":"trace-test-policy.md","title":"Politica","format":"markdown"},
-             "chunks":[
-              {"text":"Plazos\\n\\nTreinta dias.","metadata":{"document":"trace-test-policy.md",
-               "section":"Politica > Plazos","position":0}}]}
-            """;
-
-    @TestConfiguration
-    static class EmbeddingDouble {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingPort traceEmbeddingPort() {
-            return new DeterministicEmbeddingPort(MODEL);
-        }
-    }
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
             .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
 
-    @RegisterExtension
-    static WireMockExtension ingest = WireMockExtension.newInstance()
-            .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
-
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
-        registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
         RecordedSpansConfig.enableTracing(registry);
     }
 
@@ -90,13 +59,7 @@ class TurnTraceIntegrationTests {
     private int port;
 
     @Autowired
-    private IngestDocumentServicePort ingestion;
-
-    @Autowired
-    private IndexDocumentsServicePort indexing;
-
-    @Autowired
-    private DeterministicEmbeddingPort embedding;
+    private StubKnowledgeContext knowledge;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -108,22 +71,11 @@ class TurnTraceIntegrationTests {
     void prepare() {
         SPANS.reset();
         ollama.resetAll();
-        ingest.resetAll();
-        ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
-                .withHeader("Content-Type", "application/json").withBody(ANSWER)));
         GatewayStubs.stubAnyChat(ollama,
                 GatewayStubs.streaming(GatewayStubs.bodyWithUsage(11, 7, "Treinta ", "dias.")));
-        embedding.recover();
-        embedding.useModel(MODEL);
-        embedding.resetCounters();
-        ingestion.ingest(new IngestDocumentCommand(SOURCE, "# Politica\n\n## Plazos\n\nTreinta dias."
-                .getBytes(StandardCharsets.UTF_8))).block();
-        indexing.indexPending(false).block();
-    }
-
-    @AfterEach
-    void removeTestDocuments() {
-        jdbc.update("DELETE FROM retrieval.document WHERE source LIKE 'trace-test-%'");
+        knowledge.reset();
+        knowledge.answers(new ContextFragment(SOURCE, "Politica", "Politica > Plazos", 0,
+                "Plazos\n\nTreinta dias.", 1.0));
     }
 
     private ChatTestClient client() {

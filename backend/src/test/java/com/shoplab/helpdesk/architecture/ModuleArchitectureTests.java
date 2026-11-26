@@ -26,7 +26,7 @@ class ModuleArchitectureTests {
     private static final String ROOT = "com.shoplab.helpdesk";
     private static final String FIXTURES = ROOT + ".architecture.violations";
     private static final List<String> BUSINESS_MODULES = List.of(
-            ROOT + ".chat", ROOT + ".retrieval", ROOT + ".orders", ROOT + ".catalog", ROOT + ".tickets",
+            ROOT + ".chat", ROOT + ".orders", ROOT + ".catalog", ROOT + ".tickets",
             ROOT + ".eval");
 
     private static final JavaClasses PRODUCTION = new ClassFileImporter()

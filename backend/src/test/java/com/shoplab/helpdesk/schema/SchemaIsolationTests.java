@@ -18,7 +18,7 @@ class SchemaIsolationTests {
     private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
     private static final Path JAVA_SOURCES = Path.of("src/main/java/com/shoplab/helpdesk");
     private static final Path FIXTURES = Path.of("src/test/resources/schema/violations");
-    private static final Set<String> MODULES = Set.of("chat", "retrieval", "orders", "catalog", "tickets", "eval");
+    private static final Set<String> MODULES = Set.of("chat", "orders", "catalog", "tickets", "eval");
 
     @ParameterizedTest
     @CsvSource({
@@ -55,16 +55,16 @@ class SchemaIsolationTests {
                 CREATE INDEX chunk_embedding_hnsw_idx ON chunk USING hnsw (embedding public.vector_cosine_ops);
                 """;
 
-        assertThat(SchemaIsolationRules.lint("V2.sql", "retrieval", MODULES, sql)).isEmpty();
+        assertThat(SchemaIsolationRules.lint("V2.sql", "tickets", MODULES, sql)).isEmpty();
     }
 
     @Test
-    void anotherModuleReadingRetrievalTablesIsReported() {
-        String sql = "SELECT content FROM retrieval.chunk";
+    void anotherModuleReadingCatalogTablesIsReported() {
+        String sql = "SELECT name FROM catalog.products";
 
         List<String> violations = SchemaIsolationRules.lint("chat.sql", "chat", MODULES, sql);
 
-        assertThat(violations).anySatisfy(line -> assertThat(line).contains(": S2:").contains("'retrieval'"));
+        assertThat(violations).anySatisfy(line -> assertThat(line).contains(": S2:").contains("'catalog'"));
     }
 
     @Test

@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @PostgresTest
 class ModuleSchemasIntegrationTests {
 
-    private static final List<String> MODULES = List.of("chat", "retrieval", "orders", "catalog", "tickets", "eval");
+    private static final List<String> MODULES = List.of("chat", "orders", "catalog", "tickets", "eval");
 
     private static final String CROSS_SCHEMA_FOREIGN_KEYS = """
             SELECT c.conname, src.nspname AS from_schema, dst.nspname AS to_schema
@@ -210,31 +210,8 @@ class ModuleSchemasIntegrationTests {
     }
 
     @Test
-    void retrievalForeignKeysStayInsideItsSchema() {
-        assertThat(foreignKeysOf("retrieval")).containsExactly("chunk->document");
-    }
-
-    @Test
     void chatForeignKeysStayInsideItsSchema() {
         assertThat(foreignKeysOf("chat")).containsExactly("feedback->conversation_turn");
-    }
-
-    @Test
-    void retrievalHistoryHasTheBaselineAndTheKnowledgeBaseTablesAppliedOnce() {
-        jdbc.update("INSERT INTO retrieval.document (source, title) VALUES ('test/history.md', 'History')");
-        try {
-            List<String> applied = appliedVersionsOf("retrieval");
-            List<Integer> before = historySizes("retrieval");
-
-            new ModuleSchemaMigrator(schemas, dataSource).migrate();
-
-            assertThat(applied).containsExactly("1", "2", "3", "4");
-            assertThat(historySizes("retrieval")).isEqualTo(before);
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM retrieval.document WHERE source = 'test/history.md'",
-                    Integer.class)).isEqualTo(1);
-        } finally {
-            jdbc.update("DELETE FROM retrieval.document WHERE source = 'test/history.md'");
-        }
     }
 
     @Test

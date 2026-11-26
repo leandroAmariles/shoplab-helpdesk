@@ -17,7 +17,7 @@ import org.springframework.modulith.docs.Documenter;
 class ModularityTests {
 
     private static final Set<String> EXPECTED_MODULES =
-            Set.of("chat", "retrieval", "orders", "catalog", "tickets", "eval", "shared");
+            Set.of("chat", "orders", "catalog", "tickets", "eval", "shared");
     private static final Path DOCS_OUTPUT = Path.of("..", "docs", "modulos");
 
     private final ApplicationModules modules = ApplicationModules.of(ShopLabHelpdeskApplication.class);
@@ -54,7 +54,7 @@ class ModularityTests {
         try (Stream<Path> files = Files.list(DOCS_OUTPUT)) {
             assertThat(files.map(path -> path.getFileName().toString()).toList())
                     .anyMatch(name -> name.endsWith(".puml"))
-                    .contains("module-chat.adoc", "module-retrieval.adoc", "module-orders.adoc",
+                    .contains("module-chat.adoc", "module-orders.adoc",
                             "module-catalog.adoc", "module-tickets.adoc", "module-eval.adoc");
         }
     }
