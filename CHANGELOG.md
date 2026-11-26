@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.30.0...v0.31.0) (2026-11-26)
+
+
+### Features
+
+* **eval:** [LAB-59] prepare chat-service extraction (Release A: eval HTTP client and local infra) ([#190](https://github.com/leandroAmariles/shoplab-helpdesk/issues/190)) ([33dcd72](https://github.com/leandroAmariles/shoplab-helpdesk/commit/33dcd723aa457266c2cc8bde907f85a966c8f825))
+
 ## [0.30.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.29.0...v0.30.0) (2026-11-26)
 
 
