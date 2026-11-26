@@ -27,7 +27,7 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 | **`chat-service`** | `shoplab-chat-service` | `chat` | Backend conversacional | REST, Streaming SSE | Extraído en S19–S24 (de `chat`) |
 | **`retrieval-service`** | `shoplab-retrieval-service` | `retrieval` | Motor de búsqueda RAG | REST, Servidor MCP | Extraído en S19–S24 (de `retrieval`) |
 | **`eval-service`** | `shoplab-eval-service` | `eval` | Métricas y administración | REST | Extraído en S19–S24 (de `eval`) |
-| **`catalog-service`** | `shoplab-catalog-service` | `catalog` | Catálogo e inventario | REST, Servidor MCP | Nace en F3 (S25+) |
+| **`catalog-service`** | `shoplab-catalog-service` | `catalog` | Catálogo e inventario | REST, Servidor MCP | Implementado (LAB-113), pendiente de despliegue |
 | **`order-service`** | `shoplab-order-service` | `orders` | Pedidos y tracking | REST, Servidor MCP | Nace en F4 (S30+) |
 | **`ticket-service`** | `shoplab-ticket-service` | `tickets` | Soporte e incidencias | REST, Servidor MCP | Nace en F4 (S30+) |
 | **`gateway`** | `shoplab-gateway` (o infra) | — *(stateless)* | API Gateway perimetral | HTTP/1.1, HTTP/2, TLS | Plataforma (F5 / F6) |
