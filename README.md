@@ -83,11 +83,19 @@ Para disponer de todos los repositorios hermanos en carpetas adyacentes (`../`):
 - En Linux / macOS / Git Bash: `make clone-all`
 - En Windows (PowerShell): `pwsh scripts/clone-all.ps1`
 
-#### 2. Levantar el sistema completo con GHCR
-Copia las variables de entorno y arranca todos los servicios con imágenes preconstruidas publicadas en GHCR con versiones fijadas en `.env` (prohibido `:latest`):
+#### 2. Levantar el sistema
+Con el clúster de dev (`shoplab-infra`), en Docker solo hacen falta PostgreSQL y Ollama; las aplicaciones corren en el
+clúster y se usan por sus túneles:
 ```bash
 cp infra/.env.example infra/.env
-docker compose -f infra/docker-compose.yml up -d --wait
+make up     # PostgreSQL, Ollama (puerto 11434, GPU si la hay), clúster y túneles: http://shoplab.localtest.me:8080
+make down   # cierra los túneles y detiene todo; no borra volúmenes
+```
+
+Sin clúster, `make up-all` arranca todos los servicios con imágenes preconstruidas publicadas en GHCR con versiones fijadas en `.env` (prohibido `:latest`):
+```bash
+cp infra/.env.example infra/.env
+make up-all
 ```
 Esto levanta PostgreSQL, LiteLLM, Ollama, los servicios, Gateway, Frontend e Ingest en sus puertos canónicos:
 - **Frontend (Angular)**: [http://localhost:4200](http://localhost:4200)
@@ -110,7 +118,7 @@ Para desarrollar en un servicio sin tener que compilar los demás:
 Para llevar una ruta a un servicio extraído, ver [docs/fases/F5-mover-rutas-al-gateway.md](docs/fases/F5-mover-rutas-al-gateway.md).
 
 #### 4. Probar y verificar
-Ejecuta la suite de verificación de integración E2E:
+Con el sistema levantado con `make up-all`, ejecuta la suite de verificación de integración E2E:
 ```bash
 make test-e2e
 # O en Windows PowerShell:
@@ -188,9 +196,11 @@ Todos los comandos se ejecutan desde la raíz del repositorio.
 
 | Acción | Comando |
 | --- | --- |
-| Levantar `core` | `docker compose -f infra/docker-compose.yml up -d --wait` |
+| Todo el entorno de dev (clúster y túneles) | `make up` / `make down` |
+| Solo las dependencias del clúster | `make deps` |
+| Levantar `core` | `make up-all` |
 | Con un perfil extra | `docker compose -f infra/docker-compose.yml --profile kafka up -d --wait` |
-| Con GPU NVIDIA | `docker compose -f infra/docker-compose.yml -f infra/docker-compose.gpu.yml up -d --wait` |
+| GPU NVIDIA | `make up` y `make up-all` la usan si Docker la ofrece; `GPU=0` la desactiva |
 | Ver estado de salud | `docker compose -f infra/docker-compose.yml ps` |
 | Detener (conserva datos y modelos) | `docker compose -f infra/docker-compose.yml down` |
 | Reiniciar desde cero | `docker compose -f infra/docker-compose.yml down -v` |
