@@ -57,7 +57,7 @@ description: "Task list for LAB-113 catalog-service implementation"
 ### Repositorio y persistencia
 
 - [x] T008 [US1] APROBACIÓN Crear el repositorio `shoplab-catalog-service` a partir de `shoplab-service-template` con GitHub CLI (`gh repo create`) — *creado privado; ajustes de merge sin aplicar*
-- [ ] T009 [US1] MANUAL Configurar secretos de repositorio (`DEPLOY_APP_PRIVATE_KEY`, `RELEASE_PLEASE_TOKEN`) en `shoplab-catalog-service`
+- [x] T009 [US1] MANUAL Configurar secretos de repositorio (`DEPLOY_APP_PRIVATE_KEY`, `RELEASE_PLEASE_TOKEN`) en `shoplab-catalog-service` — *con `DEPLOY_APP_ID` como variable*
 - [x] T010 [US1] Crear la migración Flyway `shoplab-catalog-service/src/main/resources/db/migration/catalog/V1__init_catalog_tables.sql` con las tablas `product_categories`, `products` y `sellers` según [data-model.md](data-model.md)
 - [x] T011 [P] [US1] Copiar a `SVC/shared/` la infraestructura base no de negocio desde el arquetipo: `GlobalExceptionHandler`, `ErrorResponse`, `ResponseCodeEnum` (`SLHD_CATALOG_*`), `RequestIdFilter` y `DatabaseConfig`
 - [x] T012 [P] [US1] Crear entidades de dominio `Product`, `ProductCategory` y `Seller` en `SVC/domain/`
@@ -77,8 +77,8 @@ description: "Task list for LAB-113 catalog-service implementation"
 
 ### Contrato y API REST
 
-- [ ] T016 [US2] Redactar y publicar el contrato OpenAPI normativo en `shoplab-contracts/openapi/catalog/v1/catalog-api.yaml` definiendo esquemas para `ProductPageResponse`, `ProductDetailResponse`, `ProductStockResponse` y `CategoryResponse` — *redactado y compila; falta publicarlo*
-- [ ] T017 [US2] APROBACIÓN Generar release de `shoplab-contracts` e importar la versión actualizada en `shoplab-catalog-service/pom.xml`
+- [x] T016 [US2] Redactar y publicar el contrato OpenAPI normativo en `shoplab-contracts/openapi/catalog/v1/catalog-api.yaml` definiendo esquemas para `ProductPageResponse`, `ProductDetailResponse`, `ProductStockResponse` y `CategoryResponse` — *publicado en shoplab-contracts 1.5.0*
+- [x] T017 [US2] APROBACIÓN Generar release de `shoplab-contracts` e importar la versión actualizada en `shoplab-catalog-service/pom.xml` — *catalog-service #7*
 - [x] T018 [US2] Implementar `ProductService` y casos de uso en `SVC/application/` (`GetProductsPageUseCase`, `GetProductDetailUseCase`, `GetProductStockUseCase`) con ordenamiento determinista por `product_id`
 - [x] T019 [US2] Implementar `ProductController` en `SVC/api/ProductController.java` con los endpoints `GET /api/catalog/products`, `GET /api/catalog/products/{id}` y `GET /api/catalog/products/{id}/stock`
 - [x] T020 [P] [US2] Implementar `CategoryController` en `SVC/api/CategoryController.java` con el endpoint `GET /api/catalog/categories`
@@ -143,8 +143,8 @@ description: "Task list for LAB-113 catalog-service implementation"
 
 ## Phase 8: Polish & Validation
 
-- [ ] T036 Ejecutar prueba de rendimiento y paginación determinista sobre los 32.951 productos simulando el consumidor `retrieval-service` (LAB-34) — *no ejecutada*
+- [x] T036 Ejecutar prueba de rendimiento y paginación determinista sobre los 32.951 productos simulando el consumidor `retrieval-service` (LAB-34) — *ver validation.md*
 - [x] T037 Ejecutar verificación completa de calidad en `shoplab-catalog-service` (`mvn clean verify`, Checkstyle, PMD, Qodana, JaCoCo ≥ 80%) — *`pipeline / verify` en verde con Qodana en catalog-service #5*
 - [x] T038 APROBACIÓN Crear Pull Requests coordinados en `shoplab-catalog-service`, `shoplab-contracts`, `shoplab-gateway` y `shoplab-infra` — *catalog-service #5, contracts #19, infra #56 y helpdesk #203; gateway sin cambios*
-- [ ] T039 Actualizar matriz de servicios en `shoplab-helpdesk/docs/mapa-servicios.md` marcando `catalog-service` como activo — *marcado como pendiente de despliegue*
+- [x] T039 Actualizar matriz de servicios en `shoplab-helpdesk/docs/mapa-servicios.md` marcando `catalog-service` como activo — *activo en dev con v0.1.0*
 - [x] T040 Completar las evidencias de validación en `specs/LAB-113-catalog-service/validation.md`

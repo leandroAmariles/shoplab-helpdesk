@@ -46,7 +46,34 @@ corregido con su prueba (`./mvnw -o clean verify`: BUILD SUCCESS, 16 pruebas). R
 CI de los PRs (catalog-service #5, contracts #19, infra #56, helpdesk #203): en verde. Antes hubo que corregir dos
 fallos: Qodana en `GlobalExceptionHandler` y las pruebas de `ServiceDown` sin la serie de `catalog-service`.
 
-No ejecutado: rendimiento (SC-004) y despliegue en dev (SC-007).
+### Rendimiento (T036), imagen publicada `v0.1.0` en el compose local
+
+| Recorrido secuencial completo | Resultado |
+|---|---|
+| `size=100`, directo (330 páginas) | 32.951 productos únicos y ordenados; 8,8 s (3.755/s); p50 30 ms, p95 35 ms, máx. 124 ms |
+| `size=100`, por el gateway | 8,7 s (3.806/s); p50 30 ms, p95 34 ms, máx. 102 ms |
+| `size=200`, directo (165 páginas) | 3,8 s (8.581/s); p95 32 ms |
+| Detalle (100 peticiones) | p50 13 ms, p95 26 ms |
+| `tools/call searchProducts` (3 llamadas) | 48-78 ms |
+
+SC-004 (≥ 200 productos/s) y SC-005 (< 500 ms) se cumplen. El objetivo del plan para el detalle (< 20 ms) se cumple en la
+mediana, no en el p95. Datos: 32.951 productos, 3.358 sin stock y todos con precio de referencia.
+
+### Despliegue en dev (2026-11-26, clúster local)
+
+| Comprobación | Resultado |
+|---|---|
+| Argo CD `catalog-service-dev` | `Synced` / `Healthy` (SC-007) |
+| ExternalSecret `catalog-service-db` | `SecretSynced` |
+| `GET /api/catalog/products?size=1` por el gateway del clúster | 200, `totalElements` 32951, `X-Request-Id` devuelto (SC-006) |
+| `tools/call searchProducts` | 200; primera llamada 0,64 s, las cinco siguientes 0,16-0,23 s |
+| Prometheus | `up{job="catalog-service"} = 1`, sin `ServiceDown` activas |
+| Release `v0.1.0` | publicar y desplegar en verde (el despliegue, al relanzarlo tras fusionar infra) |
+
+No verificado: las NetworkPolicy no se probaron con tráfico denegado.
+
+Fuera de esta historia, observado al arrancar el clúster: los pods de Langfuse y LiteLLM quedan en `CrashLoopBackOff`
+(`Permission denied` en el volumen de `litellm-postgres`), y dos releases de Helm faltan en el estado de Terraform.
 
 ## Desviaciones respecto de la especificación
 
@@ -55,3 +82,5 @@ No ejecutado: rendimiento (SC-004) y despliegue en dev (SC-007).
   en portugués o inglés; la búsqueda en lenguaje natural es de LAB-34.
 - El gateway no cambia de código (FR-017 se cumple por configuración de despliegue).
 - Puerto local 8085: el 8084 que cita la especificación ya es de `eval-service`.
+- El parámetro `sort` de [contracts/http-api.md](contracts/http-api.md) no está implementado.
+- Las pruebas de contrato usan YAML locales, no el OpenAPI de `shoplab-contracts`: SC-003 no está demostrado.
