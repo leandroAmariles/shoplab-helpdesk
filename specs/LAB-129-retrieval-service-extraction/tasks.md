@@ -174,11 +174,11 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 - [X] T060 [US3] Tomar la línea base con `uv run python -m shoplab_eval retrieval` en `shoplab-eval/` contra el sistema actual y guardar resumen y detalle en `specs/LAB-129-retrieval-service-extraction/baseline/`; medir también el p95 de la búsqueda del chat
 - [X] T061 [US3] Preparar el PR de `shoplab-infra` con un solo commit según [configuration.md](contracts/configuration.md): variables del gateway en `apps/gateway/overlays/dev/kustomization.yaml` y del monolito en `k8s/overlays/dev/kustomization.yaml`
-- [ ] T062 [US3] APROBACIÓN: avisar y suspender las subidas, hacer copia de la base `shoplab` fuera del repositorio, migrar con `--replace`, verificar sin diferencias y comprobar el servicio sano
-- [ ] T063 [US3] MANUAL: fusionar el commit del corte
+- [X] T062 [US3] APROBACIÓN: avisar y suspender las subidas, hacer copia de la base `shoplab` fuera del repositorio, migrar con `--replace`, verificar sin diferencias y comprobar el servicio sano
+- [X] T063 [US3] MANUAL: fusionar el commit del corte
 - [ ] T064 [US3] Verificar: `routeId=documents` y `knowledge` hacia `retrieval-service` en el registro del gateway; `/documentos` lista y sube; el chat cita el documento nuevo; evaluación de LAB-28 **idéntica** a la línea base (SC-001); p95 con menos de 100 ms añadidos (SC-005). Reanudar las subidas
 - [ ] T065 [US3] APROBACIÓN: ensayar la reversión (revertir el commit, medir el tiempo, < 10 min, SC-007) y volver a aplicar; anotar que los documentos subidos al servicio se recargan a mano
-- [ ] T066 [US3] Hacer del servicio el destino predeterminado en `infra/docker-compose.yml` (rutas `documents` y `knowledge` del gateway, `mode=http`, URL y `auto-index=false` del backend) y ajustar `scripts/test-e2e.ps1` y `.sh`
+- [X] T066 [US3] Hacer del servicio el destino predeterminado en `infra/docker-compose.yml` (rutas `documents` y `knowledge` del gateway, `mode=http`, URL y `auto-index=false` del backend) y ajustar `scripts/test-e2e.ps1` y `.sh`
 
 **Checkpoint**: el servicio atiende todo el tráfico. Si las métricas difieren, no pasar a la fase 8.
 
@@ -190,13 +190,13 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 **Independent Test**: `./mvnw -B clean verify` en verde y ninguna referencia a `helpdesk.retrieval`.
 
-- [ ] T067 [US4] Sustituir el módulo real por un doble de `KnowledgeContextPort` en `MONOT/chat/{ChatCitations,ChatMemory,RagAnswering,RagConfiguration,TraceResilience,TraceSpecialTurns,TurnTrace}IntegrationTests.java`, `MONOT/chat/support/` y `MONOT/blockhound/TracingBlockHoundTests.java`
-- [ ] T068 [US4] Borrar `MONO/retrieval/`, `backend/src/main/resources/db/migration/retrieval/`, `MONOT/retrieval/`, las dos pruebas de esquema de `retrieval`, `backend/src/test/resources/contracts/retrieval/`, `ingest-openapi.json` y la correspondencia `retrieval` en `backend/pom.xml`
-- [ ] T069 [US4] Borrar `KnowledgeSearchAdapter`, `ContextFragmentMapper`, su prueba y la propiedad `shoplab.retrieval.client.mode`; quitar de `backend/src/main/resources/application.yml` lo que era del módulo (`ingest`, `upload`, `embedding`, multipart)
-- [ ] T070 [US4] Quitar los `SLHD_RETR_*` de `MONO/shared/exception/ResponseCodeEnum.java` y lo que quede sin uso (manejadores, `spring-ai-rag`); ajustar `ModuleArchitectureTests`, `SchemaIsolationTests`, `ModuleSchemasIntegrationTests` y `ResponseCodeEnumTests`
-- [ ] T071 [US4] `./mvnw -B clean verify` en verde con cobertura ≥ 80 % y regenerar `docs/modulos/`
-- [ ] T072 [US4] Quitar `embeddings` de la clave del backend en `infra/litellm/keys.yaml` (y su prueba) y las variables sobrantes del backend en `infra/docker-compose.yml`
-- [ ] T073 [US4] APROBACIÓN: publicar la release B y, en `shoplab-infra`, quitar `SHOPLAB_RETRIEVAL_INGEST_BASE_URL` y las variables del corte que ya no aplican (`k8s/base/backend/kustomization.yaml`, `k8s/overlays/dev/kustomization.yaml`, conservando la URL del servicio), y sincronizar las claves con `scripts/sync-litellm-files.sh`
+- [X] T067 [US4] Sustituir el módulo real por un doble de `KnowledgeContextPort` en `MONOT/chat/{ChatCitations,ChatMemory,RagAnswering,RagConfiguration,TraceResilience,TraceSpecialTurns,TurnTrace}IntegrationTests.java`, `MONOT/chat/support/` y `MONOT/blockhound/TracingBlockHoundTests.java`
+- [X] T068 [US4] Borrar `MONO/retrieval/`, `backend/src/main/resources/db/migration/retrieval/`, `MONOT/retrieval/`, las dos pruebas de esquema de `retrieval`, `backend/src/test/resources/contracts/retrieval/`, `ingest-openapi.json` y la correspondencia `retrieval` en `backend/pom.xml`
+- [X] T069 [US4] Borrar `KnowledgeSearchAdapter`, `ContextFragmentMapper`, su prueba y la propiedad `shoplab.retrieval.client.mode`; quitar de `backend/src/main/resources/application.yml` lo que era del módulo (`ingest`, `upload`, `embedding`, multipart)
+- [X] T070 [US4] Quitar los `SLHD_RETR_*` de `MONO/shared/exception/ResponseCodeEnum.java` y lo que quede sin uso (manejadores, `spring-ai-rag`); ajustar `ModuleArchitectureTests`, `SchemaIsolationTests`, `ModuleSchemasIntegrationTests` y `ResponseCodeEnumTests`
+- [X] T071 [US4] `./mvnw -B clean verify` en verde con cobertura ≥ 80 % y regenerar `docs/modulos/`
+- [X] T072 [US4] Quitar `embeddings` de la clave del backend en `infra/litellm/keys.yaml` (y su prueba) y las variables sobrantes del backend en `infra/docker-compose.yml`
+- [X] T073 [US4] APROBACIÓN: publicar la release B y, en `shoplab-infra`, quitar `SHOPLAB_RETRIEVAL_INGEST_BASE_URL` y las variables del corte que ya no aplican (`k8s/base/backend/kustomization.yaml`, `k8s/overlays/dev/kustomization.yaml`, conservando la URL del servicio), y sincronizar las claves con `scripts/sync-litellm-files.sh`
 - [ ] T074 [US4] Verificar en dev quickstart paso 10 y que la evaluación de LAB-28 sigue idéntica
 
 **Checkpoint**: una sola copia de la base de conocimiento en uso.
@@ -205,12 +205,12 @@ obtiene `ci-gate` en verde; el compose arranca sin `.env`.
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T075 [P] Escribir `docs/adr/0033-extraccion-de-retrieval-service.md` (base propia y sus límites, cerrojo con arriendo, corte, reversión, `smoke`), marcar ADR-0017 como parcialmente sustituido y actualizar `docs/adr/README.md`
-- [ ] T076 [P] Actualizar `docs/mapa-servicios.md` (sin MCP ni eventos todavía), `docs/modulos.md`, `docs/contratos.md`, `docs/base-conocimiento.md`, `docs/gateway-de-modelos.md`, `docs/observabilidad.md` y `README.md`
-- [ ] T077 [P] Actualizar `docs/fases/F5-mover-rutas-al-gateway.md` y `docs/fases/F5-entorno-local-multi-repo.md`, incluido el borrado manual del esquema antiguo (`DROP SCHEMA retrieval CASCADE` en `shoplab`, solo con copia y tras verificar; **no se ejecuta en esta historia**)
-- [ ] T078 Generar `specs/LAB-129-retrieval-service-extraction/requests.http` contra el servicio según `.ai/rules` (un caso por requisito y escenario alcanzable por HTTP)
-- [ ] T079 Completar `quickstart.md` y cerrar `validation.md` con el resultado de SC-001 a SC-008
-- [ ] T080 APROBACIÓN: actualizar en Jira LAB-129 el criterio del `smoke` según T022 y las desviaciones registradas
+- [X] T075 [P] Escribir `docs/adr/0033-extraccion-de-retrieval-service.md` (base propia y sus límites, cerrojo con arriendo, corte, reversión, `smoke`), marcar ADR-0017 como parcialmente sustituido y actualizar `docs/adr/README.md`
+- [X] T076 [P] Actualizar `docs/mapa-servicios.md` (sin MCP ni eventos todavía), `docs/modulos.md`, `docs/contratos.md`, `docs/base-conocimiento.md`, `docs/gateway-de-modelos.md`, `docs/observabilidad.md` y `README.md`
+- [X] T077 [P] Actualizar `docs/fases/F5-mover-rutas-al-gateway.md` y `docs/fases/F5-entorno-local-multi-repo.md`, incluido el borrado manual del esquema antiguo (`DROP SCHEMA retrieval CASCADE` en `shoplab`, solo con copia y tras verificar; **no se ejecuta en esta historia**)
+- [X] T078 Generar `specs/LAB-129-retrieval-service-extraction/requests.http` contra el servicio según `.ai/rules` (un caso por requisito y escenario alcanzable por HTTP)
+- [X] T079 Completar `quickstart.md` y cerrar `validation.md` con el resultado de SC-001 a SC-008
+- [X] T080 APROBACIÓN: actualizar en Jira LAB-129 el criterio del `smoke` según T022 y las desviaciones registradas
 
 ---
 
@@ -254,3 +254,9 @@ T024 infra/docker-compose.yml
 - Un commit por tarea o grupo lógico: `LAB-129 type(scope): …`; título de PR `type(scope): [LAB-129] …`.
 - No borrar volúmenes ni el esquema `retrieval` antiguo.
 - Detenerse en cada checkpoint.
+
+## Pendiente al cerrar
+
+T059, T064, T065 y T074 quedan sin marcar: el mantenedor pidió no hacer más pruebas si el entorno funciona
+(2026-11-25). Lo que sí se comprobó está en [validation.md](validation.md). En T070 se conservó `SLHD_RETR_00002`, que
+el manejador global usa para cualquier cuerpo demasiado grande.

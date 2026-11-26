@@ -1,6 +1,8 @@
 # Quickstart: validar LAB-129
 
-Guía de validación. Los nombres de scripts y servicios nuevos son los previstos en el plan; aún no existen.
+Guía de validación. Qué pasos se ejecutaron y con qué resultado está en [validation.md](./validation.md); los
+casos HTTP, en [requests.http](./requests.http). Los pasos 4 y 7 comparan con el módulo del monolito, así que ya
+solo se pueden repetir con la imagen `backend:v0.29.0`.
 
 ## Requisitos
 
