@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
 
   ollama:
-    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.16}
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.17}
     entrypoint: ["sh", "/entrypoint.sh"]
     environment:
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
