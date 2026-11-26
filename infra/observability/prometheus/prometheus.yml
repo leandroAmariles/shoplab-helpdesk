@@ -29,6 +29,12 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8083"]
 
+  # El historial de ejecuciones de evaluacion en su propio servicio (LAB-130): puerto 8084 del host.
+  - job_name: eval-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+
   # El servicio ingest corre en compose (LAB-20): se llega por el nombre del servicio en la red del proyecto.
   - job_name: ingest
     metrics_path: /metrics
