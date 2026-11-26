@@ -12,7 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContext;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
@@ -24,13 +25,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -40,26 +38,15 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @PostgresTest
-@Import(TraceResilienceIntegrationTests.EmbeddingDouble.class)
+@Import(StubKnowledgeContextConfig.class)
 @ExtendWith(OutputCaptureExtension.class)
 class TraceResilienceIntegrationTests {
 
-    private static final String MODEL = "resilience-model";
     private static final String TRACES_URL = "/api/public/otel/v1/traces";
     private static final String PUBLIC_KEY = "pk-lf-resilience";
     private static final String SECRET_KEY = "sk-lf-resilience-secret";
     private static final String QUESTION = "Pregunta secreta sobre plazos de devolucion";
     private static final String ANSWER = "Respuesta confidencial del modelo.";
-
-    @TestConfiguration
-    static class EmbeddingDouble {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingPort resilienceEmbeddingPort() {
-            return new DeterministicEmbeddingPort(MODEL);
-        }
-    }
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
@@ -85,7 +72,7 @@ class TraceResilienceIntegrationTests {
     private int port;
 
     @Autowired
-    private DeterministicEmbeddingPort embedding;
+    private StubKnowledgeContext knowledge;
 
     @Autowired
     private MeterRegistry meters;
@@ -95,9 +82,7 @@ class TraceResilienceIntegrationTests {
         ollama.resetAll();
         langfuse.resetAll();
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.bodyWithUsage(5, 3, ANSWER)));
-        embedding.recover();
-        embedding.useModel(MODEL);
-        embedding.resetCounters();
+        knowledge.reset();
     }
 
     private ChatTestClient.Result ask() {

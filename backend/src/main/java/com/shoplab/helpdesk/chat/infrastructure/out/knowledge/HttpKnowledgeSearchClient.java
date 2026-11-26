@@ -14,7 +14,6 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -24,7 +23,6 @@ import reactor.core.publisher.Mono;
  * the retrieval error of the chat. The threshold, the number of fragments and the context budget stay in the chat.
  */
 @Component
-@ConditionalOnProperty(name = "shoplab.retrieval.client.mode", havingValue = "http")
 public class HttpKnowledgeSearchClient implements KnowledgeContextPort {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpKnowledgeSearchClient.class);

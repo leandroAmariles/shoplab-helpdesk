@@ -6,7 +6,7 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
-/** The catalogue of error codes: unique, well formed, and with the statuses the retrieval ingestion relies on. */
+/** The catalogue of error codes: unique, well formed, and with the statuses their consumers rely on. */
 class ResponseCodeEnumTests {
 
     @Test
@@ -36,26 +36,14 @@ class ResponseCodeEnumTests {
     void theBudgetCodesAreTooManyRequestsAndDifferentFromModelUnavailable() {
         assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getCode()).isEqualTo("SLHD_CHAT_00007");
         assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-        assertThat(ResponseCodeEnum.EMBEDDING_BUDGET_EXCEEDED.getCode()).isEqualTo("SLHD_RETR_00010");
-        assertThat(ResponseCodeEnum.EMBEDDING_BUDGET_EXCEEDED.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getCode())
                 .isNotEqualTo(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE.getCode());
         assertThat(ResponseCodeEnum.CHAT_BUDGET_EXCEEDED.getDefaultMessage()).doesNotContainIgnoringCase("ollama");
     }
 
     @Test
-    void theRetrievalIngestionCodesCarryTheirHttpStatus() {
-        assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getCode()).isEqualTo("SLHD_RETR_00001");
-        assertThat(ResponseCodeEnum.DOCUMENT_UNSUPPORTED_FORMAT.getHttpStatus())
-                .isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    void anOversizedBodyKeepsTheCodeItHadBeforeTheDocumentsMoved() {
         assertThat(ResponseCodeEnum.DOCUMENT_TOO_LARGE.getCode()).isEqualTo("SLHD_RETR_00002");
         assertThat(ResponseCodeEnum.DOCUMENT_TOO_LARGE.getHttpStatus().value()).isEqualTo(413);
-        assertThat(ResponseCodeEnum.DOCUMENT_INVALID.getCode()).isEqualTo("SLHD_RETR_00003");
-        assertThat(ResponseCodeEnum.DOCUMENT_INVALID.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
-        assertThat(ResponseCodeEnum.INGEST_SERVICE_UNAVAILABLE.getCode()).isEqualTo("SLHD_RETR_00004");
-        assertThat(ResponseCodeEnum.INGEST_SERVICE_UNAVAILABLE.getHttpStatus())
-                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(ResponseCodeEnum.INGEST_SERVICE_FAILED.getCode()).isEqualTo("SLHD_RETR_00005");
-        assertThat(ResponseCodeEnum.INGEST_SERVICE_FAILED.getHttpStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
     }
 }

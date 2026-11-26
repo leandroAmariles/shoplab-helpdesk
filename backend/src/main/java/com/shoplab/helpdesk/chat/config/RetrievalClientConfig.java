@@ -2,7 +2,6 @@ package com.shoplab.helpdesk.chat.config;
 
 import com.shoplab.contracts.retrieval.client.KnowledgeSearchApi;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +14,6 @@ import reactor.core.publisher.Mono;
 
 /** The generated interface of the search of {@code retrieval-service}, over a {@code WebClient} (LAB-129). */
 @Configuration
-@ConditionalOnProperty(name = "shoplab.retrieval.client.mode", havingValue = "http")
 @EnableConfigurationProperties(RetrievalClientProperties.class)
 public class RetrievalClientConfig {
 

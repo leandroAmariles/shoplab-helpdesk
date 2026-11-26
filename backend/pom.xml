@@ -136,10 +136,6 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-rag</artifactId>
-        </dependency>
         <!-- LAB-64: OpenTelemetry solo como formato de transporte de las trazas de LLM hacia Langfuse (ADR-0022). -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
@@ -277,10 +273,6 @@
                     <basePackageForTests>com.shoplab.helpdesk.contracts.generated</basePackageForTests>
                     <contractsDirectory>${project.basedir}/src/test/resources/contracts</contractsDirectory>
                     <baseClassMappings>
-                        <baseClassMapping>
-                            <contractPackageRegex>.*retrieval.*</contractPackageRegex>
-                            <baseClassFQN>com.shoplab.helpdesk.retrieval.infrastructure.in.rest.RetrievalContractBase</baseClassFQN>
-                        </baseClassMapping>
                         <baseClassMapping>
                             <contractPackageRegex>.*chat.*</contractPackageRegex>
                             <baseClassFQN>com.shoplab.helpdesk.chat.infrastructure.in.rest.ChatContractBase</baseClassFQN>

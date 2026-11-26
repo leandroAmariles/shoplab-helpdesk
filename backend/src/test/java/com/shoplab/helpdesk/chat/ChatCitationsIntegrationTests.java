@@ -1,21 +1,18 @@
 package com.shoplab.helpdesk.chat;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.shoplab.helpdesk.retrieval.application.port.in.IndexDocumentsServicePort;
-import com.shoplab.helpdesk.retrieval.application.port.in.IngestDocumentServicePort;
-import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
-import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
+import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContext;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -23,21 +20,16 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -49,54 +41,26 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @PostgresTest
-@Import(ChatCitationsIntegrationTests.EmbeddingDouble.class)
+@Import(StubKnowledgeContextConfig.class)
 class ChatCitationsIntegrationTests {
 
     private static final String SOURCE = "cite-test-policy.md";
-    private static final String MODEL = "cite-model";
     private static final String QUESTION_JSON = "{\"message\":\"Plazos\\n\\nTreinta dias.\"}";
-    private static final String PARSED = """
-            {"document":{"name":"cite-test-policy.md","title":"Politica de devoluciones","format":"markdown"},
-             "chunks":[
-              {"text":"Plazos\\n\\nTreinta dias.","metadata":{"document":"cite-test-policy.md",
-               "section":"Politica > Plazos","position":0}}]}
-            """;
-
-    @TestConfiguration
-    static class EmbeddingDouble {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingPort citeEmbeddingPort() {
-            return new DeterministicEmbeddingPort(MODEL);
-        }
-    }
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
             .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
 
-    @RegisterExtension
-    static WireMockExtension ingest = WireMockExtension.newInstance()
-            .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
-
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
-        registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
     @LocalServerPort
     private int port;
 
     @Autowired
-    private IngestDocumentServicePort ingestion;
-
-    @Autowired
-    private IndexDocumentsServicePort indexing;
-
-    @Autowired
-    private DeterministicEmbeddingPort embedding;
+    private StubKnowledgeContext knowledge;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -104,24 +68,13 @@ class ChatCitationsIntegrationTests {
     @BeforeEach
     void prepare() {
         ollama.resetAll();
-        ingest.resetAll();
-        ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
-                .withHeader("Content-Type", "application/json").withBody(PARSED)));
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Treinta dias ", "[1].")));
-        embedding.recover();
-        embedding.useModel(MODEL);
-        embedding.resetCounters();
-    }
-
-    @AfterEach
-    void removeTestDocuments() {
-        jdbc.update("DELETE FROM retrieval.document WHERE source LIKE 'cite-test-%'");
+        knowledge.reset();
     }
 
     private void indexTheDocument() {
-        ingestion.ingest(new IngestDocumentCommand(SOURCE, "# Politica\n\n## Plazos\n\nTreinta dias."
-                .getBytes(StandardCharsets.UTF_8))).block();
-        indexing.indexPending(false).block();
+        knowledge.answers(new ContextFragment(SOURCE, "Politica de devoluciones", "Politica > Plazos", 0,
+                "Plazos\n\nTreinta dias.", 1.0));
     }
 
     private ChatTestClient.Result ask(String json) {

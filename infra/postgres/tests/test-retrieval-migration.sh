@@ -6,7 +6,8 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1 # Git Bash en Windows: no traducir las rutas de dentro del contenedor
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS="$HERE/.."
-MIGRATIONS="$HERE/../../../backend/src/main/resources/db/migration/retrieval"
+# Copia del esquema que dejaba el módulo retrieval del monolito, retirado en LAB-129.
+MIGRATIONS="$HERE/monolith-schema"
 NAME="lab129-migration-test-$$"
 IMAGE="pgvector/pgvector:0.8.7-pg16"
 

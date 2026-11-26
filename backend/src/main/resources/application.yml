@@ -9,14 +9,9 @@ spring:
     password: ${POSTGRES_PASSWORD:change-me-local-only}
   flyway:
     enabled: false
-  webflux:
-    multipart:
-      max-in-memory-size: ${SHOPLAB_RETRIEVAL_UPLOAD_MAX_PART_SIZE:11MB}
-      max-disk-usage-per-part: ${SHOPLAB_RETRIEVAL_UPLOAD_MAX_PART_SIZE:11MB}
-      max-parts: 4
   ai:
     # Every call to a model goes through the LiteLLM gateway (LAB-84): an OpenAI-compatible API. The backend knows
-    # the gateway's address (with /v1), its own virtual key and two LOGICAL model names; which real model answers,
+    # the gateway's address (with /v1), its own virtual key and a LOGICAL model name; which real model answers,
     # the fallback, the budget and the cost are configured in the gateway (infra/litellm/config.yaml).
     openai:
       base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:4000/v1}
@@ -27,8 +22,6 @@ spring:
       timeout: ${SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT:60s}
       chat:
         model: chat
-      embedding:
-        model: embeddings
 
 server:
   port: 8080
@@ -120,26 +113,11 @@ shoplab:
     history:
       trace-url-template: ${SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE:http://localhost:3001/trace/{traceId}}
 
+  # The knowledge base lives in retrieval-service (LAB-129).
   retrieval:
-    # How chat gets its context (LAB-129): `in-process` asks the module; `http` asks retrieval-service.
     client:
-      mode: ${SHOPLAB_RETRIEVAL_CLIENT_MODE:in-process}
       base-url: ${SHOPLAB_RETRIEVAL_CLIENT_BASE_URL:http://localhost:8082}
       timeout: ${SHOPLAB_RETRIEVAL_CLIENT_TIMEOUT:15s}
-    ingest:
-      base-url: ${SHOPLAB_RETRIEVAL_INGEST_BASE_URL:http://localhost:8000}
-      timeout: ${SHOPLAB_RETRIEVAL_INGEST_TIMEOUT:30s}
-      max-response-bytes: ${SHOPLAB_RETRIEVAL_INGEST_MAX_RESPONSE_BYTES:33554432}
-    upload:
-      # Largest document accepted by POST /api/documents; the same 10 MiB as the ingest service.
-      max-bytes: ${SHOPLAB_RETRIEVAL_UPLOAD_MAX_BYTES:10485760}
-    embedding:
-      # Name of the real model behind `embeddings`; it is stored with each vector (ADR-0017).
-      model-name: ${SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME:bge-m3}
-      batch-size: ${SHOPLAB_RETRIEVAL_EMBEDDING_BATCH_SIZE:16}
-      search-limit: ${SHOPLAB_RETRIEVAL_EMBEDDING_SEARCH_LIMIT:5}
-      auto-index: ${SHOPLAB_RETRIEVAL_EMBEDDING_AUTO_INDEX:true}
-      reindex-on-startup: ${SHOPLAB_RETRIEVAL_EMBEDDING_REINDEX_ON_STARTUP:false}
 
 management:
   endpoints:

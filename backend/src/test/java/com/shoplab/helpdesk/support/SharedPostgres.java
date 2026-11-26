@@ -45,8 +45,9 @@ public final class SharedPostgres {
                     "spring.datasource.url=" + postgres.getJdbcUrl(),
                     "spring.datasource.username=" + postgres.getUsername(),
                     "spring.datasource.password=" + postgres.getPassword(),
-                    // No test wants documents indexed behind its back by the real model (specs/LAB-21).
-                    "shoplab.retrieval.embedding.auto-index=false").applyTo(context);
+                    // No test reaches a real retrieval-service by accident, even if one runs on this machine: the
+                    // ones that need context use StubKnowledgeContext (LAB-129).
+                    "shoplab.retrieval.client.base-url=http://localhost:1").applyTo(context);
         }
     }
 }

@@ -12,7 +12,8 @@ import static org.awaitility.Awaitility.await;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.ChatTestClient;
 import com.shoplab.helpdesk.chat.GatewayStubs;
-import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContext;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,11 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -35,22 +33,11 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @PostgresTest
-@Import(TracingBlockHoundTests.EmbeddingDouble.class)
+@Import(StubKnowledgeContextConfig.class)
 class TracingBlockHoundTests {
 
-    private static final String MODEL = "blockhound-trace-model";
     private static final String TRACES_URL = "/api/public/otel/v1/traces";
     private static final String ANSWER = "Respuesta trazada.";
-
-    @TestConfiguration
-    static class EmbeddingDouble {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingPort blockHoundEmbeddingPort() {
-            return new DeterministicEmbeddingPort(MODEL);
-        }
-    }
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
@@ -75,7 +62,7 @@ class TracingBlockHoundTests {
     private int port;
 
     @Autowired
-    private DeterministicEmbeddingPort embedding;
+    private StubKnowledgeContext knowledge;
 
     @BeforeEach
     void prepare() {
@@ -83,9 +70,7 @@ class TracingBlockHoundTests {
         langfuse.resetAll();
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.bodyWithUsage(4, 2, ANSWER)));
         langfuse.stubFor(post(urlEqualTo(TRACES_URL)).willReturn(aResponse().withStatus(200)));
-        embedding.recover();
-        embedding.useModel(MODEL);
-        embedding.resetCounters();
+        knowledge.reset();
     }
 
     @Test

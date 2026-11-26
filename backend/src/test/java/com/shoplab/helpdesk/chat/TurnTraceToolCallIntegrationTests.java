@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.shoplab.helpdesk.chat.application.port.out.ChatTracePort;
 import com.shoplab.helpdesk.chat.support.RecordedSpansConfig;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +39,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @PostgresTest
 @Import({
     RecordedSpansConfig.class,
-    TurnTraceIntegrationTests.EmbeddingDouble.class,
+    StubKnowledgeContextConfig.class,
     TurnTraceToolCallIntegrationTests.AnotherModuleTools.class
 })
 class TurnTraceToolCallIntegrationTests {

@@ -12,13 +12,12 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import com.shoplab.helpdesk.chat.application.port.out.ConversationMemoryPort;
+import com.shoplab.helpdesk.chat.domain.model.ContextFragment;
 import com.shoplab.helpdesk.chat.domain.model.ConversationId;
 import com.shoplab.helpdesk.chat.domain.model.ConversationTurn;
 import com.shoplab.helpdesk.chat.infrastructure.out.persistence.JdbcConversationMemoryAdapter;
-import com.shoplab.helpdesk.retrieval.application.port.in.IndexDocumentsServicePort;
-import com.shoplab.helpdesk.retrieval.application.port.in.IngestDocumentServicePort;
-import com.shoplab.helpdesk.retrieval.domain.model.IngestDocumentCommand;
-import com.shoplab.helpdesk.retrieval.support.DeterministicEmbeddingPort;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContext;
+import com.shoplab.helpdesk.chat.support.StubKnowledgeContextConfig;
 import com.shoplab.helpdesk.support.PostgresTest;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -26,7 +25,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -36,11 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -53,55 +48,27 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
     "shoplab.chat.rag.no-context-mode=model", "shoplab.chat.memory.max-turns=3"})
 @PostgresTest
-@Import(ChatMemoryIntegrationTests.EmbeddingDouble.class)
+@Import(StubKnowledgeContextConfig.class)
 class ChatMemoryIntegrationTests {
 
     private static final String SOURCE = "memory-test-shipping.md";
-    private static final String MODEL = "memory-model";
     private static final String QUESTION = "it-cuanto tarda el envio estandar?";
     private static final String FOLLOW_UP = "it-y si es internacional?";
-    private static final String PARSED = """
-            {"document":{"name":"memory-test-shipping.md","title":"Politica de envios","format":"markdown"},
-             "chunks":[
-              {"text":"it-cuanto tarda el envio estandar?\\nit-y si es internacional?",
-               "metadata":{"document":"memory-test-shipping.md","section":"Envios > Plazos","position":0}}]}
-            """;
-
-    @TestConfiguration
-    static class EmbeddingDouble {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingPort memoryEmbeddingPort() {
-            return new DeterministicEmbeddingPort(MODEL);
-        }
-    }
 
     @RegisterExtension
     static WireMockExtension ollama = WireMockExtension.newInstance()
             .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
 
-    @RegisterExtension
-    static WireMockExtension ingest = WireMockExtension.newInstance()
-            .options(wireMockConfig().dynamicPort().gzipDisabled(true)).build();
-
     @DynamicPropertySource
     static void servers(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.openai.base-url", () -> ollama.baseUrl() + "/v1");
-        registry.add("shoplab.retrieval.ingest.base-url", ingest::baseUrl);
     }
 
     @LocalServerPort
     private int port;
 
     @Autowired
-    private IngestDocumentServicePort ingestion;
-
-    @Autowired
-    private IndexDocumentsServicePort indexing;
-
-    @Autowired
-    private DeterministicEmbeddingPort embedding;
+    private StubKnowledgeContext knowledge;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -111,23 +78,18 @@ class ChatMemoryIntegrationTests {
     @BeforeEach
     void prepare() {
         ollama.resetAll();
-        ingest.resetAll();
-        ingest.stubFor(post(urlEqualTo("/ingest")).willReturn(aResponse().withStatus(200)
-                .withHeader("Content-Type", "application/json").withBody(PARSED)));
         GatewayStubs.stubAnyChat(ollama, GatewayStubs.streaming(GatewayStubs.body("Tarda tres dias ", "[1].")));
-        embedding.recover();
-        embedding.useModel(MODEL);
-        embedding.resetCounters();
+        knowledge.reset();
         conversation = UUID.randomUUID().toString();
-        ingestion.ingest(new IngestDocumentCommand(SOURCE, "# Envios\n\nTexto.".getBytes(StandardCharsets.UTF_8)))
-                .block();
-        indexing.indexPending(false).block();
+        // Only the exact text "question, newline, follow-up" finds the document: a hit proves what was searched.
+        knowledge.answersWhen(query -> query.equals(QUESTION + "\n" + FOLLOW_UP)
+                ? List.of(new ContextFragment(SOURCE, "Politica de envios", "Envios", 0, query, 1.0))
+                : List.of());
     }
 
     @AfterEach
     void removeTestData() {
         jdbc.update("DELETE FROM chat.conversation_turn WHERE question LIKE 'it-%'");
-        jdbc.update("DELETE FROM retrieval.document WHERE source LIKE 'memory-test-%'");
     }
 
     private ChatTestClient.Result ask(String message, String conversationId) {
@@ -196,7 +158,7 @@ class ChatMemoryIntegrationTests {
 
         ChatTestClient.Result followUp = ask(FOLLOW_UP, conversation);
 
-        // The deterministic embedding only matches the exact text "question, newline, follow-up": a hit proves that
+        // The stub only matches the exact text "question, newline, follow-up": a hit proves that
         // the search skipped "gracias" and used the last real question, as LAB-114 requires.
         assertThat(followUp.events()).extracting(ChatTestClient.Event::name).startsWith("sources");
         assertThat(storedTurns(conversation)).isEqualTo(3);
