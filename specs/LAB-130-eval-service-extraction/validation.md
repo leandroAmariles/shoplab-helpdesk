@@ -7,8 +7,8 @@ Evidencia por paso de [quickstart.md](quickstart.md). Estado al 2026-11-26.
 | Fase | Estado | Evidencia |
 |---|---|---|
 | A. Servicio en paralelo (US1, US2) | **hecho** | `shoplab-eval-service` PR #5 y release PR #6 fusionados; `v0.1.0` publicada: imagen `ghcr.io/leandroamariles/eval-service:v0.1.0` firmada con Cosign y verificada, despliegue GitOps ejecutado, stubs `com.shoplab:shoplab-eval-service:0.1.0:stubs` publicados. CI: 430 pruebas, JaCoCo ≥ 80 %, Checkstyle, PMD, Qodana y Trivy en verde |
-| B. Datos y despliegue (US3, parcial) | **parcial** | Scripts de migración/verificación probados y corte ensayado en aislado (abajo). Manifiestos `apps/eval-service` fusionados en `shoplab-infra` (PR #48, CI en verde). **Pendiente**: secretos de dev, base `eval` en el PostgreSQL de dev, migración y comparación con línea base |
-| C. Corte | pendiente | Requiere ventana en dev y aprobación (T044–T050) |
+| B. Datos y despliegue (US3, parcial) | **hecho** | Scripts de migración/verificación probados y corte ensayado en aislado (abajo). Manifiestos `apps/eval-service` fusionados en `shoplab-infra` (PR #48, CI en verde) |
+| C. Corte | **hecho** | Ver «Corte en dev» |
 | US5. Documentación | hecho | ADR-0035, mapa de servicios, módulos, contratos, `admin-eval`, procedimiento de retiro del esquema |
 | D. Retiro de `backend/` (US4) | pendiente | Solo tras verificar el corte (T057–T067) |
 
@@ -72,6 +72,22 @@ escribe en el mismo PostgreSQL que dev (en dev las claves de LiteLLM aún no exi
 El nodo tiene 1930m de CPU asignables y 1920m pedidos. `eval-service` pide 100m, los mismos que ClickHouse: ClickHouse
 quedó `Pending`, el sync de `shoplab-dev` quedó en `Running` esperando su salud, y el hook `PostSync`
 `litellm-bootstrap-keys` no creó las claves virtuales (retrieval respondía `503`, token no encontrado).
+
+## Corte en dev (2026-11-26, horas UTC)
+
+| Tarea | Resultado |
+|---|---|
+| Capacidad | `shoplab-infra` #49: CPU de `eval-service` 100m → 25m y de `gateway` 100m → 50m, `maxSurge: 0`. ClickHouse y `litellm-bootstrap-keys` se programaron y las aplicaciones de Argo quedaron `Synced/Healthy` |
+| T044 | Guardado suspendido con `shoplab-infra` #50: `POST /api/eval/runs` → `403 SLHD_EVAL_00001`, historial `200`. 14:24: `migrate-eval --replace` y `verify-eval-migration` exit 0 (2 / 76 / 152 filas, MD5 y secuencias iguales) |
+| T045 | `eval-service` frente a la línea base: 0 diferencias (bash y PowerShell) |
+| T046 | `shoplab-infra` #51 fusionado; 14:26 el gateway llega a `eval-service`. Hubo unos segundos de `503` de nginx durante el relevo del gateway (`maxSurge: 0`) |
+| T047 | `shoplab-eval retrieval --save` real contra el gateway, sin tocar su código (solo URL, cabecera `Host` y token): `lab130-post-cut`, 76 resultados |
+| T048 | `admin-eval` en Edge sin interfaz: lista las 2 migradas y la nueva, abre el detalle y compara `lab130-base-1` con `lab130-post-cut` (API 200). 0 cambios en `shoplab-frontend` |
+| T049 | La ejecución nueva recibió `id=3` (máximo migrado 2) y solo existe en la base `eval` |
+| T050 | Reversión con `shoplab-infra` #52: CI 39 s y monolito atendiendo 21 s después de fusionar (muestra solo las 2 migradas). Corte rehecho con #53 |
+| T051 | `GET /api/eval/settings` por el gateway devuelve la configuración de `chat-service` con los prompts de Langfuse |
+
+Al revertir, lo guardado después del corte no se ve en el monolito: vive solo en la base `eval`.
 
 ## Estado antes de levantar dev
 

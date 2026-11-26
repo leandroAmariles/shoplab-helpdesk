@@ -136,19 +136,19 @@ el stub parado, `503 SLHD_EVAL_00005`; el guardado y el historial siguen funcion
 ### Despliegue en dev
 
 - [X] T041 [US3] En `shoplab-infra/apps/eval-service/` completar el esqueleto: `POSTGRES_*` desde el `ExternalSecret` `eval-service-db-secret`, `SHOPLAB_EVAL_PERSISTENCE_TOKEN`, `SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080`, `SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE`, `newTag` de la release de T025; y `eval-service` en los secretos de dev que haga falta (FR-020)
-- [ ] T042 [US3] MANUAL Cargar `EVAL_DB_PASSWORD` y `SHOPLAB_EVAL_PERSISTENCE_TOKEN` en los secretos de dev (`secrets.auto.tfvars` / Secrets Manager) y aprovisionar rol y base `eval` en el PostgreSQL de dev con el equivalente de `eval-db-init`
-- [ ] T043 [US3] APROBACIÓN Fusionar en `shoplab-infra` el alta de `eval-service` y comprobar en Argo CD que queda sincronizado y sano (US3-1, FR-020)
+- [X] T042 [US3] MANUAL Cargar `EVAL_DB_PASSWORD` y `SHOPLAB_EVAL_PERSISTENCE_TOKEN` en los secretos de dev (`secrets.auto.tfvars` / Secrets Manager) y aprovisionar rol y base `eval` en el PostgreSQL de dev con el equivalente de `eval-db-init`
+- [X] T043 [US3] APROBACIÓN Fusionar en `shoplab-infra` el alta de `eval-service` y comprobar en Argo CD que queda sincronizado y sano (US3-1, FR-020)
 
 ### Migración y corte
 
-- [ ] T044 [US3] APROBACIÓN Ventana de corte: vaciar `SHOPLAB_EVAL_PERSISTENCE_TOKEN` en el monolito de dev (guardado → 403, lectura intacta), ejecutar `migrate-eval` y `verify-eval-migration`, y anotar el resultado en `validation.md` (FR-021)
-- [ ] T045 [US3] Ejecutar `compare-eval-baseline` contra el servicio con los datos migrados: 0 diferencias (SC-001)
-- [ ] T046 [US3] APROBACIÓN Commit de corte en `shoplab-infra/apps/gateway/overlays/dev/kustomization.yaml` con `SHOPLAB_GATEWAY_ROUTES_EVAL_URI=http://eval-service:8080`; fusionar y esperar la sincronización (FR-019)
-- [ ] T047 [US3] En `shoplab-eval/` cambiar solo la URL base de guardado (y el token si el valor cambia), sin tocar código; ejecutar una corrida real y comprobar que se guarda en el servicio (FR-017, SC-002)
-- [ ] T048 [US3] Abrir `admin-eval` en dev: listar, abrir y comparar una migrada con la nueva; confirmar 0 cambios en `shoplab-frontend` (FR-018, SC-003, US3-4/5)
-- [ ] T049 [US3] Fijar el token en `eval-service`, reanudar el guardado y verificar que una ejecución nueva recibe un `id` mayor que todos los migrados (FR-006)
-- [ ] T050 [US3] Probar la reversión: devolver la ruta al monolito con el commit inverso, medir el tiempo (< 10 min, SC-007), comprobar que el monolito atiende, y volver a mover la ruta; anotar en `validation.md` (FR-022)
-- [ ] T051 [P] [US3] Comprobar con `kubectl`/Argo que `eval-service` y `chat-service` conviven y que `GET /api/eval/settings` por el gateway devuelve la configuración real
+- [X] T044 [US3] APROBACIÓN Ventana de corte: vaciar `SHOPLAB_EVAL_PERSISTENCE_TOKEN` en el monolito de dev (guardado → 403, lectura intacta), ejecutar `migrate-eval` y `verify-eval-migration`, y anotar el resultado en `validation.md` (FR-021)
+- [X] T045 [US3] Ejecutar `compare-eval-baseline` contra el servicio con los datos migrados: 0 diferencias (SC-001)
+- [X] T046 [US3] APROBACIÓN Commit de corte en `shoplab-infra/apps/gateway/overlays/dev/kustomization.yaml` con `SHOPLAB_GATEWAY_ROUTES_EVAL_URI=http://eval-service:8080`; fusionar y esperar la sincronización (FR-019)
+- [X] T047 [US3] En `shoplab-eval/` cambiar solo la URL base de guardado (y el token si el valor cambia), sin tocar código; ejecutar una corrida real y comprobar que se guarda en el servicio (FR-017, SC-002)
+- [X] T048 [US3] Abrir `admin-eval` en dev: listar, abrir y comparar una migrada con la nueva; confirmar 0 cambios en `shoplab-frontend` (FR-018, SC-003, US3-4/5)
+- [X] T049 [US3] Fijar el token en `eval-service`, reanudar el guardado y verificar que una ejecución nueva recibe un `id` mayor que todos los migrados (FR-006)
+- [X] T050 [US3] Probar la reversión: devolver la ruta al monolito con el commit inverso, medir el tiempo (< 10 min, SC-007), comprobar que el monolito atiende, y volver a mover la ruta; anotar en `validation.md` (FR-022)
+- [X] T051 [P] [US3] Comprobar con `kubectl`/Argo que `eval-service` y `chat-service` conviven y que `GET /api/eval/settings` por el gateway devuelve la configuración real
 
 **Checkpoint**: US3 funcional. El monolito sigue desplegado pero sin tráfico de `eval`.
 

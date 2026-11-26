@@ -85,7 +85,7 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 
 ### 3.3. `eval-service` (Gestión histórica de evaluación RAG)
 
-- **Estado**: en extracción (LAB-130, [ADR-0035](adr/0035-extraccion-de-eval-service.md)).
+- **Estado**: en servicio en dev desde LAB-130 ([ADR-0035](adr/0035-extraccion-de-eval-service.md)).
 - **Repositorio**: `shoplab-eval-service`
 - **Contexto delimitado**: Custodia inmutable de los resultados de corridas de evaluación de calidad de RAG (fidelidad, relevancia de respuesta, precisión de contexto) y servicios para la consola `admin-eval`.
 - **Base de datos**: propia (`eval`, rol `eval`), sin `pgvector`; esquema `eval`:

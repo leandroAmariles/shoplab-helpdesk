@@ -1,6 +1,6 @@
 # ADR-0035: Extracción de `eval-service`
 
-- Estado: propuesto
+- Estado: aceptado
 - Fecha: 2026-11-25
 
 ## Contexto
