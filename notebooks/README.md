@@ -88,5 +88,5 @@ notebooks/
 └── tests/
 ```
 
-La lógica vive en `src/chunking_lab/` (probada y con lint); el notebook solo la orquesta y la explica. Nada de
-`backend/` ni de `ingest/` importa este proyecto.
+La lógica vive en `src/chunking_lab/` (probada y con lint); el notebook solo la orquesta y la explica. Ningún código
+de producción importa este proyecto.

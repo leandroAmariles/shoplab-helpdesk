@@ -1,5 +1,10 @@
 # Despliegue continuo a dev
 
+> **Retirado en este repositorio (LAB-130).** Sin `backend/` ya no hay imágenes que publicar aquí: se quitaron
+> `images.yml` y `deploy-dev.sh`. Cada servicio construye, firma y despliega desde su repositorio. Lo que sigue
+> describe el pipeline del monolito y queda como referencia (recuperable en el tag `backend-final-pre-LAB-130`).
+
+
 Cada versión publicada (tag `vX.Y.Z` de release-please) termina desplegada en `dev` sin pasos manuales y sin que el CI
 toque el clúster (LAB-81, ADR-0012). Un merge a `main` publica imágenes por SHA pero no cambia `dev`. El pipeline solo
 escribe en git; Argo CD (ADR-0006) lee `shoplab-infra` y converge el clúster.

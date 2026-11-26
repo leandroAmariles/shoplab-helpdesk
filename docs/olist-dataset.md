@@ -47,7 +47,7 @@ Si las tablas no existen, el cargador no las crea: se detiene con el código de 
 
 La tabla de geolocalización del dataset no se carga. Las columnas y restricciones están en
 `specs/LAB-17-olist-dataset-by-context/data-model.md` y en las migraciones `V2__…` de
-`backend/src/main/resources/db/migration/{orders,catalog}/`.
+`data/olist/schema/{orders,catalog}/`.
 
 ## Referencias entre `orders` y `catalog`: solo por id
 

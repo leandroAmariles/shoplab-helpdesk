@@ -1,5 +1,8 @@
 # Gateway de modelos (LiteLLM)
 
+> El monolito se retiró en LAB-130 y con él su clave virtual (`backend`). El chat usa la clave de `chat-service`.
+
+
 Toda llamada a un modelo —el chat del backend y los embeddings de `retrieval-service`— sale hacia un único gateway: [LiteLLM](https://docs.litellm.ai/)
 con API compatible con OpenAI. Decide qué modelo responde, cae a un modelo de respaldo si el principal falla, aplica un
 presupuesto por clave virtual y deja en sus logs los tokens y el coste de cada petición. La decisión está en

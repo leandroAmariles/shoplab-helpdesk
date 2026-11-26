@@ -52,7 +52,7 @@
 Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa de ayuda para una tienda online ficticia.
 
 - **Frontend**: Angular (chat con streaming, consola de agentes, admin).
-- **Backend**: Java 21 + Spring Boot 4 + Spring AI 2.0 + Spring Modulith (monolito modular que evoluciona a microservicios con Kafka y CQRS).
+- **Backend**: Java 21 + Spring Boot 4 + Spring AI 2.0, un repositorio por servicio detrás de un gateway (el monolito `backend/` se retiró en LAB-130).
 - **Python**: ingesta, chunking, embeddings y evaluación (RAGAS / DeepEval).
 - **Datos**: PostgreSQL 16 + pgvector; dataset público de Olist.
 
@@ -61,7 +61,6 @@ Laboratorio paso a paso para aprender LLMs, RAG y chatbots construyendo una mesa
 | Carpeta | Contenido |
 | --- | --- |
 | `frontend/` | App Angular |
-| `backend/` | Spring Boot + Spring AI |
 | `ingest/` | Servicio FastAPI de ingesta |
 | `eval/` | Dataset golden y evaluación |
 | `notebooks/` | Experimentos |

@@ -10,7 +10,7 @@ En una arquitectura de múltiples repositorios, `shoplab-helpdesk` no contiene e
 - **Gobernanza y Decisiones**: Centraliza los Registros de Decisiones de Arquitectura ([`docs/adr/`](../adr/README.md)) y el mapa de servicios ([`docs/mapa-servicios.md`](../mapa-servicios.md)).
 - **Composición del Sistema**: Aloja el archivo [`infra/docker-compose.yml`](../../infra/docker-compose.yml) que integra la totalidad de los servicios a través de imágenes publicadas en GitHub Container Registry (GHCR).
 - **Pruebas de Integración y E2E**: Aloja los scripts de verificación de extremo a extremo que validan la interoperabilidad entre los microservicios.
-- **Backend Transicional**: Custodia temporalmente el backend modular en [`backend/`](../../backend/) hasta la extracción de `chat-service` (LAB-59) y `eval-service` (LAB-130). La base de conocimiento ya está en `retrieval-service` (LAB-129): el compose lo levanta, con su base de datos, y lo publica en el `8082` para depurar.
+- **Sin código de servicios**: el monolito `backend/` se retiró en LAB-130. Cada servicio Java vive en su repositorio (`shoplab-retrieval-service`, `shoplab-chat-service`, `shoplab-eval-service`) y el compose los levanta desde sus imágenes, publicando los puertos 8082 a 8084 para depurar.
 
 ---
 
@@ -37,7 +37,7 @@ El comando es **idempotente**: si un repositorio ya está clonado, lo detecta e 
    ```bash
    docker compose -f infra/docker-compose.yml up -d --wait
    ```
-   *Todos los servicios (`postgres`, `litellm`, `ingest`, `backend`, `gateway`, `frontend`) arrancan con imágenes publicadas en GHCR con versiones semánticas fijadas en `.env` (prohibido `:latest`). La API entra por el `gateway` en el `8080`; el backend queda en el `8081` para depurar (LAB-107).*
+   *Todos los servicios (`postgres`, `litellm`, `ingest`, los servicios, `gateway`, `frontend`) arrancan con imágenes publicadas en GHCR con versiones semánticas fijadas en `.env` (prohibido `:latest`). La API entra por el `gateway` en el `8080` (LAB-107).*
 
 ### Paso 3: Modificar un servicio específico
 
@@ -54,20 +54,16 @@ Si vas a modificar código en `shoplab-frontend` o `shoplab-ingest`:
    ```
    *El resto del sistema sigue corriendo con las imágenes oficiales de GHCR.*
 
-#### Opción B: Modo Host en IDE (Backend Java)
-Si vas a depurar el backend en tu entorno local (IntelliJ IDEA, VS Code):
-1. Detén el contenedor del backend:
+#### Opción B: Modo Host en IDE (servicio Java)
+Para depurar un servicio en tu entorno local (IntelliJ IDEA, VS Code):
+1. Detén su contenedor, por ejemplo:
    ```bash
-   docker compose -f infra/docker-compose.yml stop backend
+   docker compose -f infra/docker-compose.yml stop eval-service
    ```
-2. Ejecuta el backend localmente en el `8081` (el `8080` es del gateway):
+2. En su repositorio, arráncalo en el puerto de depuración (`SERVER_PORT=8084 ./mvnw -s .mvn/ci-settings.xml spring-boot:run`, con `GITHUB_TOKEN`).
+3. Apunta el gateway a él:
    ```bash
-   cd backend && SERVER_PORT=8081 ./mvnw spring-boot:run
-   ```
-   *Se conectará a PostgreSQL (`localhost:5432`) y LiteLLM (`localhost:4000`) expuestos por Docker.*
-3. Apunta el gateway al backend del host:
-   ```bash
-   GATEWAY_MONOLITH_URI=http://host.docker.internal:8081 docker compose -f infra/docker-compose.yml up -d --no-deps gateway
+   SHOPLAB_GATEWAY_ROUTES_EVAL_URI=http://host.docker.internal:8084 docker compose -f infra/docker-compose.yml up -d --no-deps gateway
    ```
 
 ### Paso 4: Probar y Validar

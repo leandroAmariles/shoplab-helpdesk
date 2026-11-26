@@ -1,5 +1,9 @@
 # Observabilidad base: métricas, dashboards y alerta
 
+> El monolito se retiró en LAB-130. Prometheus recoge ahora `gateway`, `retrieval-service`, `chat-service`,
+> `eval-service` e `ingest`; donde esta guía hable del backend o de `helpdesk-backend`, léase el servicio que toque.
+
+
 Cómo ver el comportamiento del backend y del clúster desde el principio (LAB-102). La decisión de dónde viven los
 dashboards y por qué está en el [ADR-0009](adr/0009-observabilidad-base-fuente-unica-de-dashboards.md). Los paneles
 de coste de LLM y de lag de Kafka llegan con LAB-65.
