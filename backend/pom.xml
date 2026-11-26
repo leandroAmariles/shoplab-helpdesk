@@ -27,9 +27,11 @@
         <checkstyle.version>14.4.0</checkstyle.version>
         <pmd.version>3.28.0</pmd.version>
         <blockhound.version>1.0.18.RELEASE</blockhound.version>
-        <shoplab-contracts.version>1.3.0</shoplab-contracts.version>
+        <shoplab-contracts.version>1.4.0</shoplab-contracts.version>
         <!-- Stubs that retrieval-service publishes, for ChatRetrievalContractConsumerTest. -->
         <retrieval-stubs.version>0.2.0</retrieval-stubs.version>
+        <!-- Stubs that chat-service publishes, for EvalChatContractConsumerTest (LAB-59). -->
+        <chat-stubs.version>0.1.0</chat-stubs.version>
         <argLine/>
     </properties>
 
@@ -54,6 +56,14 @@
             <id>github-shoplab-retrieval</id>
             <name>GitHub Packages ShopLab Retrieval Stubs</name>
             <url>https://maven.pkg.github.com/leandroAmariles/shoplab-retrieval-service</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>github-shoplab-chat</id>
+            <name>GitHub Packages ShopLab Chat Stubs</name>
+            <url>https://maven.pkg.github.com/leandroAmariles/shoplab-chat-service</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
@@ -156,6 +166,19 @@
             <groupId>com.shoplab</groupId>
             <artifactId>shoplab-retrieval-service</artifactId>
             <version>${retrieval-stubs.version}</version>
+            <classifier>stubs</classifier>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.shoplab</groupId>
+            <artifactId>shoplab-chat-service</artifactId>
+            <version>${chat-stubs.version}</version>
             <classifier>stubs</classifier>
             <scope>test</scope>
             <exclusions>

@@ -41,3 +41,9 @@ services:
   #   build:
   #     context: ../../shoplab-retrieval-service
   #   image: shoplab-retrieval-service:local
+
+  # Construir shoplab-chat-service localmente (LAB-59):
+  # chat-service:
+  #   build:
+  #     context: ../../shoplab-chat-service
+  #   image: shoplab-chat-service:local

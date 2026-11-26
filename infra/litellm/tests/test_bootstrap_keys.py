@@ -83,6 +83,7 @@ def env(gateway):
         "LITELLM_MASTER_KEY": MASTER,
         "GATEWAY_ENVIRONMENT": "local",
         "LITELLM_KEY_BACKEND": "sk-shoplab-backend-local",
+        "LITELLM_KEY_CHAT": "sk-shoplab-chat-local",
         "LITELLM_KEY_INGEST": "sk-shoplab-ingest-local",
         "LITELLM_KEY_EVAL": "sk-shoplab-eval-local",
         "LITELLM_KEY_RETRIEVAL": "sk-shoplab-retrieval-local",
@@ -99,6 +100,7 @@ def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsy
     out = capsys.readouterr().out.splitlines()
     assert out == [
         "created alias=backend-local",
+        "created alias=chat-local",
         "created alias=retrieval-local",
         "created alias=ingest-local",
         "created alias=eval-local",
@@ -108,6 +110,10 @@ def test_first_run_creates_every_key_and_prints_only_aliases(gateway, env, capsy
     assert backend["models"] == ["chat", "chat-fallback"]
     assert backend["max_budget"] == 5.0
     assert backend["budget_duration"] == "1d"
+    chat = gateway.keys["sk-shoplab-chat-local"]
+    assert chat["models"] == ["chat", "chat-fallback"]
+    assert chat["max_budget"] == 5.0
+    assert chat["budget_duration"] == "1d"
 
 
 def test_eval_key_only_reaches_the_judge_and_the_embeddings(gateway, env):
@@ -130,11 +136,12 @@ def test_second_run_is_idempotent(gateway, env, capsys):
     assert _run(env) == 0
     assert capsys.readouterr().out.splitlines() == [
         "unchanged alias=backend-local",
+        "unchanged alias=chat-local",
         "unchanged alias=retrieval-local",
         "unchanged alias=ingest-local",
         "unchanged alias=eval-local",
     ]
-    assert sum(call == "POST /key/generate" for call in gateway.calls) == 4
+    assert sum(call == "POST /key/generate" for call in gateway.calls) == 5
     assert "POST /key/update" not in gateway.calls
 
 
@@ -158,6 +165,7 @@ def test_ingest_has_no_model_access_instead_of_an_empty_list(gateway, env):
 def test_cloud_model_is_allowed_only_with_a_provider_key(gateway, env):
     _run({**env, "CLOUD_PROVIDER_API_KEY": "provider-key"})
     assert gateway.keys["sk-shoplab-backend-local"]["models"] == ["chat", "chat-cloud", "chat-fallback"]
+    assert gateway.keys["sk-shoplab-chat-local"]["models"] == ["chat", "chat-cloud", "chat-fallback"]
 
 
 def test_unknown_keys_are_never_deleted(gateway, env):
@@ -225,6 +233,7 @@ def test_real_looking_values_are_accepted_in_dev(gateway, env, capsys):
         **env,
         "GATEWAY_ENVIRONMENT": "dev",
         "LITELLM_KEY_BACKEND": "sk-9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+        "LITELLM_KEY_CHAT": "sk-7d6c5b4a39281706f5e4d3c2b1a09f8e",
         "LITELLM_KEY_INGEST": "sk-0a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "LITELLM_KEY_EVAL": "sk-5c4b3a2918070615e4d3c2b1a0f9e8d7",
         "LITELLM_KEY_RETRIEVAL": "sk-3e2d1c0b9a8f7e6d5c4b3a2918070615",

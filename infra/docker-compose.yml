@@ -151,6 +151,7 @@ services:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-shoplab-master-local-only}
       GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-local}
       LITELLM_KEY_BACKEND: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
+      LITELLM_KEY_CHAT: ${LITELLM_KEY_CHAT:-sk-shoplab-chat-local}
       LITELLM_KEY_INGEST: ${LITELLM_KEY_INGEST:-sk-shoplab-ingest-local}
       LITELLM_KEY_EVAL: ${LITELLM_KEY_EVAL:-sk-shoplab-eval-local}
       LITELLM_KEY_RETRIEVAL: ${LITELLM_KEY_RETRIEVAL:-sk-shoplab-retrieval-local}
@@ -223,6 +224,58 @@ services:
       litellm:
         condition: service_healthy
       ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # Rol y base de chat-service en el mismo PostgreSQL (LAB-59). Idempotente y de un solo disparo.
+  chat-db-init:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.7-pg16}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-shoplab}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      APP_DB: ${POSTGRES_DB:-shoplab}
+      CHAT_DB_PASSWORD: ${CHAT_DB_PASSWORD:-change-me-local-only}
+    entrypoint: ["bash", "/chat-db-init.sh"]
+    volumes:
+      - ./postgres/chat-db-init.sh:/chat-db-init.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Orquestador conversacional en su propio servicio (LAB-59): SSE chat, citas RAG, memoria, feedback, prompts y trazas.
+  # El 8083 del host es solo para depurar.
+  chat-service:
+    image: ${CHAT_IMAGE:-ghcr.io/leandroamariles/chat-service:v0.1.0}
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/chat
+      POSTGRES_USER: chat
+      POSTGRES_PASSWORD: ${CHAT_DB_PASSWORD:-change-me-local-only}
+      SPRING_AI_OPENAI_BASE_URL: http://litellm:4000/v1
+      SPRING_AI_OPENAI_API_KEY: ${LITELLM_KEY_CHAT:-sk-shoplab-chat-local}
+      SHOPLAB_RETRIEVAL_CLIENT_BASE_URL: http://retrieval-service:8080
+      SHOPLAB_CHAT_PROMPTS_ENABLED: ${SHOPLAB_CHAT_PROMPTS_ENABLED:-false}
+      SHOPLAB_CHAT_PROMPTS_BASE_URL: ${SHOPLAB_CHAT_PROMPTS_BASE_URL:-http://langfuse-web:3000}
+      SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: ${SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN:-}
+      SHOPLAB_CHAT_TRACING_ENABLED: ${SHOPLAB_CHAT_TRACING_ENABLED:-false}
+      SHOPLAB_CHAT_TRACING_ENDPOINT: ${SHOPLAB_CHAT_TRACING_ENDPOINT:-http://langfuse-web:3000/api/public/otel}
+      SHOPLAB_CHAT_TRACING_PUBLIC_KEY: ${LANGFUSE_INIT_PUBLIC_KEY:-pk-lf-shoplab-local}
+      SHOPLAB_CHAT_TRACING_SECRET_KEY: ${LANGFUSE_INIT_SECRET_KEY:-sk-lf-shoplab-local}
+    ports:
+      - "${CHAT_PORT:-8083}:8080"
+    depends_on:
+      chat-db-init:
+        condition: service_completed_successfully
+      litellm:
+        condition: service_healthy
+      retrieval-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/actuator/health || exit 1"]
