@@ -80,13 +80,16 @@ Cada release publicada (`vX.Y.Z`) genera y distribuye artefactos inmutables sin 
   </dependencies>
   ```
 - **Autenticación local**: Servidor en `~/.m2/settings.xml` con credencial de GitHub Packages y token con permiso `read:packages`.
-- **En este repositorio** (LAB-129): `backend/` descarga `shoplab-contracts` y los stubs de `retrieval-service`, así que
-  necesita los servidores `github-shoplab-contracts` y `github-shoplab-retrieval`. Sin tocar tu `settings.xml`:
+- **Servicios extraídos** (LAB-129, LAB-59, LAB-130): cada microservicio Java (`shoplab-retrieval-service`,
+  `shoplab-chat-service`, `shoplab-eval-service`) descarga `shoplab-contracts` y los stubs de los servicios que consume
+  usando `.mvn/ci-settings.xml`:
   `GITHUB_TOKEN=$(gh auth token) ./mvnw -s .mvn/ci-settings.xml verify`. La imagen recibe el token como secreto:
-  `docker build --secret id=github_token,env=GITHUB_TOKEN backend`.
+  `docker build --secret id=github_token,env=GITHUB_TOKEN .`.
 
-- **Stubs de productor**: los de la búsqueda los publica `retrieval-service`
-  (`com.shoplab:shoplab-retrieval-service:<versión>:stubs`), y el cliente del chat se prueba contra ellos.
+- **Stubs de productor**:
+  - `retrieval-service` publica `com.shoplab:shoplab-retrieval-service:<versión>:stubs` (consumidos por `chat-service`).
+  - `chat-service` publica `com.shoplab:shoplab-chat-service:<versión>:stubs` (consumidos por `eval-service` en `EvalChatContractConsumerTest`).
+  - `eval-service` publica `com.shoplab:shoplab-eval-service:<versión>:stubs`.
 
 ### 3.2. Frontend Angular (npm)
 - **Paquete**: `@leandroamariles/shoplab-contracts` en GitHub Packages npm.

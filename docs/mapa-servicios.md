@@ -85,23 +85,25 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 
 ### 3.3. `eval-service` (Gestión histórica de evaluación RAG)
 
+- **Estado**: en extracción (LAB-130, [ADR-0035](adr/0035-extraccion-de-eval-service.md)).
 - **Repositorio**: `shoplab-eval-service`
 - **Contexto delimitado**: Custodia inmutable de los resultados de corridas de evaluación de calidad de RAG (fidelidad, relevancia de respuesta, precisión de contexto) y servicios para la consola `admin-eval`.
-- **Esquema de base de datos**: `eval`
-  - `eval.eval_run`: Metadatos de corridas de evaluación (fecha, commit, rama, configuración, métricas globales).
-  - `eval.eval_case`: Evaluaciones a nivel de pregunta/caso individual con puntajes y justificaciones.
-- **APIs expuestas**:
-  - `POST /api/eval/runs`: Ingesta de resultados consolidados de una corrida ejecutada en CI.
-  - `GET /api/eval/runs`: Consulta histórica con evolución temporal de métricas para la UI.
-  - `GET /api/eval/runs/{runId}`: Detalle desglosado de casos individuales.
-  - `POST /api/eval/cases/promote`: Endpoint para certificar y registrar la promoción de un feedback a caso golden.
+- **Base de datos**: propia (`eval`, rol `eval`), sin `pgvector`; esquema `eval`:
+  - `eval.eval_run`: una ejecución (tipo, origen, inicio, prompts, juez, evaluador, configuración de recuperación, métricas).
+  - `eval.eval_case`: una revisión de un caso del dataset golden (sin texto de pregunta ni respuesta).
+  - `eval.eval_result`: puntuaciones de un caso en una ejecución.
+- **APIs expuestas** (contrato en `shoplab-contracts`, stubs publicados):
+  - `POST /api/eval/runs`: guarda una ejecución completa (cabecera `X-Eval-Token`).
+  - `GET /api/eval/runs/{runId}`: devuelve una ejecución guardada (con token).
+  - `GET /api/eval/settings`: configuración vigente del asistente, leída de `chat-service` (con token).
+  - `GET /api/eval/history/runs`, `/runs/{runId}` y `/compare`: lectura para `admin-eval` (sin token).
   - `GET /actuator/health`, `GET /actuator/prometheus`.
-- **Eventos Kafka**:
-  - *Produce*: `eval.run.completed`: Notifica la disponibilidad de un nuevo reporte de evaluación.
-  - *Consume*: `eval.run.requested` (opcional, para corridas diferidas).
+- **Previsto, todavía no existe**: `POST /api/eval/cases/promote` (hoy la promoción a golden vive en `chat`) y los
+  eventos Kafka `eval.run.completed` y `eval.run.requested` (LAB-47); la evaluación online de LAB-69.
 - **Dependencias**:
-  - Base de datos PostgreSQL (esquema exclusivo `eval`).
-  - Consumido por el frontend Angular (`/admin-eval`) y por el runner Python en CI (`shoplab-eval`).
+  - Base de datos PostgreSQL propia.
+  - `chat-service` por HTTP (`GET /api/assistant/settings`), con prueba de contrato eval → chat.
+  - Consumido por el frontend Angular (`/admin-eval`) y por la herramienta Python (`shoplab-eval`), siempre a través del gateway.
 
 ---
 

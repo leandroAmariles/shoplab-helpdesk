@@ -88,6 +88,16 @@ docker compose -f infra/docker-compose.yml exec -T postgres \
   psql -U shoplab -d shoplab -c 'DROP SCHEMA chat CASCADE'
 ```
 
+## Retirar el esquema antiguo de `eval`
+
+Tras el corte de LAB-130 y el retiro de `backend/`, el esquema `eval` de la base `shoplab` queda sin uso. Su borrado es
+un paso manual, nunca parte de un PR:
+
+1. Comprobar con `bash scripts/verify-eval-migration.sh` que las dos bases coinciden y que el servicio lleva días
+   atendiendo.
+2. Copia previa: `pg_dump --schema=eval --format=custom` de `shoplab`.
+3. `DROP SCHEMA eval CASCADE` en `shoplab`. No tocar `catalog`, `orders` ni `tickets` (datos de Olist).
+
 ## Si algo falla
 
 | Síntoma | Causa probable |

@@ -1,20 +1,21 @@
-# Módulos del backend
+# Módulos y servicios del backend
 
-El backend es un monolito modular (Spring Modulith, [ADR-0001](adr/0001-monolito-modular-primero.md)) dividido por
-contexto de negocio. Cada módulo es dueño de sus datos y las reglas se verifican en CI
+El backend nació como un monolito modular (Spring Modulith, [ADR-0001](adr/0001-monolito-modular-primero.md)) dividido
+por contexto de negocio y propietario exclusivo de su esquema ([ADR-0015](adr/0015-limites-de-contexto-y-repositorios.md)).
+En F5 los tres módulos activos se extrajeron a sus propios repositorios y bases de datos ([ADR-0031](adr/0031-extraccion-temprana-de-servicios.md)):
+`retrieval-service` (LAB-129, [ADR-0033](adr/0033-extraccion-de-retrieval-service.md)), `chat-service` (LAB-59,
+[ADR-0034](adr/0034-extraccion-de-chat-service.md)) y `eval-service` (LAB-130,
+[ADR-0035](adr/0035-extraccion-de-eval-service.md)), permitiendo retirar `backend/` del monorepo y conservando intactos
+los esquemas de Olist (`catalog`, `orders`, `tickets`) en PostgreSQL para F3/F4. El mapa completo está en
+[mapa-servicios.md](mapa-servicios.md).
 
-([ADR-0015](adr/0015-limites-de-contexto-y-repositorios.md)). El mapa de extracción temprana hacia microservicios
-se describe en [mapa-servicios.md](mapa-servicios.md) ([ADR-0031](adr/0031-extraccion-temprana-de-servicios.md)).
 
-
-| Módulo | Contexto | Esquema | Migraciones |
-|---|---|---|---|
-| `chat` | Conversación con el asistente (streaming SSE) | `chat` | `db/migration/chat` |
-| `orders` | Pedidos | `orders` | `db/migration/orders` |
-| `catalog` | Catálogo de productos | `catalog` | `db/migration/catalog` |
-| `tickets` | Tickets de soporte | `tickets` | `db/migration/tickets` |
-| `eval` | Historial de las ejecuciones de evaluación (LAB-31) y su lectura para la pantalla `admin-eval` (LAB-32, [`admin-eval.md`](admin-eval.md)) | `eval` | `db/migration/eval` |
-| `shared` | Errores y correlación comunes (módulo abierto, sin datos) | — | — |
+| Servicio / Esquema | Repositorio | Contexto | Esquema | Migraciones |
+|---|---|---|---|---|
+| `retrieval-service` | `shoplab-retrieval-service` | Base de conocimiento: ingesta, embeddings y búsqueda | `retrieval` (base `retrieval`) | `db/migration/retrieval` |
+| `chat-service` | `shoplab-chat-service` | Conversación SSE, citas RAG, memoria, feedback y trazas | `chat` (base `chat`) | `db/migration/chat` |
+| `eval-service` | `shoplab-eval-service` | Historial de ejecuciones de evaluación (LAB-31) y lectura para `admin-eval` (LAB-32, [`admin-eval.md`](admin-eval.md)) | `eval` (base `eval`) | `db/migration/eval` |
+| `orders` / `catalog` / `tickets` | *(datos en PostgreSQL `shoplab`)* | Datos transaccionales Olist para F3/F4 | `orders`, `catalog`, `tickets` | — |
 
 ## Estructura de un módulo
 
@@ -75,14 +76,17 @@ Flyway ejecuta cada migración con `search_path` limitado al esquema del módulo
 `public`: una migración que use pgvector califica el tipo y la clase de operadores (`public.vector(1024)`,
 `public.vector_cosine_ops`). El detalle del diseño está en `specs/LAB-19-retrieval-schema-ownership/`.
 
-## Datos de `eval`
+## Datos de `eval` (`shoplab-eval-service`)
 
-`eval.eval_run` (una ejecución de la medición de recuperación o de calidad, con prompts y versiones, modelos, juez y
-configuración de recuperación), `eval.eval_case` (una **revisión** de un caso del dataset golden) y `eval.eval_result` (lo que
-un caso dio en una ejecución, con las puntuaciones en un `jsonb`) los crea `db/migration/eval/V2__evaluation_history.sql`
-(LAB-31). Solo `eval` los lee y escribe. **La herramienta Python de `eval/` no tiene credenciales de base de datos**: entrega
-cada ejecución entera a `POST /api/eval/runs` con un token (`shoplab.eval.persistence.token`, apagado por defecto) y el módulo la
-guarda en una transacción, o no la guarda. Lee de `chat` solo lo que éste publica en su `api` (`AssistantSettingsApi`: la
-configuración de recuperación y la versión servida de cada prompt). Nunca guarda el texto de una respuesta ni de un fragmento.
-Decisión: [ADR-0028](adr/0028-persistencia-de-ejecuciones-de-evaluacion.md); cómo se usa y se lee, en
-[`eval/README.md`](../eval/README.md).
+Desde LAB-130 ([ADR-0035](adr/0035-extraccion-de-eval-service.md)) el historial vive en `shoplab-eval-service` sobre su
+propia base `eval` (rol `eval`). `eval.eval_run` (una ejecución de la medición de recuperación o de calidad, con prompts
+y versiones, modelos, juez y configuración de recuperación), `eval.eval_case` (una **revisión** de un caso del dataset
+golden) y `eval.eval_result` (lo que un caso dio en una ejecución, con las puntuaciones en un `jsonb`) los crea
+`db/migration/eval/V2__evaluation_history.sql` (LAB-31). Solo `eval-service` los lee y escribe. **La herramienta Python
+de `shoplab-eval` no tiene credenciales de base de datos**: entrega cada ejecución entera a `POST /api/eval/runs` con el
+token `X-Eval-Token` (`shoplab.eval.persistence.token`, apagado por defecto) y el servicio la guarda en una transacción,
+o no la guarda. Lee de `chat-service` por HTTP (`GET /api/assistant/settings`) la configuración servida del asistente
+usando la interfaz reactiva generada por `shoplab-contracts` (`SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL`,
+`SHOPLAB_CHAT_SETTINGS_CLIENT_TIMEOUT`). Nunca guarda el texto de una respuesta ni de un fragmento. Decisión:
+[ADR-0028](adr/0028-persistencia-de-ejecuciones-de-evaluacion.md) y
+[ADR-0035](adr/0035-extraccion-de-eval-service.md).
