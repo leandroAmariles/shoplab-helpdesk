@@ -10,7 +10,7 @@ En una arquitectura de múltiples repositorios, `shoplab-helpdesk` no contiene e
 - **Gobernanza y Decisiones**: Centraliza los Registros de Decisiones de Arquitectura ([`docs/adr/`](../adr/README.md)) y el mapa de servicios ([`docs/mapa-servicios.md`](../mapa-servicios.md)).
 - **Composición del Sistema**: Aloja el archivo [`infra/docker-compose.yml`](../../infra/docker-compose.yml) que integra la totalidad de los servicios a través de imágenes publicadas en GitHub Container Registry (GHCR).
 - **Pruebas de Integración y E2E**: Aloja los scripts de verificación de extremo a extremo que validan la interoperabilidad entre los microservicios.
-- **Backend Transicional**: Custodia temporalmente el backend modular en [`backend/`](../../backend/) hasta la extracción de `chat-service` (LAB-59), `retrieval-service` (LAB-129) y `eval-service` (LAB-130).
+- **Backend Transicional**: Custodia temporalmente el backend modular en [`backend/`](../../backend/) hasta la extracción de `chat-service` (LAB-59) y `eval-service` (LAB-130). La base de conocimiento ya está en `retrieval-service` (LAB-129): el compose lo levanta, con su base de datos, y lo publica en el `8082` para depurar.
 
 ---
 

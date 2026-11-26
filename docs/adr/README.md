@@ -24,7 +24,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0014 | [Streaming por fetch y Markdown saneado en el chat](0014-markdown-seguro-en-el-chat.md) | aceptado |
 | 0015 | [Límites de contexto y estrategia de repositorios](0015-limites-de-contexto-y-repositorios.md) | aceptado (parcialmente sustituido por 0031) |
 | 0016 | [Troceado por encabezados en `ingest` y contrato síncrono con `retrieval`](0016-troceado-por-encabezados-e-ingesta-sincrona.md) | aceptado |
-| 0017 | [Embeddings calculados solo en `retrieval`](0017-embeddings-solo-en-retrieval.md) | aceptado |
+| 0017 | [Embeddings calculados solo en `retrieval`](0017-embeddings-solo-en-retrieval.md) | aceptado (parcialmente sustituido por 0033) |
 | 0018 | [Recuperación del contexto en el caso de uso del chat](0018-recuperacion-de-contexto-en-chat.md) | aceptado |
 | 0019 | [Citas a la fuente en el chat](0019-citas-a-la-fuente-en-el-chat.md) | aceptado |
 | 0020 | [Memoria de la conversación en una tabla propia del módulo `chat`](0020-memoria-de-conversacion-en-tabla-propia.md) | aceptado |
@@ -39,6 +39,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0030 | [Feedback de respuestas y promoción a casos golden](0030-feedback-de-respuestas-y-promocion-a-golden.md) | aceptado |
 | 0031 | [Extracción temprana de servicios](0031-extraccion-temprana-de-servicios.md) | aceptado |
 | 0032 | [Gateway estrangulador delante del monolito](0032-gateway-estrangulador.md) | aceptado |
+| 0033 | [Extracción de `retrieval-service`](0033-extraccion-de-retrieval-service.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.

@@ -65,23 +65,23 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 
 ### 3.2. `retrieval-service` (Recuperación y base de conocimiento)
 
+- **Estado**: extraído (LAB-129, [ADR-0033](adr/0033-extraccion-de-retrieval-service.md)).
 - **Repositorio**: `shoplab-retrieval-service`
-- **Contexto delimitado**: Indexación de fuentes documentales, troceado semántico, cálculo de representaciones vectoriales densas y ejecución de consultas de búsqueda híbrida (vectorial HNSW + texto completo BM25).
-- **Esquema de base de datos**: `retrieval`
-  - `retrieval.document`: Catálogo de documentos fuente ingeridos (políticas, manuales, FAQs).
-  - `retrieval.chunk`: Fragmentos de texto con vectores de incrustación (`vector(1024)` / pgvector) e índices HNSW.
-- **APIs expuestas**:
-  - `GET /api/knowledge/search`: Endpoint REST para búsqueda semántica e híbrida ponderada.
-  - `POST /api/documents`: Registro y carga de nuevos documentos en el corpus.
-  - `GET /api/documents`: Listado y consulta del estado de indexación.
-  - *Servidor MCP*: Endpoint `/mcp` con la herramienta `search_knowledge_base`.
+- **Contexto delimitado**: Registro de fuentes documentales, cálculo de embeddings y búsqueda por similitud. El troceado
+  lo hace `ingest`.
+- **Base de datos**: propia (`retrieval`), con la extensión `pgvector`.
+  - `document`: Catálogo de documentos fuente ingeridos (políticas, manuales, FAQs).
+  - `chunk`: Fragmentos de texto con vectores (`vector(1024)`) e índice HNSW.
+  - `indexing_lock`: Arriendo que deja indexar a una sola instancia a la vez.
+- **APIs expuestas** (contrato en `shoplab-contracts`):
+  - `GET /api/knowledge/search`: Búsqueda semántica.
+  - `POST /api/documents`: Registro y carga de documentos en el corpus.
+  - `GET /api/documents`: Listado y estado de indexación.
   - `GET /actuator/health`, `GET /actuator/prometheus`.
-- **Eventos Kafka**:
-  - *Produce*: `retrieval.document.indexed`: Notifica la indexación exitosa de un documento.
-  - *Consume*: `ingest.document.parsed`: Recibe fragmentos estructurados provenientes del pipeline de ingesta.
-- **Dependencias**:
-  - Pasarela LiteLLM / Ollama para modelos de embedding (`bge-m3`, `nomic-embed-text`).
-  - Base de datos PostgreSQL (esquema exclusivo `retrieval` con extensión `pgvector`).
+- **Previsto, todavía no existe**: búsqueda híbrida con BM25 y reranking (F3), servidor MCP con
+  `search_knowledge_base`, y los eventos Kafka `retrieval.document.indexed` (produce) e `ingest.document.parsed`
+  (consume, LAB-47).
+- **Dependencias**: `ingest` por HTTP, el gateway de modelos (`embeddings`, `bge-m3`) y su PostgreSQL.
 
 ---
 

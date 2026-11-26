@@ -1,12 +1,13 @@
 # Gateway de modelos (LiteLLM)
 
-Toda llamada a un modelo —el chat y los embeddings del backend— sale hacia un único gateway: [LiteLLM](https://docs.litellm.ai/)
+Toda llamada a un modelo —el chat del backend y los embeddings de `retrieval-service`— sale hacia un único gateway: [LiteLLM](https://docs.litellm.ai/)
 con API compatible con OpenAI. Decide qué modelo responde, cae a un modelo de respaldo si el principal falla, aplica un
 presupuesto por clave virtual y deja en sus logs los tokens y el coste de cada petición. La decisión está en
 [ADR-0023](adr/0023-gateway-de-modelos-litellm.md).
 
 ```text
-backend ──(clave virtual, nombres lógicos chat / embeddings)──▶ litellm ──▶ ollama (local, único camino)
+backend ──(su clave virtual, nombre lógico chat)──────────────▶ litellm ──▶ ollama (local, único camino)
+retrieval-service ──(su clave virtual, embeddings)────────────▶    │
 ingest  ──(su clave virtual, hoy sin llamadas a modelos)──────▶    │
                                                                    └──▶ proveedor cloud (opcional, sin clave = no existe)
 ```
@@ -30,7 +31,7 @@ docker compose -f infra/docker-compose.yml ps        # litellm y litellm-postgre
 curl -s http://localhost:4000/health/liveliness
 ```
 
-`litellm-bootstrap` crea las claves `backend-local` e `ingest-local` la primera vez (`created alias=…`) y no hace nada
+`litellm-bootstrap` crea las claves `backend-local`, `retrieval-local`, `ingest-local` y `eval-local` la primera vez (`created alias=…`) y no hace nada
 las siguientes (`unchanged`). El backend usa `http://localhost:4000/v1` y la clave `sk-shoplab-backend-local`
 (`SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_OPENAI_API_KEY`); son marcadores que solo valen en local.
 
@@ -40,7 +41,7 @@ Para publicarlo (depuración, mediciones o el Ollama del host que consume el cl�
 
 ## Nombres lógicos y cambiar de modelo
 
-El backend pide solo `chat` y `embeddings` (más `chat-cloud` si activas un proveedor). El modelo real vive en el gateway:
+El backend pide solo `chat` (más `chat-cloud` si activas un proveedor) y `retrieval-service`, solo `embeddings`. El modelo real vive en el gateway:
 
 | Nombre lógico | Variable | Defecto |
 |---|---|---|
@@ -54,8 +55,9 @@ lugar de una variable, usa `docker compose -f infra/docker-compose.yml restart l
 Ollama; si falta, el gateway lo avisa al arrancar con una línea `WARN model_missing model=… name=…` y no se rompe.
 
 > **Cambiar el modelo de embeddings con otra dimensión de vector exige reindexar** (ADR-0003, ADR-0017): la columna es
-> `vector(1024)` y el backend rechaza un vector de otro tamaño (`EMBEDDING_DIMENSION_MISMATCH`) en lugar de mezclarlos.
-> Si cambias el modelo, ajusta también `SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME` (el nombre que se guarda con cada vector).
+> `vector(1024)` y `retrieval-service` rechaza un vector de otro tamaño (`EMBEDDING_DIMENSION_MISMATCH`) en lugar de mezclarlos.
+> Si cambias el modelo, ajusta también en `retrieval-service` `SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME` (el nombre que
+> se guarda con cada vector).
 
 `notebooks/` sigue usando Ollama directamente: son experimentos y nunca los importa código de producción.
 
@@ -107,7 +109,7 @@ fallback (otra dimensión corrompería el índice).
 
 ## Claves virtuales y presupuestos
 
-Cada consumidor (`backend`, `ingest` y `eval`) tiene una clave por entorno (`backend-local`, `backend-dev`…) con un presupuesto en USD
+Cada consumidor (`backend`, `retrieval`, `ingest` y `eval`) tiene una clave por entorno (`backend-local`, `backend-dev`…) con un presupuesto en USD
 de referencia y un periodo de reinicio (por defecto `1d`), definidos en `keys.yaml`. Los modelos, incluso los locales, tienen
 un precio de referencia en `config.yaml` (no es dinero real), así que el gasto sube y el presupuesto se puede ejercitar sin
 nube. Para cambiar un presupuesto, edita `keys.yaml` y ejecuta:

@@ -13,7 +13,7 @@ keys:
     budget_duration: 1d
     # `chat-fallback` es solo el destino del fallback: el backend nunca lo pide, pero LiteLLM omite el fallback si la
     # clave no puede llamarlo (verificado contra el gateway real).
-    models: [chat, chat-fallback, embeddings]
+    models: [chat, chat-fallback]
     # El proveedor cloud solo se permite si hay clave de proveedor (FR-011, FR-012).
     models_when:
       - env: CLOUD_PROVIDER_API_KEY

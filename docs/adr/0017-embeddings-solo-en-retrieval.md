@@ -1,6 +1,6 @@
 # ADR-0017: Embeddings calculados solo en `retrieval`
 
-- Estado: aceptado
+- Estado: aceptado (parcialmente sustituido por ADR-0033)
 - Fecha: 2026-10-30
 
 ## Contexto
