@@ -9,105 +9,17 @@ spring:
     password: ${POSTGRES_PASSWORD:change-me-local-only}
   flyway:
     enabled: false
-  ai:
-    # Every call to a model goes through the LiteLLM gateway (LAB-84): an OpenAI-compatible API. The backend knows
-    # the gateway's address (with /v1), its own virtual key and a LOGICAL model name; which real model answers,
-    # the fallback, the budget and the cost are configured in the gateway (infra/litellm/config.yaml).
-    openai:
-      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:4000/v1}
-      # Virtual key of the backend; the local default is a placeholder that only works with the local gateway.
-      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-shoplab-backend-local}
-      # The gateway retries and falls back on its own; a second retry layer here would multiply the attempts.
-      max-retries: 0
-      timeout: ${SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT:60s}
-      chat:
-        model: chat
 
 server:
   port: 8080
 
 shoplab:
+  # Assistant settings client for eval -> chat-service (LAB-59).
   chat:
-    max-message-length: 4000
-    # Assistant settings client for eval -> chat-service (LAB-59). Defaults to in-process until cutover.
     settings:
       client:
-        mode: ${SHOPLAB_CHAT_SETTINGS_CLIENT_MODE:in-process}
         base-url: ${SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL:http://localhost:8083}
         timeout: ${SHOPLAB_CHAT_SETTINGS_CLIENT_TIMEOUT:5s}
-    gateway:
-      # The name under which the gateway reports an answer of its primary model (the model group, `chat`); the group
-      # of the fallback model is reported under another name, which is how the trace marks a fallback. Blank means
-      # unknown and no turn is marked.
-      primary-model: ${SHOPLAB_CHAT_GATEWAY_PRIMARY_MODEL:chat}
-      request-timeout: ${SHOPLAB_CHAT_GATEWAY_REQUEST_TIMEOUT:60s}
-    rag:
-      top-k: ${SHOPLAB_CHAT_RAG_TOP_K:4}
-      similarity-threshold: ${SHOPLAB_CHAT_RAG_SIMILARITY_THRESHOLD:0.6}
-      max-context-characters: ${SHOPLAB_CHAT_RAG_MAX_CONTEXT_CHARACTERS:8000}
-      # fixed-message answers a configured text without calling the model; model lets the model answer by itself.
-      no-context-mode: ${SHOPLAB_CHAT_RAG_NO_CONTEXT_MODE:fixed-message}
-    memory:
-      # Most recent turns (question + answer) handed to the model; 0 turns the memory off.
-      max-turns: ${SHOPLAB_CHAT_MEMORY_MAX_TURNS:5}
-      max-history-characters: ${SHOPLAB_CHAT_MEMORY_MAX_HISTORY_CHARACTERS:4000}
-      # Previous questions added to the search of context so a follow-up finds the topic; 0 uses the message alone.
-      retrieval-turns: ${SHOPLAB_CHAT_MEMORY_RETRIEVAL_TURNS:1}
-    feedback:
-      # Highest G<NNN> number in the base eval/golden.jsonl file; promotions suggest from base + 1 onwards (G121...).
-      base-golden-case-number: ${SHOPLAB_CHAT_FEEDBACK_BASE_GOLDEN_CASE_NUMBER:120}
-    # Courtesies (greetings, thanks, farewells, "what can you do?") are answered without retrieval (LAB-114). Anything
-    # else goes through the grounded flow. Disabling it restores the behavior before LAB-114.
-    small-talk:
-      enabled: ${SHOPLAB_CHAT_SMALL_TALK_ENABLED:true}
-      # What the assistant says it can help with; empty keeps the default (payments, privacy, returns, shipping, warranty).
-      topics: ${SHOPLAB_CHAT_SMALL_TALK_TOPICS:}
-      # The closed lexicon of courtesies: a message is small talk only if ALL of it splits into these phrases. Comma
-      # separated; case, accents and signs do not matter. Empty keeps the built-in list; a value REPLACES it. Keep them to
-      # courtesies: whatever is listed here skips the search and the grounded answer. Never "si", "no" or any question.
-      greetings: ${SHOPLAB_CHAT_SMALL_TALK_GREETINGS:}
-      thanks: ${SHOPLAB_CHAT_SMALL_TALK_THANKS:}
-      farewells: ${SHOPLAB_CHAT_SMALL_TALK_FAREWELLS:}
-      acknowledgments: ${SHOPLAB_CHAT_SMALL_TALK_ACKNOWLEDGMENTS:}
-      capabilities: ${SHOPLAB_CHAT_SMALL_TALK_CAPABILITIES:}
-    # The text of the prompts (system, courtesy, context and empty-context messages) is not configured here (LAB-85): it
-    # is managed in Langfuse and its default lives in prompts/*.txt. Off by default: the chat uses the default texts and
-    # nothing is created or connected. The keys are the ones of the tracing unless set here; they are never printed.
-    prompts:
-      enabled: ${SHOPLAB_CHAT_PROMPTS_ENABLED:false}
-      base-url: ${SHOPLAB_CHAT_PROMPTS_BASE_URL:http://localhost:3001}
-      public-key: ${SHOPLAB_CHAT_PROMPTS_PUBLIC_KEY:${SHOPLAB_CHAT_TRACING_PUBLIC_KEY:}}
-      secret-key: ${SHOPLAB_CHAT_PROMPTS_SECRET_KEY:${SHOPLAB_CHAT_TRACING_SECRET_KEY:}}
-      # The label whose version is served: moving it in Langfuse changes the answers, without a deploy.
-      label: ${SHOPLAB_CHAT_PROMPTS_LABEL:production}
-      # How often the prompts are asked again; the longest a change of label takes to reach the chat (at least 5s).
-      refresh-interval: ${SHOPLAB_CHAT_PROMPTS_REFRESH_INTERVAL:60s}
-      request-timeout: ${SHOPLAB_CHAT_PROMPTS_REQUEST_TIMEOUT:2s}
-      max-prompt-characters: ${SHOPLAB_CHAT_PROMPTS_MAX_PROMPT_CHARACTERS:20000}
-      # Creates in Langfuse the prompts that do not exist, with their default text; it never touches one that exists.
-      publish-missing: ${SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING:false}
-      # Lets the evaluation fix prompt versions in a request (X-Prompt-Versions + X-Prompt-Token). Empty = off.
-      override-token: ${SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN:}
-    # One Langfuse trace per chat turn (LAB-64). Off by default: nothing is created and nothing is sent. The traces
-    # carry the whole conversation (question, prompt, context, answer): use them with public or test data only.
-    tracing:
-      enabled: ${SHOPLAB_CHAT_TRACING_ENABLED:false}
-      endpoint: ${SHOPLAB_CHAT_TRACING_ENDPOINT:http://localhost:3001/api/public/otel}
-      public-key: ${SHOPLAB_CHAT_TRACING_PUBLIC_KEY:}
-      secret-key: ${SHOPLAB_CHAT_TRACING_SECRET_KEY:}
-      environment: ${SHOPLAB_CHAT_TRACING_ENVIRONMENT:local}
-      max-content-characters: ${SHOPLAB_CHAT_TRACING_MAX_CONTENT_CHARACTERS:20000}
-      queue-size: ${SHOPLAB_CHAT_TRACING_QUEUE_SIZE:2048}
-      batch-size: ${SHOPLAB_CHAT_TRACING_BATCH_SIZE:256}
-      schedule-delay: ${SHOPLAB_CHAT_TRACING_SCHEDULE_DELAY:2s}
-      export-timeout: ${SHOPLAB_CHAT_TRACING_EXPORT_TIMEOUT:5s}
-      shutdown-timeout: ${SHOPLAB_CHAT_TRACING_SHUTDOWN_TIMEOUT:5s}
-      # USD per million tokens, by model name or by provider; a local model costs 0. A model without a price has
-      # no cost in its trace (it is not guessed).
-      pricing:
-        ollama:
-          input-per-million: 0
-          output-per-million: 0
   # History of the evaluation runs (LAB-31). The tool of eval/ saves each run with POST /api/eval/runs and the header
   # X-Eval-Token. Empty token = saving is off (403): the backend has no authentication yet, so a write is never open.
   eval:
@@ -118,12 +30,6 @@ shoplab:
     # no link, the screen shows the id to copy. The default is the Langfuse of the llmops profile of the local compose.
     history:
       trace-url-template: ${SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE:http://localhost:3001/trace/{traceId}}
-
-  # The knowledge base lives in retrieval-service (LAB-129).
-  retrieval:
-    client:
-      base-url: ${SHOPLAB_RETRIEVAL_CLIENT_BASE_URL:http://localhost:8082}
-      timeout: ${SHOPLAB_RETRIEVAL_CLIENT_TIMEOUT:15s}
 
 management:
   endpoints:

@@ -1,13 +1,11 @@
 package com.shoplab.helpdesk.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.CompositeArchRule;
 import java.util.List;
-import org.springframework.ai.tool.annotation.Tool;
 
 /**
  * Rules that make the layers and module boundaries executable (specs/LAB-105, contracts/architecture-rules.md).
@@ -70,14 +68,6 @@ final class ModuleArchitectureRules {
         return rules;
     }
 
-    /** D4: agent tools are published through a module's {@code api} package, nowhere else. */
-    static ArchRule toolsOnlyInApi() {
-        return methods().that().areAnnotatedWith(Tool.class)
-                .should().beDeclaredInClassesThat().resideInAPackage("..api..")
-                .because("each module publishes its tools in its api; chat only composes them")
-                .allowEmptyShould(true);
-    }
-
     /** D5: a module reaches another one only through its {@code api}. */
     static ArchRule modulesUseOnlyTheApiOfOthers(List<String> modulePackages) {
         CompositeArchRule rules = null;
@@ -94,6 +84,7 @@ final class ModuleArchitectureRules {
                 rules = rules == null ? CompositeArchRule.of(rule) : rules.and(rule);
             }
         }
-        return rules;
+        return rules != null ? rules
+                : noClasses().that().resideInAPackage("..nonexistent..").should().bePublic().allowEmptyShould(true);
     }
 }

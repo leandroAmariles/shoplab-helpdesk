@@ -13,16 +13,11 @@ import com.shoplab.helpdesk.eval.domain.model.enums.PromptSource;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-/**
- * Reactive HTTP client for {@code GET /api/assistant/settings} on {@code chat-service} (LAB-59).
- * Enabled via {@code shoplab.chat.settings.client.mode=http} during expand-and-contract cutover.
- */
+/** Reactive HTTP client for {@code GET /api/assistant/settings} on {@code chat-service} (LAB-59). */
 @Component
-@ConditionalOnProperty(name = "shoplab.chat.settings.client.mode", havingValue = "http")
 public class HttpAssistantSettingsClient implements AssistantSettingsPort {
 
     private final AssistantSettingsApi settingsApi;

@@ -16,7 +16,7 @@ for variable in PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE; do
 done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-migrations="$repo_root/backend/src/main/resources/db/migration"
+migrations="$repo_root/data/olist/schema"
 
 for schema in orders catalog; do
   psql -v ON_ERROR_STOP=1 -q -c "CREATE SCHEMA IF NOT EXISTS \"$schema\""

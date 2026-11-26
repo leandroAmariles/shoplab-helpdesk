@@ -77,6 +77,17 @@ docker compose -f infra/docker-compose.yml exec -T postgres \
 
 Después ya no se puede volver a una versión del backend con el módulo y sus datos.
 
+## Retirar el esquema antiguo de `chat`
+
+Tras LAB-59 el esquema `chat` de la base `shoplab` queda sin uso, pero ninguna release ni migración lo borra.
+Es un paso manual, solo después de comprobar en `dev` la versión del backend sin el módulo, y con una copia previa:
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T postgres pg_dump -U shoplab -Fc shoplab > shoplab-antes-drop-chat.dump
+docker compose -f infra/docker-compose.yml exec -T postgres \
+  psql -U shoplab -d shoplab -c 'DROP SCHEMA chat CASCADE'
+```
+
 ## Si algo falla
 
 | Síntoma | Causa probable |

@@ -40,6 +40,7 @@ archivo Markdown que explica su contexto, lo que se decidió y sus consecuencias
 | 0031 | [Extracción temprana de servicios](0031-extraccion-temprana-de-servicios.md) | aceptado |
 | 0032 | [Gateway estrangulador delante del monolito](0032-gateway-estrangulador.md) | aceptado |
 | 0033 | [Extracción de `retrieval-service`](0033-extraccion-de-retrieval-service.md) | aceptado |
+| 0034 | [Extracción de `chat-service`](0034-extraccion-de-chat-service.md) | aceptado |
 
 La tabla se actualiza a mano en la misma PR que añade o cambia un ADR. La plantilla
 ([`0000-plantilla.md`](0000-plantilla.md)) no es una decisión y no figura en el índice.
