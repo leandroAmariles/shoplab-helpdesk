@@ -51,6 +51,11 @@ dónde viven sus datos, cómo se hace el corte, cómo lee la configuración del 
   paso manual documentado en [F5-mover-rutas-al-gateway.md](../fases/F5-mover-rutas-al-gateway.md).
 - La evaluación online de LAB-69 se añade en `eval-service` sin crear otro servicio.
 
+## Imagen del monolito
+
+`ghcr.io/leandroamariles/backend` queda **deprecada**: no se publican versiones nuevas y ningún compose ni overlay la
+usa. Se conserva (última: `v0.31.0`) para poder restaurar.
+
 ## Cómo restaurar
 
 El punto de restauración es el tag `backend-final-pre-LAB-130` (último commit de `main` con `backend/`). Las copias de

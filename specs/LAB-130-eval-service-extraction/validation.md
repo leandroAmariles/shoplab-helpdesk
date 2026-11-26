@@ -176,6 +176,19 @@ Al revertir, lo guardado después del corte no se ve en el monolito: vive solo e
 Las referencias a `backend/` que quedan describen su retiro, son ejemplos genéricos de las plantillas de spec-kit o
 un paquete Java ajeno en la skill `code-context-builder`.
 
+## Cierre (2026-11-26)
+
+| Tarea | Resultado |
+|---|---|
+| T062 | `shoplab-infra` #55 (borrador, CI en verde): sin `k8s/base/backend`, sin `GATEWAY_MONOLITH_URI`, `ServiceDown` en lugar de `BackendDown`, `quality.sh` con `eval-service-eval`. **Sin fusionar** |
+| T066 | Imagen `backend` marcada como deprecada en ADR-0035; no se borra |
+| T070 | Pasos 1 y 3 verificados en dev; paso 2 con el `chat-service` real parado (`settings` 503, guardar `201`, historial `200`) y `requests.http` 16/16 en un compose desechable sin monolito; paso 4 (compose desde cero, `psql`, CI del PR) y 5 en el PR #195. `mvn verify` de `eval-service`: el de la CI de `v0.1.0` |
+| T072 | PR #194 y #195 (helpdesk), #55 (infra) |
+| T067 | **Pendiente**: fusionar #194, #195 e infra #55, y comprobar CI y dev |
+
+Hallazgo ajeno a LAB-130: el chat de dev respondía `SLHD_CHAT_00002` porque la `NetworkPolicy` de LiteLLM no admite a
+`chat-service` (`retrieval-service` sí conecta). Corrección en `shoplab-infra` #54, sin fusionar.
+
 ## Estado antes de levantar dev
 
 - **El historial real está vacío**: `eval_run`, `eval_case` y `eval_result` tienen 0 filas en la base `shoplab` del
