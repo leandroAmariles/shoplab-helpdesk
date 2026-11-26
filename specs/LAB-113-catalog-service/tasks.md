@@ -144,7 +144,7 @@ description: "Task list for LAB-113 catalog-service implementation"
 ## Phase 8: Polish & Validation
 
 - [ ] T036 Ejecutar prueba de rendimiento y paginación determinista sobre los 32.951 productos simulando el consumidor `retrieval-service` (LAB-34) — *no ejecutada*
-- [ ] T037 Ejecutar verificación completa de calidad en `shoplab-catalog-service` (`mvn clean verify`, Checkstyle, PMD, Qodana, JaCoCo ≥ 80%) — *mvn clean verify en verde; Qodana pendiente de CI*
-- [ ] T038 APROBACIÓN Crear Pull Requests coordinados en `shoplab-catalog-service`, `shoplab-contracts`, `shoplab-gateway` y `shoplab-infra`
+- [x] T037 Ejecutar verificación completa de calidad en `shoplab-catalog-service` (`mvn clean verify`, Checkstyle, PMD, Qodana, JaCoCo ≥ 80%) — *`pipeline / verify` en verde con Qodana en catalog-service #5*
+- [x] T038 APROBACIÓN Crear Pull Requests coordinados en `shoplab-catalog-service`, `shoplab-contracts`, `shoplab-gateway` y `shoplab-infra` — *catalog-service #5, contracts #19, infra #56 y helpdesk #203; gateway sin cambios*
 - [ ] T039 Actualizar matriz de servicios en `shoplab-helpdesk/docs/mapa-servicios.md` marcando `catalog-service` como activo — *marcado como pendiente de despliegue*
 - [x] T040 Completar las evidencias de validación en `specs/LAB-113-catalog-service/validation.md`

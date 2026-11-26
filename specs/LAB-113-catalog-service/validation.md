@@ -41,10 +41,12 @@ Estrategia de validación y recolección de evidencias para el cumplimiento de l
 
 Revisión previa a crear el repositorio: `getProductDetails` escribía `nullxnullxnull cm` en productos sin medidas;
 corregido con su prueba (`./mvnw -o clean verify`: BUILD SUCCESS, 16 pruebas). Repositorio
-`leandroAmariles/shoplab-catalog-service` creado desde la plantilla, privado; la implementación aún no está subida.
+`leandroAmariles/shoplab-catalog-service` creado desde la plantilla (público).
 
-No ejecutado: Qodana, `make check` de infra (falta kubeconform), prueba de alertas (falta promtool), rendimiento (SC-004)
-y despliegue en dev (SC-007).
+CI de los PRs (catalog-service #5, contracts #19, infra #56, helpdesk #203): en verde. Antes hubo que corregir dos
+fallos: Qodana en `GlobalExceptionHandler` y las pruebas de `ServiceDown` sin la serie de `catalog-service`.
+
+No ejecutado: rendimiento (SC-004) y despliegue en dev (SC-007).
 
 ## Desviaciones respecto de la especificación
 
