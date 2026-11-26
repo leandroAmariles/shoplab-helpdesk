@@ -27,13 +27,13 @@ Registro de evidencias por paso de `quickstart.md` y puertas del plan.
 
 ## 4. Despliegue de `chat-service` en `dev` (sin tráfico)
 
-- **Estado**: Pendiente
-- **Evidencia**:
+- **Estado**: Manifiestos fusionados (`shoplab-infra` PR #45); pendiente cargar secretos `T027` (`chat-db-password`, `LITELLM_KEY_CHAT`, Langfuse y `SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN`) y verificación de ArgoCD en `shoplab-dev`
+- **Evidencia**: `shoplab-infra` PR #45 fusionado (`apps/chat-service/base`, `apps/chat-service/overlays/dev` con `newTag: v0.1.0`, clave `chat-dev` en `k8s/base/litellm/`).
 
 ## 5. Monolito Release A (`eval` con `HttpAssistantSettingsClient` en modo `in-process`)
 
-- **Estado**: Verificado localmente (PR abierto para CI y despliegue)
-- **Evidencia**: `EvalChatContractConsumerTest` (contra `com.shoplab:shoplab-chat-service:0.1.0:stubs` desde GitHub Packages), `HttpAssistantSettingsClientTests` (WireMock: mapeo, propagación `X-Request-Id`/`traceparent`, 503 y timeout) y `ModularityTests` en verde (`8/8`), 0 violaciones Checkstyle, 0 violaciones PMD.
+- **Estado**: Fusionado y publicado (`v0.31.0`)
+- **Evidencia**: `shoplab-helpdesk` PR #190 (todos los checks CI en verde: `backend`, `qodana`, `build-scan`, `trivy`, `python`, `observability`, `ci-gate`) y release PR #191 (`v0.31.0`) fusionados. `EvalChatContractConsumerTest` contra `com.shoplab:shoplab-chat-service:0.1.0:stubs`, `HttpAssistantSettingsClientTests` (WireMock: mapeo, propagación `X-Request-Id`/`traceparent`, 503 y timeout) y `ModularityTests` en verde, 0 Checkstyle, 0 PMD.
 
 ## 6. Línea base de calidad (LAB-29) antes del corte
 
@@ -42,13 +42,16 @@ Registro de evidencias por paso de `quickstart.md` y puertas del plan.
 
 ## 7. Migración y verificación del esquema `chat`
 
-- **Estado**: Pendiente
-- **Evidencia**:
+- **Estado**: Aprobado
+- **Evidencia**: `chat-db-init` + `litellm-bootstrap` + `scripts/migrate-chat.ps1` + `scripts/verify-chat-migration.ps1` sobre el PostgreSQL local: `conversation_turn` (17 filas, MD5 idéntico), `feedback` (0 filas), `flyway_schema_history` (4 filas, MD5 idéntico) y secuencias `IDENTITY` (`conversation_turn` `last_value=47, max_id=47`; `feedback` tabla vacía).
 
 ## 8. Corte en `dev` y local (gateway + `mode=http`) y comparación LAB-29
 
-- **Estado**: Pendiente
+- **Estado**: Corte aplicado en `dev` y local (pendiente comparación formal LAB-29 cuando se ejecute `shoplab-eval` con juez)
 - **Evidencia**:
+  - `shoplab-helpdesk` PR #190 (Release A) y PR #191 (`v0.31.0`) fusionados.
+  - `shoplab-infra` PR #46 (corte único: `chat` y `assistant` en gateway → `http://chat-service:8080` + `mode=http` en `backend`) fusionado.
+  - Local: `gateway` enruta `/api/assistant/settings` → `destination=http://chat-service:8080` (`status=200`); `chat-service:v0.1.0` responde SSE RAG con 3 citas de `retrieval-service:v0.2.0` y streaming vía LiteLLM (`chat-local`).
 
 ## 9. Verificación de reversión (antes de Release B)
 
@@ -57,5 +60,9 @@ Registro de evidencias por paso de `quickstart.md` y puertas del plan.
 
 ## 10. Monolito Release B (retirada de `chat`, `orders`, `catalog`, `tickets` y preservación de Olist)
 
-- **Estado**: Pendiente
+- **Estado**: Verificado localmente; listo para PR y publicación
 - **Evidencia**:
+  - `mvn -s .mvn/ci-settings.xml verify -Dskip.srcclr=true --no-transfer-progress` en `backend/` → **BUILD SUCCESS** (`Tests run: 470, Failures: 0, Errors: 0, Skipped: 0`; JaCoCo ≥ 80 % en 33 clases; 0 violaciones Checkstyle; 0 violaciones PMD; `ModularityTests` regeneró `docs/modulos/` con los módulos `eval` y `shared`).
+  - `SchemaIsolationTests` confirmó `db/migration` reducido únicamente a `eval`.
+  - Esquemas Olist verificados intactos en PostgreSQL local (`catalog`: 4 tablas; `orders`: 6 tablas; ningún `DROP SCHEMA` ejecutado).
+  - Contratos HTTP sin endpoints nuevos respecto a la API ya existente (`specs/LAB-59-chat-service-extraction/contracts/http-api.md`); `docs/adr/0034-extraccion-de-chat-service.md`, `docs/adr/README.md`, `docs/mapa-servicios.md` y `docs/fases/F5-mover-rutas-al-gateway.md` actualizados.

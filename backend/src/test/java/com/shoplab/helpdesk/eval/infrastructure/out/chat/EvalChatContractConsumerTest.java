@@ -27,7 +27,7 @@ class EvalChatContractConsumerTest {
 
     private HttpAssistantSettingsClient client() {
         int port = STUB_RUNNER.findStubUrl(GROUP_ID, ARTIFACT_ID).getPort();
-        var properties = new ChatSettingsClientProperties("http", "http://localhost:" + port, null);
+        var properties = new ChatSettingsClientProperties("http://localhost:" + port, null);
         return new HttpAssistantSettingsClient(
                 new ChatSettingsClientConfig().chatSettingsApi(WebClient.builder(), properties), properties.timeout());
     }

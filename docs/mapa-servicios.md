@@ -39,27 +39,25 @@ Este documento define la topología oficial, las fronteras de datos y los protoc
 
 ### 3.1. `chat-service` (Orquestador conversacional)
 
+- **Estado**: extraído (LAB-59, [ADR-0034](adr/0034-extraccion-de-chat-service.md)).
 - **Repositorio**: `shoplab-chat-service`
-- **Contexto delimitado**: Orquesta el flujo de atención al cliente en tiempo real mediante streaming, memoria contextual de turnos, evaluación de intenciones y ejecución de herramientas de agente.
-- **Esquema de base de datos**: `chat`
-  - `chat.conversation`: Sesiones activas y metadatos de usuario.
-  - `chat.conversation_turn`: Historial inmutable de turnos de conversación, citas entregadas y trazas OTLP.
+- **Contexto delimitado**: Orquesta el flujo de atención al cliente en tiempo real mediante streaming SSE, citas RAG contra `retrieval-service`, conversación de cortesía acotada, memoria contextual de turnos, feedback/promoción a golden, prompts versionados y trazas OTLP en Langfuse.
+- **Base de datos**: propia (`chat`), sin `pgvector`.
+  - `chat.conversation_turn`: Historial inmutable de turnos de conversación, `turn_id` público, citas entregadas y trazas OTLP.
   - `chat.feedback`: Valoraciones 👍 / 👎 de respuestas, comentarios libres y estado de promoción a dataset golden (LAB-33).
-- **APIs expuestas**:
+- **APIs expuestas** (contrato en `shoplab-contracts`, stubs publicados para `eval`):
   - `POST /api/chat`: Endpoint reactivo con Server-Sent Events (SSE) para streaming continuo de respuestas.
+  - `GET /api/assistant/settings`: Instantánea de parámetros de recuperación y versiones de prompts servidos.
   - `PUT /api/chat/feedback/{turnId}`: Registro de feedback sobre un turno completado.
   - `GET /api/chat/feedback`: Consulta administrativa de feedbacks.
+  - `POST /api/chat/feedback/{turnId}/promote`: Promoción de feedback negativo a caso golden.
   - `GET /actuator/health`, `GET /actuator/prometheus`: Endpoints de salud y métricas.
-- **Eventos Kafka**:
-  - *Produce*:
-    - `chat.turn.completed` (Avro / CloudEvent): Emitido al concluir un turno satisfactoriamente.
-    - `chat.feedback.submitted` (Avro / CloudEvent): Emitido al registrarse una valoración.
-    - `chat.turn.escalation` (Avro / CloudEvent): Emitido cuando el diálogo requiere escalado a soporte humano.
-  - *Consume*: Ninguno.
+- **Previsto, todavía no existe**: clientes MCP remotos hacia `catalog-service`, `order-service`, `ticket-service` y `retrieval-service` (F3/F4), y eventos Kafka (`chat.turn.completed`, `chat.feedback.submitted`, `chat.turn.escalation`).
 - **Dependencias**:
-  - Clientes MCP remotos hacia `catalog-service`, `order-service`, `ticket-service` y `retrieval-service`.
-  - Pasarela de modelos LiteLLM (OpenAI-compatible) para generación de texto.
-  - Base de datos PostgreSQL (esquema exclusivo `chat`).
+  - `retrieval-service` por HTTP (`GET /api/knowledge/search`, contrato en `shoplab-contracts`).
+  - Pasarela de modelos LiteLLM con clave virtual propia (`chat-<entorno>`).
+  - Langfuse (prompts versionados y trazas OTLP).
+  - Base de datos PostgreSQL propia (`chat`).
 
 ---
 

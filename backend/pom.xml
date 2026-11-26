@@ -11,16 +11,14 @@
 
     <groupId>com.shoplab</groupId>
     <artifactId>helpdesk-backend</artifactId>
-    <version>0.31.0</version>
+    <version>0.30.0</version>
     <name>helpdesk-backend</name>
-    <description>ShopLab Helpdesk modular monolith (Spring Modulith + Spring AI)</description>
+    <description>ShopLab Helpdesk backend (eval + shared until LAB-130 extracts eval-service)</description>
 
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-ai.version>2.0.2</spring-ai.version>
         <spring-cloud-contract.version>5.0.3</spring-cloud-contract.version>
-        <rest-assured.version>6.3.0</rest-assured.version>
         <spring-modulith.version>2.1.2</spring-modulith.version>
         <jacoco.version>0.8.16</jacoco.version>
         <jacoco.minimum.coverage>0.80</jacoco.minimum.coverage>
@@ -28,34 +26,16 @@
         <pmd.version>3.28.0</pmd.version>
         <blockhound.version>1.0.18.RELEASE</blockhound.version>
         <shoplab-contracts.version>1.4.0</shoplab-contracts.version>
-        <!-- Stubs that retrieval-service publishes, for ChatRetrievalContractConsumerTest. -->
-        <retrieval-stubs.version>0.2.0</retrieval-stubs.version>
         <!-- Stubs that chat-service publishes, for EvalChatContractConsumerTest (LAB-59). -->
         <chat-stubs.version>0.1.0</chat-stubs.version>
         <argLine/>
     </properties>
-
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages ShopLab Helpdesk Stubs</name>
-            <url>https://maven.pkg.github.com/leandroAmariles/shoplab-helpdesk</url>
-        </repository>
-    </distributionManagement>
 
     <repositories>
         <repository>
             <id>github-shoplab-contracts</id>
             <name>GitHub Packages ShopLab Contracts</name>
             <url>https://maven.pkg.github.com/leandroAmariles/shoplab-contracts</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>github-shoplab-retrieval</id>
-            <name>GitHub Packages ShopLab Retrieval Stubs</name>
-            <url>https://maven.pkg.github.com/leandroAmariles/shoplab-retrieval-service</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
@@ -73,23 +53,9 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
                 <groupId>org.springframework.modulith</groupId>
                 <artifactId>spring-modulith-bom</artifactId>
                 <version>${spring-modulith.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.rest-assured</groupId>
-                <artifactId>rest-assured-bom</artifactId>
-                <version>${rest-assured.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -122,6 +88,10 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>context-propagation</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-core</artifactId>
         </dependency>
@@ -142,39 +112,13 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
-        <!-- LAB-64: OpenTelemetry solo como formato de transporte de las trazas de LLM hacia Langfuse (ADR-0022). -->
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-sdk</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-otlp</artifactId>
-        </dependency>
 
-        <!-- Generated HTTP interface of the knowledge search (LAB-129); version managed above. -->
+        <!-- Generated HTTP interface of chat-service assistant settings (LAB-59). -->
         <dependency>
             <groupId>com.shoplab</groupId>
             <artifactId>shoplab-contracts</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.shoplab</groupId>
-            <artifactId>shoplab-retrieval-service</artifactId>
-            <version>${retrieval-stubs.version}</version>
-            <classifier>stubs</classifier>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>com.shoplab</groupId>
             <artifactId>shoplab-chat-service</artifactId>
@@ -232,24 +176,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-sdk-testing</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-contract-verifier</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-contract-stub-runner</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>spring-web-test-client</artifactId>
-            <version>${rest-assured.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -284,24 +212,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-contract-maven-plugin</artifactId>
-                <version>${spring-cloud-contract.version}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <testMode>WEBTESTCLIENT</testMode>
-                    <basePackageForTests>com.shoplab.helpdesk.contracts.generated</basePackageForTests>
-                    <contractsDirectory>${project.basedir}/src/test/resources/contracts</contractsDirectory>
-                    <baseClassMappings>
-                        <baseClassMapping>
-                            <contractPackageRegex>.*chat.*</contractPackageRegex>
-                            <baseClassFQN>com.shoplab.helpdesk.chat.infrastructure.in.rest.ChatContractBase</baseClassFQN>
-                        </baseClassMapping>
-                    </baseClassMappings>
-                </configuration>
             </plugin>
 
             <plugin>
@@ -379,7 +289,6 @@
                 <configuration>
                     <configLocation>config/checkstyle.xml</configLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <excludes>**/contracts/generated/**</excludes>
                     <consoleOutput>true</consoleOutput>
                     <failOnViolation>true</failOnViolation>
                     <violationSeverity>warning</violationSeverity>
@@ -405,9 +314,6 @@
                     </rulesets>
                     <printFailingErrors>true</printFailingErrors>
                     <includeTests>true</includeTests>
-                    <excludes>
-                        <exclude>**/contracts/generated/**</exclude>
-                    </excludes>
                 </configuration>
                 <executions>
                     <execution>

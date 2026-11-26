@@ -2,7 +2,7 @@ package com.shoplab.helpdesk.eval.config;
 
 import com.shoplab.contracts.chat.client.AssistantSettingsApi;
 import com.shoplab.helpdesk.shared.infrastructure.in.rest.filter.RequestIdFilter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +21,11 @@ public class ChatSettingsClientConfig {
     private static final String TRACEPARENT = "traceparent";
 
     @Bean
-    @ConditionalOnProperty(name = "shoplab.chat.settings.client.mode", havingValue = "http")
+    public AssistantSettingsApi chatSettingsApi(ObjectProvider<WebClient.Builder> builderProvider,
+            ChatSettingsClientProperties properties) {
+        return chatSettingsApi(builderProvider.getIfAvailable(WebClient::builder), properties);
+    }
+
     public AssistantSettingsApi chatSettingsApi(WebClient.Builder builder, ChatSettingsClientProperties properties) {
         WebClient client = builder.clone()
                 .baseUrl(properties.baseUrl())

@@ -1,7 +1,0 @@
-[%autowidth.stretch, cols="h,a"]
-|===
-|Base package
-|`com.shoplab.helpdesk.chat`
-|Spring components
-|* `c.s.h.c.api.AssistantSettingsApi` (via `c.s.h.c.infrastructure.in.api.AssistantSettingsApiAdapter` -- Serves the published settings from what the chat holds in memory: the retrieval parameters it was started with and the version of each prompt its next turn would use. It changes nothing in the chat and never waits for Langfuse.)
-|===

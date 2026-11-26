@@ -117,7 +117,7 @@ comportamiento.
 - [x] T030 [US3] Actualizar `backend/pom.xml` a `shoplab-contracts:1.4.0`, añadir el repositorio GitHub Packages y dependencia test de stubs `com.shoplab:shoplab-chat-service:<version>:stubs`
 - [x] T031 [US3] Refactorizar `MONO/eval/infrastructure/out/chat/HttpAssistantSettingsClient.java` (y su configuración `WebClient` / propiedades `shoplab.chat.settings.client.{mode,base-url,timeout}`) para usar la interfaz generada `AssistantSettingsApi`, timeout acotado, propagación de cabeceras y traducción de errores con `onErrorMap` manteniendo `mode=in-process` por defecto
 - [x] T032 [US3] Ejecutar `mvn verify -Dskip.srcclr=true --no-transfer-progress` en `backend/` (cobertura ≥ 80 %, Checkstyle, PMD)
-- [ ] T033 [US3] APROBACIÓN: fusionar y publicar Release A de `backend/` y verificar que despliega en `dev` sin cambiar el comportamiento actual
+- [x] T033 [US3] APROBACIÓN: fusionar y publicar Release A de `backend/` y verificar que despliega en `dev` sin cambiar el comportamiento actual
 
 **Checkpoint**: El monolito sabe consultar `chat-service` por HTTP al activar `mode=http`, manteniendo el comportamiento en proceso por defecto.
 
@@ -133,12 +133,12 @@ comportamiento.
 degradación.
 
 - [ ] T034 [US2] Tomar la línea base de evaluación de calidad de respuesta (LAB-29) con `shoplab-eval` contra el monolito actual sobre el dataset golden vigente y guardar resumen, detalle por pregunta, modelo y versiones de prompts en `specs/LAB-59-chat-service-extraction/validation.md`
-- [ ] T035 [US2] APROBACIÓN: en ventana controlada, ejecutar copia previa de `shoplab`, correr `scripts/migrate-chat.{sh,ps1}` y validar con `scripts/verify-chat-migration.{sh,ps1}` (código 0); guardar evidencia en `validation.md`
-- [ ] T036 [US2] Preparar el commit único de corte en `shoplab-infra`: añadir `SHOPLAB_GATEWAY_ROUTES_CHAT_URI=http://chat-service:8080` y `SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI=http://chat-service:8080` en `apps/gateway/overlays/dev/kustomization.yaml`, y activar `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http` + `SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080` en el overlay `dev` de `backend`
-- [ ] T037 [US2] APROBACIÓN: fusionar el commit de corte en `shoplab-infra` y confirmar sincronización sana de `gateway`, `chat-service` y `backend` en `shoplab-dev`
+- [x] T035 [US2] APROBACIÓN: en ventana controlada, ejecutar copia previa de `shoplab`, correr `scripts/migrate-chat.{sh,ps1}` y validar con `scripts/verify-chat-migration.{sh,ps1}` (código 0); guardar evidencia en `validation.md`
+- [x] T036 [US2] Preparar el commit único de corte en `shoplab-infra`: añadir `SHOPLAB_GATEWAY_ROUTES_CHAT_URI=http://chat-service:8080` y `SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI=http://chat-service:8080` en `apps/gateway/overlays/dev/kustomization.yaml`, y activar `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http` + `SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080` en el overlay `dev` de `backend`
+- [x] T037 [US2] APROBACIÓN: fusionar el commit de corte en `shoplab-infra` y confirmar sincronización sana de `gateway`, `chat-service` y `backend` en `shoplab-dev`
 - [ ] T038 [US2] Ejecutar la verificación funcional de [quickstart.md](quickstart.md) paso 5 en `dev` (cortesías, pregunta RAG con SSE y citas, repregunta multi-turno, feedback + promoción, `GET /api/eval/settings`, trazas en Langfuse, métricas en Prometheus/Grafana y logs del gateway mostrando `destination=http://chat-service:8080`)
 - [ ] T039 [US2] Repetir la evaluación de calidad (LAB-29) sobre el mismo dataset golden, corpus, modelo y prompts que T034; comparar contra la línea base y documentar el resultado en `validation.md` (puerta obligatoria: sin degradación)
-- [ ] T040 [US2] Configurar en `infra/docker-compose.yml` el enrutamiento por defecto del gateway local (`chat` y `assistant` → `http://chat-service:8080`) y `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http` en `backend`, y verificar `docker compose -f infra/docker-compose.yml up -d --wait` según [quickstart.md](quickstart.md) pasos 3–4
+- [x] T040 [US2] Configurar en `infra/docker-compose.yml` el enrutamiento por defecto del gateway local (`chat` y `assistant` → `http://chat-service:8080`) y `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http` en `backend`, y verificar `docker compose -f infra/docker-compose.yml up -d --wait` según [quickstart.md](quickstart.md) pasos 3–4
 - [ ] T041 [US2] Verificar el procedimiento de reversión antes de Release B (comprobar que revertir el commit de configuración devuelve `/api/chat/**` y `/api/assistant/**` al monolito en < 10 min, o documentar ensayo controlado en `validation.md`)
 
 **Checkpoint**: `chat-service` atiende todo el tráfico de chat, feedback y configuración del asistente en `dev` y local con paridad verificada.
@@ -153,12 +153,12 @@ Olist en PostgreSQL, dejando `backend/` reducido a `eval` + `shared` hasta LAB-1
 **Independent Test**: `mvn verify` en `backend/` en verde con cobertura ≥ 80 %, sin referencias a `chat`, `orders`,
 `catalog` ni `tickets`, y tablas Olist intactas en PostgreSQL.
 
-- [ ] T042 [US3] Retirar del monolito (`backend/`) el módulo `chat` completo: `MONO/chat/`, `MONOT/chat/`, `backend/src/main/resources/db/migration/chat/`, `backend/src/main/resources/prompts/`, `backend/src/test/resources/contracts/chat/`, y la configuración `spring-cloud-contract-maven-plugin` productor de `chat`
-- [ ] T043 [P] [US3] Retirar del monolito (`backend/`) los módulos vacíos `orders`, `catalog` y `tickets`: `MONO/{orders,catalog,tickets}/`, `MONOT/{orders,catalog,tickets}/` (si existen) y `backend/src/main/resources/db/migration/{orders,catalog,tickets}/`, **sin ejecutar ningún `DROP SCHEMA` en PostgreSQL**
-- [ ] T044 [US3] Eliminar `MONO/eval/infrastructure/out/chat/ChatAssistantSettingsAdapter.java`, retirar `@ConditionalOnProperty(mode=http)` de `HttpAssistantSettingsClient` para que sea el único adaptador de `AssistantSettingsPort`, y actualizar `MONOT/ModularityTests.java` para los módulos restantes (`eval`, `shared`)
-- [ ] T045 [US3] Limpiar `backend/pom.xml`, `backend/src/main/resources/application.yml` y `MONO/shared/exception/ResponseCodeEnum.java` retirando dependencias (`spring-ai-starter-model-openai`, OpenTelemetry/Langfuse, stubs de `retrieval-service`), propiedades `spring.ai.*` / `shoplab.chat.*` (salvo `shoplab.chat.settings.client.*`) / `shoplab.retrieval.*` y códigos `SLHD_CHAT_*` no usados por `eval`
-- [ ] T046 [US3] Limpiar en `infra/docker-compose.yml` y `shoplab-infra/k8s/base/backend/` las variables de entorno sobrantes de `backend` (`SPRING_AI_OPENAI_*`, `SHOPLAB_RETRIEVAL_CLIENT_*`, `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE`) y verificar que los esquemas `catalog` y `orders` conservan sus tablas y filas Olist intactas
-- [ ] T047 [US3] Ejecutar `mvn verify -Dskip.srcclr=true --no-transfer-progress` en `backend/` confirmando pruebas en verde, Checkstyle, PMD y cobertura JaCoCo ≥ 80 %; anotar resultado en `validation.md`
+- [x] T042 [US3] Retirar del monolito (`backend/`) el módulo `chat` completo: `MONO/chat/`, `MONOT/chat/`, `backend/src/main/resources/db/migration/chat/`, `backend/src/main/resources/prompts/`, `backend/src/test/resources/contracts/chat/`, y la configuración `spring-cloud-contract-maven-plugin` productor de `chat`
+- [x] T043 [P] [US3] Retirar del monolito (`backend/`) los módulos vacíos `orders`, `catalog` y `tickets`: `MONO/{orders,catalog,tickets}/`, `MONOT/{orders,catalog,tickets}/` (si existen) y `backend/src/main/resources/db/migration/{orders,catalog,tickets}/`, **sin ejecutar ningún `DROP SCHEMA` en PostgreSQL**
+- [x] T044 [US3] Eliminar `MONO/eval/infrastructure/out/chat/ChatAssistantSettingsAdapter.java`, retirar `@ConditionalOnProperty(mode=http)` de `HttpAssistantSettingsClient` para que sea el único adaptador de `AssistantSettingsPort`, y actualizar `MONOT/ModularityTests.java` para los módulos restantes (`eval`, `shared`)
+- [x] T045 [US3] Limpiar `backend/pom.xml`, `backend/src/main/resources/application.yml` y `MONO/shared/exception/ResponseCodeEnum.java` retirando dependencias (`spring-ai-starter-model-openai`, OpenTelemetry/Langfuse, stubs de `retrieval-service`), propiedades `spring.ai.*` / `shoplab.chat.*` (salvo `shoplab.chat.settings.client.*`) / `shoplab.retrieval.*` y códigos `SLHD_CHAT_*` no usados por `eval`
+- [x] T046 [US3] Limpiar en `infra/docker-compose.yml` y `shoplab-infra/k8s/base/backend/` las variables de entorno sobrantes de `backend` (`SPRING_AI_OPENAI_*`, `SHOPLAB_RETRIEVAL_CLIENT_*`, `SHOPLAB_CHAT_SETTINGS_CLIENT_MODE`) y verificar que los esquemas `catalog` y `orders` conservan sus tablas y filas Olist intactas
+- [x] T047 [US3] Ejecutar `mvn verify -Dskip.srcclr=true --no-transfer-progress` en `backend/` confirmando pruebas en verde, Checkstyle, PMD y cobertura JaCoCo ≥ 80 %; anotar resultado en `validation.md`
 - [ ] T048 [US3] APROBACIÓN: fusionar y publicar Release B de `backend/` y verificar despliegue sano en `shoplab-dev` (`/api/eval/runs` y `/api/eval/settings` operativos)
 
 **Checkpoint**: `backend/` contiene únicamente `eval` + `shared`, `chat-service` opera de forma totalmente independiente y los datos de Olist siguen intactos para F3/F4.
@@ -169,9 +169,9 @@ Olist en PostgreSQL, dejando `backend/` reducido a `eval` + `shared` hasta LAB-1
 
 **Purpose**: Cerrar la trazabilidad arquitectónica y actualizar la documentación del ecosistema.
 
-- [ ] T049 [P] Redactar `docs/adr/0034-extraccion-de-chat-service.md` documentando base de datos propia `chat`, clave virtual de LiteLLM, corte en dos releases, transición HTTP de `eval`, conservación de Olist y retiro definitivo de `backend/` diferido a LAB-130; enlazarlo en `docs/adr/README.md`
-- [ ] T050 [P] Actualizar `docs/mapa-servicios.md` (ficha de `chat-service` marcada como extraída en LAB-59 con referencia a ADR-0034, rutas y esquema) y `docs/fases/F5-mover-rutas-al-gateway.md` (incluir el procedimiento manual de borrado del esquema `chat` antiguo en `shoplab` con copia previa)
-- [ ] T051 [P] Revisar `specs/LAB-59-chat-service-extraction/requests.http` si aplica o confirmar que los contratos HTTP no añadieron endpoints nuevos respecto a la API ya existente; validar `git status` y `git diff` limpios antes del PR final
+- [x] T049 [P] Redactar `docs/adr/0034-extraccion-de-chat-service.md` documentando base de datos propia `chat`, clave virtual de LiteLLM, corte en dos releases, transición HTTP de `eval`, conservación de Olist y retiro definitivo de `backend/` diferido a LAB-130; enlazarlo en `docs/adr/README.md`
+- [x] T050 [P] Actualizar `docs/mapa-servicios.md` (ficha de `chat-service` marcada como extraída en LAB-59 con referencia a ADR-0034, rutas y esquema) y `docs/fases/F5-mover-rutas-al-gateway.md` (incluir el procedimiento manual de borrado del esquema `chat` antiguo en `shoplab` con copia previa)
+- [x] T051 [P] Revisar `specs/LAB-59-chat-service-extraction/requests.http` si aplica o confirmar que los contratos HTTP no añadieron endpoints nuevos respecto a la API ya existente; validar `git status` y `git diff` limpios antes del PR final
 
 ---
 

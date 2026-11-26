@@ -285,25 +285,21 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # Backend Spring Boot 4 / Spring Modulith (LAB-110). La API entra por `gateway`; el 8081 del host es solo para
-  # depurar (LAB-107).
+  # Backend Spring Boot 4 / Spring Modulith (LAB-110): solo eval + shared hasta LAB-130. La API entra por `gateway`;
+  # el 8081 del host es solo para depurar (LAB-107).
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.30.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/leandroamariles/backend:v0.31.0}
     environment:
       POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shoplab}
       POSTGRES_USER: ${POSTGRES_USER:-shoplab}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
-      SPRING_AI_OPENAI_BASE_URL: http://litellm:4000/v1
-      SPRING_AI_OPENAI_API_KEY: ${LITELLM_KEY_BACKEND:-sk-shoplab-backend-local}
-      SHOPLAB_RETRIEVAL_CLIENT_BASE_URL: http://retrieval-service:8080
+      SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL: http://chat-service:8080
     ports:
       - "${BACKEND_PORT:-8081}:8080"
     depends_on:
       postgres:
         condition: service_healthy
-      litellm:
-        condition: service_healthy
-      retrieval-service:
+      chat-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
@@ -313,20 +309,18 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # Puerta unica de la API (LAB-107, repo shoplab-gateway): reparte /api por prefijo; los documentos y la busqueda
-  # van a retrieval-service (LAB-129) y el resto al monolito. Una
-  # ruta se mueve definiendo su variable SHOPLAB_GATEWAY_ROUTES_<NOMBRE>_URI y recreando solo este servicio. Las
-  # variables sin valor no llegan al contenedor. Un prefijo nuevo se declara en el override.
+  # Puerta unica de la API (LAB-107, repo shoplab-gateway): reparte /api por prefijo; documents y knowledge van a
+  # retrieval-service (LAB-129), chat y assistant van a chat-service (LAB-59), y eval sigue en el monolito hasta LAB-130.
   gateway:
     image: ${GATEWAY_IMAGE:-ghcr.io/leandroamariles/gateway:v0.1.0}
     environment:
       # Backend en el IDE: GATEWAY_MONOLITH_URI=http://host.docker.internal:8081
       GATEWAY_MONOLITH_URI: ${GATEWAY_MONOLITH_URI:-http://backend:8080}
-      SHOPLAB_GATEWAY_ROUTES_CHAT_URI:
+      SHOPLAB_GATEWAY_ROUTES_CHAT_URI: ${SHOPLAB_GATEWAY_ROUTES_CHAT_URI:-http://chat-service:8080}
       SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI: ${SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI:-http://retrieval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI: ${SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI:-http://retrieval-service:8080}
       SHOPLAB_GATEWAY_ROUTES_EVAL_URI:
-      SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:
+      SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI: ${SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI:-http://chat-service:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

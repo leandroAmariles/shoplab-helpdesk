@@ -2,11 +2,6 @@ package com.shoplab.helpdesk.shared.infrastructure.in.rest.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.shoplab.helpdesk.chat.domain.exception.ConversationMemoryException;
-import com.shoplab.helpdesk.chat.domain.exception.PromptOverrideException;
-import com.shoplab.helpdesk.chat.domain.exception.PromptOverrideForbiddenException;
-import com.shoplab.helpdesk.chat.domain.model.ConversationId;
-import com.shoplab.helpdesk.chat.domain.model.enums.MemoryOperation;
 import com.shoplab.helpdesk.shared.exception.BusinessException;
 import com.shoplab.helpdesk.shared.exception.PublicDetail;
 import com.shoplab.helpdesk.shared.exception.ResponseCodeEnum;
@@ -34,34 +29,18 @@ class GlobalExceptionHandlerTests {
     @Test
     void businessExceptionUsesTheStatusAndCodeOfItsResponseCode() {
         webTestClient.get().uri("/probe/business").exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().isEqualTo(422)
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("SLHD_CHAT_00001")
+                .jsonPath("$.code").isEqualTo("SLHD_EVAL_00002")
                 .jsonPath("$.message").isNotEmpty();
     }
 
     @Test
-    void technicalExceptionWithModelUnavailableCodeIsServiceUnavailable() {
+    void technicalExceptionWithStoreUnavailableCodeIsServiceUnavailable() {
         webTestClient.get().uri("/probe/technical").exchange()
                 .expectStatus().isEqualTo(503)
-                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
-    }
-
-    @Test
-    void anInvalidConversationIdIsABadRequestWithoutTheValue() {
-        webTestClient.get().uri("/probe/conversation-id").exchange()
-                .expectStatus().isBadRequest()
-                .expectBody(String.class).value(text -> assertThat(text)
-                        .contains("SLHD_CHAT_00005").doesNotContain("not-a-uuid"));
-    }
-
-    @Test
-    void aMemoryFailureIsServiceUnavailableWithoutLeakingItsCause() {
-        webTestClient.get().uri("/probe/memory").exchange()
-                .expectStatus().isEqualTo(503)
-                .expectBody(String.class).value(text -> assertThat(text)
-                        .contains("SLHD_CHAT_00006").doesNotContain("secret memory detail"));
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_EVAL_00005");
     }
 
     @Test
@@ -85,7 +64,7 @@ class GlobalExceptionHandlerTests {
         webTestClient.get().uri("/probe/stream-technical").accept(MediaType.TEXT_EVENT_STREAM).exchange()
                 .expectStatus().isEqualTo(503)
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
-                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00002");
+                .expectBody().jsonPath("$.code").isEqualTo("SLHD_EVAL_00005");
     }
 
     @Test
@@ -112,46 +91,25 @@ class GlobalExceptionHandlerTests {
     }
 
     @Test
-    void fixingPromptVersionsWithoutPermissionIsForbidden() {
-        webTestClient.get().uri("/probe/prompt-forbidden").exchange()
-                .expectStatus().isForbidden()
-                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00008");
-    }
-
-    @Test
-    void aMalformedPromptVersionsHeaderIsABadRequest() {
-        webTestClient.get().uri("/probe/prompt-malformed").exchange()
-                .expectStatus().isBadRequest()
-                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00009");
-    }
-
-    @Test
-    void anUnavailablePinnedVersionHasItsOwnCode() {
-        webTestClient.get().uri("/probe/prompt-unavailable").exchange()
-                .expectStatus().isEqualTo(422)
-                .expectBody().jsonPath("$.code").isEqualTo("SLHD_CHAT_00010");
-    }
-
-    @Test
     void anExceptionWithAPublicDetailShowsItInTheBody() {
         webTestClient.get().uri("/probe/detailed").exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().isEqualTo(422)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("SLHD_CHAT_00001")
+                .jsonPath("$.code").isEqualTo("SLHD_EVAL_00002")
                 .jsonPath("$.detail").isEqualTo("results[2].scores.faithfulness: must be between 0 and 1");
     }
 
     @Test
     void anExceptionWithoutAPublicDetailKeepsTheBodyAsItWas() {
         webTestClient.get().uri("/probe/business").exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().isEqualTo(422)
                 .expectBody(String.class).value(text -> assertThat(text).doesNotContain("detail"));
     }
 
     @Test
     void aNullPublicDetailIsLeftOut() {
         webTestClient.get().uri("/probe/detailed-null").exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().isEqualTo(422)
                 .expectBody(String.class).value(text -> assertThat(text).doesNotContain("detail"));
     }
 
@@ -161,7 +119,7 @@ class GlobalExceptionHandlerTests {
         private final String detail;
 
         DetailedException(String detail) {
-            super(ResponseCodeEnum.INVALID_CHAT_MESSAGE);
+            super(ResponseCodeEnum.EVAL_RUN_INVALID);
             this.detail = detail;
         }
 
@@ -175,21 +133,6 @@ class GlobalExceptionHandlerTests {
     @RestController
     static class ProbeController {
 
-        @GetMapping("/probe/prompt-forbidden")
-        String promptForbidden() {
-            throw new PromptOverrideForbiddenException();
-        }
-
-        @GetMapping("/probe/prompt-malformed")
-        String promptMalformed() {
-            throw PromptOverrideException.malformed();
-        }
-
-        @GetMapping("/probe/prompt-unavailable")
-        String promptUnavailable() {
-            throw PromptOverrideException.unavailable();
-        }
-
         @GetMapping("/probe/detailed")
         String detailed() {
             throw new DetailedException("results[2].scores.faithfulness: must be between 0 and 1");
@@ -202,28 +145,17 @@ class GlobalExceptionHandlerTests {
 
         @GetMapping("/probe/business")
         String business() {
-            throw new BusinessException(ResponseCodeEnum.INVALID_CHAT_MESSAGE);
+            throw new BusinessException(ResponseCodeEnum.EVAL_RUN_INVALID);
         }
 
         @GetMapping("/probe/technical")
         String technical() {
-            throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
+            throw new TechnicalException(ResponseCodeEnum.EVAL_STORE_UNAVAILABLE, new IllegalStateException("down"));
         }
 
         @GetMapping(path = "/probe/stream-technical", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
         String streamTechnical() {
-            throw new TechnicalException(ResponseCodeEnum.CHAT_MODEL_UNAVAILABLE, new IllegalStateException("down"));
-        }
-
-        @GetMapping("/probe/conversation-id")
-        String conversationId() {
-            return ConversationId.optional("not-a-uuid").orElseThrow().value();
-        }
-
-        @GetMapping("/probe/memory")
-        String memory() {
-            throw new ConversationMemoryException(MemoryOperation.READ,
-                    new IllegalStateException("secret memory detail"));
+            throw new TechnicalException(ResponseCodeEnum.EVAL_STORE_UNAVAILABLE, new IllegalStateException("down"));
         }
 
         @GetMapping("/probe/unexpected")

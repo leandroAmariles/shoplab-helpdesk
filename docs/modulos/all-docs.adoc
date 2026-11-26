@@ -5,22 +5,6 @@ plantuml::components.puml[,,format=svg]
 plantuml::module-shared.puml[,,format=svg]
 include::module-shared.adoc[]
 
-== Catalog
-plantuml::module-catalog.puml[,,format=svg]
-include::module-catalog.adoc[]
-
-== Chat
-plantuml::module-chat.puml[,,format=svg]
-include::module-chat.adoc[]
-
-== Orders
-plantuml::module-orders.puml[,,format=svg]
-include::module-orders.adoc[]
-
-== Tickets
-plantuml::module-tickets.puml[,,format=svg]
-include::module-tickets.adoc[]
-
 == Eval
 plantuml::module-eval.puml[,,format=svg]
 include::module-eval.adoc[]

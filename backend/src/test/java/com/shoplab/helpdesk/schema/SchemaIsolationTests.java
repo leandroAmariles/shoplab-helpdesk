@@ -18,7 +18,8 @@ class SchemaIsolationTests {
     private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
     private static final Path JAVA_SOURCES = Path.of("src/main/java/com/shoplab/helpdesk");
     private static final Path FIXTURES = Path.of("src/test/resources/schema/violations");
-    private static final Set<String> MODULES = Set.of("chat", "orders", "catalog", "tickets", "eval");
+    private static final Set<String> FIXTURE_MODULES = Set.of("chat", "orders", "catalog", "tickets", "eval");
+    private static final Set<String> ACTIVE_MODULES = Set.of("eval");
 
     @ParameterizedTest
     @CsvSource({
@@ -29,7 +30,7 @@ class SchemaIsolationTests {
             throws IOException {
         String sql = Files.readString(FIXTURES.resolve(fixture));
 
-        List<String> violations = SchemaIsolationRules.lint(fixture, module, MODULES, sql);
+        List<String> violations = SchemaIsolationRules.lint(fixture, module, FIXTURE_MODULES, sql);
 
         assertThat(violations).isNotEmpty().allSatisfy(line -> assertThat(line).startsWith(fixture + ": "));
         assertThat(violations).anySatisfy(line -> assertThat(line).contains(": " + rule + ":"));
@@ -44,7 +45,7 @@ class SchemaIsolationTests {
                 /* tickets.ticket */
                 """;
 
-        assertThat(SchemaIsolationRules.lint("ok.sql", "catalog", MODULES, sql)).isEmpty();
+        assertThat(SchemaIsolationRules.lint("ok.sql", "catalog", FIXTURE_MODULES, sql)).isEmpty();
     }
 
     @Test
@@ -55,14 +56,14 @@ class SchemaIsolationTests {
                 CREATE INDEX chunk_embedding_hnsw_idx ON chunk USING hnsw (embedding public.vector_cosine_ops);
                 """;
 
-        assertThat(SchemaIsolationRules.lint("V2.sql", "tickets", MODULES, sql)).isEmpty();
+        assertThat(SchemaIsolationRules.lint("V2.sql", "tickets", FIXTURE_MODULES, sql)).isEmpty();
     }
 
     @Test
     void anotherModuleReadingCatalogTablesIsReported() {
         String sql = "SELECT name FROM catalog.products";
 
-        List<String> violations = SchemaIsolationRules.lint("chat.sql", "chat", MODULES, sql);
+        List<String> violations = SchemaIsolationRules.lint("chat.sql", "chat", FIXTURE_MODULES, sql);
 
         assertThat(violations).anySatisfy(line -> assertThat(line).contains(": S2:").contains("'catalog'"));
     }
@@ -76,7 +77,7 @@ class SchemaIsolationTests {
     void everyMigrationFolderIsTheNameOfAModule() throws IOException {
         Set<String> folders = SchemaIsolationRules.moduleNames(MIGRATIONS);
 
-        assertThat(folders).isEqualTo(MODULES);
+        assertThat(folders).isEqualTo(ACTIVE_MODULES);
         try (Stream<Path> packages = Files.list(JAVA_SOURCES)) {
             assertThat(packages.map(path -> path.getFileName().toString()).toList()).containsAll(folders);
         }
