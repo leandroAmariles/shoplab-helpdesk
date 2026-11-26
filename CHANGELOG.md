@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.31.0...v0.32.0) (2026-11-26)
+
+
+### Features
+
+* **infra:** [LAB-113] run catalog-service in the local stack ([#203](https://github.com/leandroAmariles/shoplab-helpdesk/issues/203)) ([6d6c5d3](https://github.com/leandroAmariles/shoplab-helpdesk/commit/6d6c5d3b0932dc98c6cabd4aac0cf5246a7fd174))
+
 ## [0.31.0](https://github.com/leandroAmariles/shoplab-helpdesk/compare/v0.30.0...v0.31.0) (2026-11-26)
 
 
