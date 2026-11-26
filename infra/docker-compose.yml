@@ -77,7 +77,7 @@ services:
   # Gateway de modelos (LAB-84): unico punto de salida hacia Ollama y hacia cualquier proveedor cloud. Estado propio
   # (claves virtuales y gasto) en su postgres, sin mezclar tablas con la aplicacion (ADR-0002).
   litellm-postgres:
-    image: ${LITELLM_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    image: ${LITELLM_POSTGRES_IMAGE:-docker.io/postgres:17.11}
     environment:
       POSTGRES_DB: litellm
       POSTGRES_USER: litellm
@@ -460,7 +460,7 @@ services:
   # Interfaz en http://localhost:${LANGFUSE_PORT:-3001} (3000 es de Grafana). Los almacenes no publican puertos al host
   # (solo MinIO, en loopback, para la carga de medios desde el navegador). Credenciales: marcadores SOLO para uso local.
   langfuse-postgres:
-    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:17.7}
+    image: ${LANGFUSE_POSTGRES_IMAGE:-docker.io/postgres:17.11}
     profiles: [llmops]
     environment:
       POSTGRES_USER: postgres
